@@ -194,21 +194,24 @@ async function searchFoursquarePlaces(query: string, near: string): Promise<Four
   }
 
   try {
-    const searchUrl = new URL("https://api.foursquare.com/v3/places/search");
+    // New Foursquare API endpoint (migrated from api.foursquare.com/v3)
+    const searchUrl = new URL("https://places-api.foursquare.com/places/search");
     searchUrl.searchParams.append("query", query);
     searchUrl.searchParams.append("near", near);
     searchUrl.searchParams.append("limit", "1");
-    searchUrl.searchParams.append("fields", "fsq_id,name,location,categories,rating,tastes,geocodes");
+    searchUrl.searchParams.append("fields", "fsq_place_id,name,location,categories,rating,tastes,latitude,longitude");
 
     const searchResponse = await fetch(searchUrl.toString(), {
       headers: {
         Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
         Accept: "application/json",
+        "X-Places-Api-Version": "2025-06-17",
       },
     });
 
     if (!searchResponse.ok) {
-      console.error("Foursquare search error:", searchResponse.status);
+      const errorText = await searchResponse.text();
+      console.error("Foursquare search error:", searchResponse.status, errorText);
       return null;
     }
 
@@ -220,10 +223,10 @@ async function searchFoursquarePlaces(query: string, near: string): Promise<Four
 
     const place = searchData.results[0];
     
-    // Get tips for this place
+    // Get tips for this place using new API
     let tips: Array<{ id: string; text: string; createdAt: string; agreeCount: number }> = [];
     try {
-      const tipsUrl = new URL(`https://api.foursquare.com/v3/places/${place.fsq_id}/tips`);
+      const tipsUrl = new URL(`https://places-api.foursquare.com/places/${place.fsq_place_id}/tips`);
       tipsUrl.searchParams.append("limit", "3");
       tipsUrl.searchParams.append("sort", "popular");
 
@@ -231,12 +234,13 @@ async function searchFoursquarePlaces(query: string, near: string): Promise<Four
         headers: {
           Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
           Accept: "application/json",
+          "X-Places-Api-Version": "2025-06-17",
         },
       });
 
       if (tipsResponse.ok) {
         const tipsData = await tipsResponse.json();
-        tips = tipsData.map((t: any) => ({
+        tips = (Array.isArray(tipsData) ? tipsData : tipsData.results || []).map((t: any) => ({
           id: t.id,
           text: t.text,
           createdAt: t.created_at,
@@ -248,7 +252,7 @@ async function searchFoursquarePlaces(query: string, near: string): Promise<Four
     }
 
     return {
-      fsqId: place.fsq_id,
+      fsqId: place.fsq_place_id,
       name: place.name,
       address: place.location?.formatted_address || place.location?.address,
       rating: place.rating,
@@ -258,8 +262,8 @@ async function searchFoursquarePlaces(query: string, near: string): Promise<Four
       })),
       tastes: place.tastes || [],
       tips,
-      location: place.geocodes?.main 
-        ? { lat: place.geocodes.main.latitude, lng: place.geocodes.main.longitude }
+      location: place.latitude && place.longitude 
+        ? { lat: place.latitude, lng: place.longitude }
         : undefined,
     };
   } catch (error) {

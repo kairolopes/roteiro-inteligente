@@ -5,10 +5,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FOURSQUARE_API_URL = "https://api.foursquare.com/v3";
+// New Foursquare API endpoint (migrated from api.foursquare.com/v3)
+const FOURSQUARE_API_URL = "https://places-api.foursquare.com";
 
 interface FoursquarePlace {
-  fsq_id: string;
+  fsq_place_id: string;
   name: string;
   location: {
     address?: string;
@@ -30,9 +31,8 @@ interface FoursquarePlace {
     services?: Record<string, boolean>;
     amenities?: Record<string, boolean>;
   };
-  geocodes?: {
-    main?: { latitude: number; longitude: number };
-  };
+  latitude?: number;
+  longitude?: number;
 }
 
 interface FoursquareTip {
@@ -61,6 +61,7 @@ async function foursquareRequest(endpoint: string, params?: Record<string, strin
     headers: {
       Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
       Accept: "application/json",
+      "X-Places-Api-Version": "2025-06-17",
     },
   });
 
@@ -77,7 +78,7 @@ async function searchPlaces(query: string, near?: string, limit: number = 5) {
   const params: Record<string, string> = {
     query,
     limit: String(limit),
-    fields: "fsq_id,name,location,categories,rating,tastes,geocodes",
+    fields: "fsq_place_id,name,location,categories,rating,tastes,latitude,longitude",
   };
 
   if (near) {
@@ -88,19 +89,20 @@ async function searchPlaces(query: string, near?: string, limit: number = 5) {
   return data.results as FoursquarePlace[];
 }
 
-async function getPlaceDetails(fsqId: string) {
-  const data = await foursquareRequest(`/places/${fsqId}`, {
-    fields: "fsq_id,name,location,categories,rating,tastes,features,geocodes",
+async function getPlaceDetails(fsqPlaceId: string) {
+  const data = await foursquareRequest(`/places/${fsqPlaceId}`, {
+    fields: "fsq_place_id,name,location,categories,rating,tastes,features,latitude,longitude",
   });
   return data as FoursquarePlace;
 }
 
-async function getPlaceTips(fsqId: string, limit: number = 5) {
-  const data = await foursquareRequest(`/places/${fsqId}/tips`, {
+async function getPlaceTips(fsqPlaceId: string, limit: number = 5) {
+  const data = await foursquareRequest(`/places/${fsqPlaceId}/tips`, {
     limit: String(limit),
     sort: "popular",
   });
-  return data as FoursquareTip[];
+  // New API may wrap results differently
+  return (Array.isArray(data) ? data : data.results || data) as FoursquareTip[];
 }
 
 serve(async (req) => {
@@ -147,14 +149,14 @@ serve(async (req) => {
           let tips: FoursquareTip[] = [];
           
           try {
-            tips = await getPlaceTips(place.fsq_id, 3);
+            tips = await getPlaceTips(place.fsq_place_id, 3);
           } catch (e) {
             console.log("Could not fetch tips:", e);
           }
           
           result = { 
             place: {
-              fsqId: place.fsq_id,
+              fsqId: place.fsq_place_id,
               name: place.name,
               address: place.location.formatted_address || place.location.address,
               rating: place.rating,
@@ -163,8 +165,8 @@ serve(async (req) => {
                 shortName: c.short_name,
               })),
               tastes: place.tastes || [],
-              location: place.geocodes?.main 
-                ? { lat: place.geocodes.main.latitude, lng: place.geocodes.main.longitude }
+              location: place.latitude && place.longitude 
+                ? { lat: place.latitude, lng: place.longitude }
                 : undefined,
             },
             tips: tips.map(t => ({
