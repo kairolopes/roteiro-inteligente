@@ -438,7 +438,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: ITINERARY_SYSTEM_PROMPT },
           { role: "user", content: userPrompt },
@@ -529,7 +529,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
             }
           }
         ],
-        tool_choice: "auto"
+        tool_choice: { type: "function", function: { name: "generate_itinerary" } }
       }),
     });
 
@@ -556,6 +556,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
     const data = await response.json();
     console.log("AI response received");
+    console.log("Raw AI response preview:", JSON.stringify(data).substring(0, 1000));
     console.log("AI response structure:", JSON.stringify({
       hasToolCalls: !!data.choices?.[0]?.message?.tool_calls,
       toolCallsCount: data.choices?.[0]?.message?.tool_calls?.length,
