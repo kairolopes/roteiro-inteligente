@@ -1,0 +1,117 @@
+import { motion } from "framer-motion";
+import { 
+  MapPin, 
+  Clock, 
+  Utensils, 
+  Train, 
+  Building, 
+  Camera, 
+  Sparkles,
+  Lightbulb,
+  Coins
+} from "lucide-react";
+import { Activity } from "@/types/itinerary";
+import { cn } from "@/lib/utils";
+
+interface ActivityCardProps {
+  activity: Activity;
+  index: number;
+}
+
+const categoryConfig = {
+  attraction: {
+    icon: Camera,
+    bgClass: "bg-blue-500/10",
+    textClass: "text-blue-500",
+    borderClass: "border-l-blue-500",
+  },
+  restaurant: {
+    icon: Utensils,
+    bgClass: "bg-orange-500/10",
+    textClass: "text-orange-500",
+    borderClass: "border-l-orange-500",
+  },
+  transport: {
+    icon: Train,
+    bgClass: "bg-green-500/10",
+    textClass: "text-green-500",
+    borderClass: "border-l-green-500",
+  },
+  accommodation: {
+    icon: Building,
+    bgClass: "bg-purple-500/10",
+    textClass: "text-purple-500",
+    borderClass: "border-l-purple-500",
+  },
+  activity: {
+    icon: Sparkles,
+    bgClass: "bg-pink-500/10",
+    textClass: "text-pink-500",
+    borderClass: "border-l-pink-500",
+  },
+};
+
+const ActivityCard = ({ activity, index }: ActivityCardProps) => {
+  const config = categoryConfig[activity.category];
+  const CategoryIcon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className={cn(
+        "glass-card rounded-xl p-4 border-l-4",
+        config.borderClass
+      )}
+    >
+      <div className="flex gap-4">
+        {/* Time */}
+        <div className="flex flex-col items-center flex-shrink-0">
+          <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.bgClass)}>
+            <CategoryIcon className={cn("w-5 h-5", config.textClass)} />
+          </div>
+          <span className="text-sm font-semibold mt-1">{activity.time}</span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-base">{activity.title}</h4>
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+            {activity.description}
+          </p>
+
+          {/* Location */}
+          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+            <MapPin className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate">{activity.location}</span>
+          </div>
+
+          {/* Meta info */}
+          <div className="flex flex-wrap gap-3 mt-3">
+            <div className="flex items-center gap-1 text-xs">
+              <Clock className="w-3 h-3 text-muted-foreground" />
+              <span>{activity.duration}</span>
+            </div>
+            {activity.cost && (
+              <div className="flex items-center gap-1 text-xs">
+                <Coins className="w-3 h-3 text-muted-foreground" />
+                <span>{activity.cost}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Tips */}
+          {activity.tips && (
+            <div className="flex items-start gap-2 mt-3 p-2 rounded-lg bg-yellow-500/10 text-xs">
+              <Lightbulb className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+              <span className="text-yellow-700 dark:text-yellow-300">{activity.tips}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+export default ActivityCard;
