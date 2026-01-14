@@ -59,7 +59,7 @@ async function foursquareRequest(endpoint: string, params?: Record<string, strin
 
   const response = await fetch(url.toString(), {
     headers: {
-      Authorization: FOURSQUARE_API_KEY,
+      Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
       Accept: "application/json",
     },
   });
