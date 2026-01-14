@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Map, Marker, Overlay, ZoomControl } from "pigeon-maps";
+import { useState, useEffect, useMemo } from "react";
+import { Map, Marker, Overlay, ZoomControl, GeoJson } from "pigeon-maps";
 import { ItineraryDay } from "@/types/itinerary";
 
 interface ItineraryMapProps {
@@ -12,6 +12,26 @@ const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => 
   const [center, setCenter] = useState<[number, number]>([43.0, 12.0]);
   const [zoom, setZoom] = useState(6);
   const [popupDay, setPopupDay] = useState<ItineraryDay | null>(null);
+
+  // Create GeoJson LineString to connect all cities in order
+  const routeGeoJson = useMemo(() => {
+    if (days.length < 2) return null;
+    
+    const sortedDays = [...days].sort((a, b) => a.day - b.day);
+    const coordinates = sortedDays.map(day => [day.coordinates[1], day.coordinates[0]]);
+    
+    return {
+      type: "FeatureCollection" as const,
+      features: [{
+        type: "Feature" as const,
+        geometry: {
+          type: "LineString" as const,
+          coordinates: coordinates
+        },
+        properties: {}
+      }]
+    };
+  }, [days]);
 
   useEffect(() => {
     if (selectedDay !== null) {
@@ -47,6 +67,20 @@ const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => 
         }}
       >
         <ZoomControl />
+        
+        {/* Dashed line connecting cities */}
+        {routeGeoJson && (
+          <GeoJson
+            data={routeGeoJson}
+            svgAttributes={{
+              fill: "none",
+              strokeWidth: "2",
+              stroke: "#3b82f6",
+              strokeDasharray: "8,4",
+              strokeLinecap: "round"
+            }}
+          />
+        )}
         
         {days.map((day) => (
           <Marker
