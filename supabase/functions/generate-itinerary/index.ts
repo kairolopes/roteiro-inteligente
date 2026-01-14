@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +25,78 @@ interface PlaceResult {
   rating?: number;
   userRatingsTotal?: number;
   photoReference?: string;
+  googleMapsUrl?: string;
   location?: { lat: number; lng: number };
+}
+
+interface CachedPlace {
+  place_id: string;
+  name: string;
+  address: string;
+  rating: number | null;
+  user_ratings_total: number | null;
+  photo_reference: string | null;
+  google_maps_url: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
+}
+
+function getSupabaseClient() {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+async function getCachedPlace(searchQuery: string): Promise<PlaceResult | null> {
+  const supabase = getSupabaseClient();
+  
+  const { data, error } = await supabase
+    .from("places_cache")
+    .select("*")
+    .eq("search_query", searchQuery.toLowerCase())
+    .gt("expires_at", new Date().toISOString())
+    .single();
+
+  if (error || !data) return null;
+
+  const cached = data as CachedPlace;
+  
+  if (!cached.place_id) return null;
+
+  return {
+    placeId: cached.place_id,
+    name: cached.name || "",
+    address: cached.address || "",
+    rating: cached.rating ?? undefined,
+    userRatingsTotal: cached.user_ratings_total ?? undefined,
+    photoReference: cached.photo_reference ?? undefined,
+    googleMapsUrl: cached.google_maps_url ?? undefined,
+    location: cached.location_lat && cached.location_lng 
+      ? { lat: cached.location_lat, lng: cached.location_lng }
+      : undefined,
+  };
+}
+
+async function cachePlace(searchQuery: string, place: PlaceResult | null): Promise<void> {
+  const supabase = getSupabaseClient();
+  
+  const cacheData = {
+    search_query: searchQuery.toLowerCase(),
+    place_id: place?.placeId ?? null,
+    name: place?.name ?? null,
+    address: place?.address ?? null,
+    rating: place?.rating ?? null,
+    user_ratings_total: place?.userRatingsTotal ?? null,
+    photo_reference: place?.photoReference ?? null,
+    google_maps_url: place?.googleMapsUrl ?? null,
+    location_lat: place?.location?.lat ?? null,
+    location_lng: place?.location?.lng ?? null,
+    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+  };
+
+  await supabase
+    .from("places_cache")
+    .upsert(cacheData, { onConflict: "search_query" });
 }
 
 async function searchGooglePlaces(query: string, location?: string): Promise<PlaceResult | null> {
@@ -34,6 +106,15 @@ async function searchGooglePlaces(query: string, location?: string): Promise<Pla
     console.log("GOOGLE_PLACES_API_KEY not configured, skipping place enrichment");
     return null;
   }
+
+  // Check cache first
+  const cached = await getCachedPlace(query);
+  if (cached) {
+    console.log(`Cache hit for: ${query}`);
+    return cached;
+  }
+
+  console.log(`Cache miss, fetching from API: ${query}`);
 
   try {
     let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}&language=pt-BR`;
@@ -46,42 +127,35 @@ async function searchGooglePlaces(query: string, location?: string): Promise<Pla
     const data = await response.json();
 
     if (data.status !== "OK" || !data.results?.length) {
+      // Cache the "not found" result to avoid repeated API calls
+      await cachePlace(query, null);
       return null;
     }
 
-    const place = data.results[0];
-    return {
-      placeId: place.place_id,
-      name: place.name,
-      address: place.formatted_address,
-      rating: place.rating,
-      userRatingsTotal: place.user_ratings_total,
-      photoReference: place.photos?.[0]?.photo_reference,
-      location: place.geometry?.location,
+    const apiPlace = data.results[0];
+    
+    // Get Google Maps URL
+    const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${apiPlace.place_id}&key=${GOOGLE_PLACES_API_KEY}&fields=url`;
+    const detailsResponse = await fetch(detailsUrl);
+    const detailsData = await detailsResponse.json();
+
+    const place: PlaceResult = {
+      placeId: apiPlace.place_id,
+      name: apiPlace.name,
+      address: apiPlace.formatted_address,
+      rating: apiPlace.rating,
+      userRatingsTotal: apiPlace.user_ratings_total,
+      photoReference: apiPlace.photos?.[0]?.photo_reference,
+      googleMapsUrl: detailsData.result?.url,
+      location: apiPlace.geometry?.location,
     };
+
+    // Cache the result
+    await cachePlace(query, place);
+
+    return place;
   } catch (error) {
     console.error("Error searching Google Places:", error);
-    return null;
-  }
-}
-
-async function getPlaceDetails(placeId: string): Promise<{ googleMapsUrl?: string } | null> {
-  const GOOGLE_PLACES_API_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY");
-  
-  if (!GOOGLE_PLACES_API_KEY) return null;
-
-  try {
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${GOOGLE_PLACES_API_KEY}&fields=url`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status !== "OK") return null;
-
-    return {
-      googleMapsUrl: data.result?.url,
-    };
-  } catch (error) {
-    console.error("Error getting place details:", error);
     return null;
   }
 }
@@ -98,16 +172,13 @@ async function enrichActivityWithPlaces(activity: any, cityName: string, country
   const placeResult = await searchGooglePlaces(searchQuery);
   
   if (placeResult) {
-    // Get Google Maps URL
-    const details = await getPlaceDetails(placeResult.placeId);
-    
     return {
       ...activity,
       placeId: placeResult.placeId,
       photoReference: placeResult.photoReference,
       rating: placeResult.rating,
       userRatingsTotal: placeResult.userRatingsTotal,
-      googleMapsUrl: details?.googleMapsUrl,
+      googleMapsUrl: placeResult.googleMapsUrl,
       // Update location if we got a better one
       location: placeResult.address || activity.location,
     };
