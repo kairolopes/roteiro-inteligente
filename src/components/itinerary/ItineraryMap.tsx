@@ -1,28 +1,6 @@
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
-import { Icon, LatLngExpression, LatLngBoundsExpression } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useState, useEffect } from "react";
+import { Map, Marker, Overlay, ZoomControl } from "pigeon-maps";
 import { ItineraryDay } from "@/types/itinerary";
-
-// Fix for default marker icon
-const defaultIcon = new Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const selectedIcon = new Icon({
-  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
 
 interface ItineraryMapProps {
   days: ItineraryDay[];
@@ -30,28 +8,25 @@ interface ItineraryMapProps {
   onSelectDay: (day: number) => void;
 }
 
-const MapController = ({ days, selectedDay }: { days: ItineraryDay[]; selectedDay: number | null }) => {
-  const map = useMap();
+const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => {
+  const [center, setCenter] = useState<[number, number]>([43.0, 12.0]);
+  const [zoom, setZoom] = useState(6);
+  const [popupDay, setPopupDay] = useState<ItineraryDay | null>(null);
 
   useEffect(() => {
     if (selectedDay !== null) {
       const day = days.find((d) => d.day === selectedDay);
       if (day) {
-        map.flyTo(day.coordinates, 12, { duration: 1 });
+        setCenter(day.coordinates as [number, number]);
+        setZoom(12);
       }
     } else if (days.length > 0) {
-      const bounds: LatLngBoundsExpression = days.map((d) => d.coordinates as [number, number]);
-      map.fitBounds(bounds, { padding: [50, 50] });
+      const avgLat = days.reduce((sum, d) => sum + d.coordinates[0], 0) / days.length;
+      const avgLng = days.reduce((sum, d) => sum + d.coordinates[1], 0) / days.length;
+      setCenter([avgLat, avgLng]);
+      setZoom(6);
     }
-  }, [days, selectedDay, map]);
-
-  return null;
-};
-
-const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => {
-  const center: LatLngExpression = days.length > 0 ? days[0].coordinates : [43.0, 12.0];
-
-  const routeCoordinates = days.map((day) => day.coordinates as LatLngExpression);
+  }, [days, selectedDay]);
 
   if (days.length === 0) {
     return (
@@ -63,46 +38,38 @@ const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => 
 
   return (
     <div className="w-full h-full rounded-xl overflow-hidden border border-border">
-      <MapContainer
-        key={`map-${days.length}-${days[0]?.day || 0}`}
+      <Map
         center={center}
-        zoom={6}
-        className="w-full h-full"
-        scrollWheelZoom={true}
+        zoom={zoom}
+        onBoundsChanged={({ center, zoom }) => {
+          setCenter(center);
+          setZoom(zoom);
+        }}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapController days={days} selectedDay={selectedDay} />
-        <Polyline
-          positions={routeCoordinates}
-          pathOptions={{
-            color: "hsl(var(--primary))",
-            weight: 3,
-            opacity: 0.7,
-            dashArray: "10, 10",
-          }}
-        />
+        <ZoomControl />
+        
         {days.map((day) => (
           <Marker
             key={day.day}
-            position={day.coordinates}
-            icon={selectedDay === day.day ? selectedIcon : defaultIcon}
-            eventHandlers={{
-              click: () => onSelectDay(day.day),
+            anchor={day.coordinates as [number, number]}
+            color={selectedDay === day.day ? "#f97316" : "#3b82f6"}
+            onClick={() => {
+              onSelectDay(day.day);
+              setPopupDay(popupDay?.day === day.day ? null : day);
             }}
-          >
-            <Popup>
-              <div className="text-center">
-                <strong className="text-base">Dia {day.day}</strong>
-                <p className="text-sm mt-1">{day.city}, {day.country}</p>
-                <p className="text-xs text-muted-foreground mt-1">{day.date}</p>
-              </div>
-            </Popup>
-          </Marker>
+          />
         ))}
-      </MapContainer>
+
+        {popupDay && (
+          <Overlay anchor={popupDay.coordinates as [number, number]} offset={[0, -30]}>
+            <div className="bg-background p-3 rounded-lg shadow-lg border border-border text-center min-w-[120px]">
+              <strong className="text-base text-foreground">Dia {popupDay.day}</strong>
+              <p className="text-sm mt-1 text-foreground">{popupDay.city}, {popupDay.country}</p>
+              <p className="text-xs text-muted-foreground mt-1">{popupDay.date}</p>
+            </div>
+          </Overlay>
+        )}
+      </Map>
     </div>
   );
 };
