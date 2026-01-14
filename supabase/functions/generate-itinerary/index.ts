@@ -361,6 +361,99 @@ async function enrichItineraryWithPlaces(itinerary: any): Promise<any> {
   };
 }
 
+// Models to try in order (primary, fallback)
+const AI_MODELS = ["google/gemini-2.5-flash", "google/gemini-2.5-pro"];
+
+async function callAIGateway(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  tools: any[],
+  toolChoice: any
+): Promise<{ success: boolean; data?: any; error?: string; status?: number }> {
+  console.log(`Calling AI Gateway with model: ${model}`);
+  
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        tools,
+        tool_choice: toolChoice,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`AI Gateway error (${model}):`, response.status, errorText);
+      return { success: false, error: errorText, status: response.status };
+    }
+
+    const data = await response.json();
+    console.log(`AI response received from ${model}`);
+    console.log("Raw AI response preview:", JSON.stringify(data).substring(0, 1000));
+    
+    // Check if we got a valid response
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!toolCall && !content) {
+      console.log(`Empty response from ${model}`);
+      return { success: false, error: "Empty response from model" };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error(`Error calling AI Gateway with ${model}:`, error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+function extractItineraryFromResponse(data: any): any | null {
+  // Try tool call first
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  
+  if (toolCall && toolCall.function.name === "generate_itinerary") {
+    console.log("Parsing itinerary from tool call");
+    try {
+      return JSON.parse(toolCall.function.arguments);
+    } catch (e) {
+      console.error("Failed to parse tool call arguments:", e);
+    }
+  }
+
+  // Fallback: try to extract JSON from message content
+  console.log("No tool call found, trying fallback extraction from content");
+  const content = data.choices?.[0]?.message?.content;
+  
+  if (content) {
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
+                      content.match(/```\s*([\s\S]*?)\s*```/) ||
+                      content.match(/(\{[\s\S]*"title"[\s\S]*"days"[\s\S]*\})/);
+    
+    if (jsonMatch) {
+      try {
+        const itinerary = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        console.log("Successfully extracted itinerary from content");
+        return itinerary;
+      } catch (parseError) {
+        console.error("Failed to parse extracted JSON:", parseError);
+      }
+    }
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -431,175 +524,146 @@ ${conversationSummary ? `Contexto adicional da conversa: ${conversationSummary}`
 
 Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: ITINERARY_SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "generate_itinerary",
-              description: "Gera um roteiro de viagem estruturado com dias, atividades e informações detalhadas",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { 
-                    type: "string", 
-                    description: "Título atraente do roteiro (ex: Aventura Romântica pela Itália)" 
-                  },
-                  summary: { 
-                    type: "string", 
-                    description: "Resumo do roteiro em 2-3 frases" 
-                  },
-                  duration: { 
-                    type: "string", 
-                    description: "Duração total (ex: 7 dias)" 
-                  },
-                  totalBudget: { 
-                    type: "string", 
-                    description: "Orçamento estimado por pessoa (ex: €2.000 - €2.500)" 
-                  },
-                  destinations: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Lista de cidades visitadas"
-                  },
-                  days: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        day: { type: "number", description: "Número do dia (1, 2, 3...)" },
-                        date: { type: "string", description: "Dia da semana (Segunda-feira, Terça-feira...)" },
-                        city: { type: "string", description: "Cidade principal do dia" },
-                        country: { type: "string", description: "País" },
-                        coordinates: {
-                          type: "array",
-                          items: { type: "number" },
-                          description: "Coordenadas [latitude, longitude] da cidade"
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "generate_itinerary",
+          description: "Gera um roteiro de viagem estruturado com dias, atividades e informações detalhadas",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { 
+                type: "string", 
+                description: "Título atraente do roteiro (ex: Aventura Romântica pela Itália)" 
+              },
+              summary: { 
+                type: "string", 
+                description: "Resumo do roteiro em 2-3 frases" 
+              },
+              duration: { 
+                type: "string", 
+                description: "Duração total (ex: 7 dias)" 
+              },
+              totalBudget: { 
+                type: "string", 
+                description: "Orçamento estimado por pessoa (ex: €2.000 - €2.500)" 
+              },
+              destinations: {
+                type: "array",
+                items: { type: "string" },
+                description: "Lista de cidades visitadas"
+              },
+              days: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    day: { type: "number", description: "Número do dia (1, 2, 3...)" },
+                    date: { type: "string", description: "Dia da semana (Segunda-feira, Terça-feira...)" },
+                    city: { type: "string", description: "Cidade principal do dia" },
+                    country: { type: "string", description: "País" },
+                    coordinates: {
+                      type: "array",
+                      items: { type: "number" },
+                      description: "Coordenadas [latitude, longitude] da cidade"
+                    },
+                    highlights: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "3-4 destaques principais do dia"
+                    },
+                    activities: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string", description: "ID único (ex: 1-1, 1-2)" },
+                          time: { type: "string", description: "Horário (ex: 09:00)" },
+                          title: { type: "string", description: "Nome da atividade" },
+                          description: { type: "string", description: "Descrição detalhada" },
+                          location: { type: "string", description: "Endereço ou local" },
+                          coordinates: {
+                            type: "array",
+                            items: { type: "number" },
+                            description: "Coordenadas [lat, lng] do local"
+                          },
+                          duration: { type: "string", description: "Duração estimada (ex: 2h)" },
+                          category: { 
+                            type: "string", 
+                            enum: ["attraction", "restaurant", "transport", "accommodation", "activity"],
+                            description: "Categoria da atividade"
+                          },
+                          tips: { type: "string", description: "Dica útil (opcional)" },
+                          cost: { type: "string", description: "Custo estimado (ex: €25)" }
                         },
-                        highlights: {
-                          type: "array",
-                          items: { type: "string" },
-                          description: "3-4 destaques principais do dia"
-                        },
-                        activities: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              id: { type: "string", description: "ID único (ex: 1-1, 1-2)" },
-                              time: { type: "string", description: "Horário (ex: 09:00)" },
-                              title: { type: "string", description: "Nome da atividade" },
-                              description: { type: "string", description: "Descrição detalhada" },
-                              location: { type: "string", description: "Endereço ou local" },
-                              coordinates: {
-                                type: "array",
-                                items: { type: "number" },
-                                description: "Coordenadas [lat, lng] do local"
-                              },
-                              duration: { type: "string", description: "Duração estimada (ex: 2h)" },
-                              category: { 
-                                type: "string", 
-                                enum: ["attraction", "restaurant", "transport", "accommodation", "activity"],
-                                description: "Categoria da atividade"
-                              },
-                              tips: { type: "string", description: "Dica útil (opcional)" },
-                              cost: { type: "string", description: "Custo estimado (ex: €25)" }
-                            },
-                            required: ["id", "time", "title", "description", "location", "duration", "category"]
-                          }
-                        }
-                      },
-                      required: ["day", "date", "city", "country", "coordinates", "highlights", "activities"]
+                        required: ["id", "time", "title", "description", "location", "duration", "category"]
+                      }
                     }
-                  }
-                },
-                required: ["title", "summary", "duration", "totalBudget", "destinations", "days"]
+                  },
+                  required: ["day", "date", "city", "country", "coordinates", "highlights", "activities"]
+                }
               }
-            }
+            },
+            required: ["title", "summary", "duration", "totalBudget", "destinations", "days"]
           }
-        ],
-        tool_choice: { type: "function", function: { name: "generate_itinerary" } }
-      }),
-    });
+        }
+      }
+    ];
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    const toolChoice = { type: "function", function: { name: "generate_itinerary" } };
+
+    // Try models in order until one succeeds
+    let itinerary = null;
+    let lastError = null;
+    let lastStatus = 500;
+
+    for (const model of AI_MODELS) {
+      const result = await callAIGateway(
+        LOVABLE_API_KEY,
+        model,
+        ITINERARY_SYSTEM_PROMPT,
+        userPrompt,
+        tools,
+        toolChoice
+      );
+
+      // Handle rate limit and payment errors immediately
+      if (result.status === 429) {
         return new Response(
           JSON.stringify({ error: "Muitas requisições. Por favor, aguarde um momento." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (result.status === 402) {
         return new Response(
           JSON.stringify({ error: "Créditos insuficientes." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "Erro ao gerar roteiro. Tente novamente." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+      if (result.success && result.data) {
+        itinerary = extractItineraryFromResponse(result.data);
+        
+        if (itinerary) {
+          console.log(`Successfully generated itinerary with model: ${model}`);
+          break;
+        } else {
+          console.log(`Model ${model} returned data but could not extract itinerary, trying next model...`);
+        }
+      } else {
+        console.log(`Model ${model} failed: ${result.error}, trying next model...`);
+        lastError = result.error;
+        lastStatus = result.status || 500;
+      }
     }
 
-    const data = await response.json();
-    console.log("AI response received");
-    console.log("Raw AI response preview:", JSON.stringify(data).substring(0, 1000));
-    console.log("AI response structure:", JSON.stringify({
-      hasToolCalls: !!data.choices?.[0]?.message?.tool_calls,
-      toolCallsCount: data.choices?.[0]?.message?.tool_calls?.length,
-      hasContent: !!data.choices?.[0]?.message?.content,
-      contentPreview: data.choices?.[0]?.message?.content?.substring(0, 200)
-    }, null, 2));
-
-    // Extract the tool call result
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    let itinerary;
-
-    if (toolCall && toolCall.function.name === "generate_itinerary") {
-      // Ideal: response via tool call
-      console.log("Parsing itinerary from tool call");
-      itinerary = JSON.parse(toolCall.function.arguments);
-    } else {
-      // Fallback: try to extract JSON from message content
-      console.log("No tool call found, trying fallback extraction from content");
-      const content = data.choices?.[0]?.message?.content;
-      
-      if (content) {
-        // Try to find JSON in markdown code block or raw JSON
-        const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
-                          content.match(/```\s*([\s\S]*?)\s*```/) ||
-                          content.match(/(\{[\s\S]*"title"[\s\S]*"days"[\s\S]*\})/);
-        
-        if (jsonMatch) {
-          try {
-            itinerary = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-            console.log("Successfully extracted itinerary from content");
-          } catch (parseError) {
-            console.error("Failed to parse extracted JSON:", parseError);
-          }
-        }
-      }
-      
-      if (!itinerary) {
-        console.error("Could not extract itinerary from response");
-        return new Response(
-          JSON.stringify({ error: "Não foi possível gerar o roteiro. Tente novamente." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (!itinerary) {
+      console.error("All models failed to generate itinerary");
+      return new Response(
+        JSON.stringify({ error: "Não foi possível gerar o roteiro. Tente novamente." }),
+        { status: lastStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     // Enrich with Google Places data
