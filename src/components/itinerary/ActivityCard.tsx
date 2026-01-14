@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   MapPin, 
@@ -8,10 +9,14 @@ import {
   Camera, 
   Sparkles,
   Lightbulb,
-  Coins
+  Coins,
+  Star,
+  ExternalLink,
+  ImageOff
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
 import { cn } from "@/lib/utils";
+import { getPhotoUrl } from "@/lib/googlePlaces";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -54,6 +59,23 @@ const categoryConfig = {
 const ActivityCard = ({ activity, index }: ActivityCardProps) => {
   const config = categoryConfig[activity.category];
   const CategoryIcon = config.icon;
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState(false);
+
+  useEffect(() => {
+    const loadPhoto = async () => {
+      if (activity.photoReference) {
+        try {
+          const url = await getPhotoUrl(activity.photoReference, 300);
+          setPhotoUrl(url);
+        } catch (error) {
+          console.error("Error loading photo:", error);
+          setPhotoError(true);
+        }
+      }
+    };
+    loadPhoto();
+  }, [activity.photoReference]);
 
   return (
     <motion.div
@@ -61,53 +83,103 @@ const ActivityCard = ({ activity, index }: ActivityCardProps) => {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
       className={cn(
-        "glass-card rounded-xl p-4 border-l-4",
+        "glass-card rounded-xl overflow-hidden border-l-4",
         config.borderClass
       )}
     >
-      <div className="flex gap-4">
-        {/* Time */}
-        <div className="flex flex-col items-center flex-shrink-0">
-          <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.bgClass)}>
-            <CategoryIcon className={cn("w-5 h-5", config.textClass)} />
-          </div>
-          <span className="text-sm font-semibold mt-1">{activity.time}</span>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-base">{activity.title}</h4>
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-            {activity.description}
-          </p>
-
-          {/* Location */}
-          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-            <MapPin className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{activity.location}</span>
-          </div>
-
-          {/* Meta info */}
-          <div className="flex flex-wrap gap-3 mt-3">
-            <div className="flex items-center gap-1 text-xs">
-              <Clock className="w-3 h-3 text-muted-foreground" />
-              <span>{activity.duration}</span>
+      {/* Photo Section */}
+      {activity.photoReference && !photoError && (
+        <div className="relative w-full h-32 bg-muted">
+          {photoUrl ? (
+            <img 
+              src={photoUrl} 
+              alt={activity.title}
+              className="w-full h-full object-cover"
+              onError={() => setPhotoError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-            {activity.cost && (
+          )}
+          {/* Rating Badge */}
+          {activity.rating && (
+            <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+              <span>{activity.rating.toFixed(1)}</span>
+              {activity.userRatingsTotal && (
+                <span className="text-white/70">({activity.userRatingsTotal})</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="p-4">
+        <div className="flex gap-4">
+          {/* Time */}
+          <div className="flex flex-col items-center flex-shrink-0">
+            <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.bgClass)}>
+              <CategoryIcon className={cn("w-5 h-5", config.textClass)} />
+            </div>
+            <span className="text-sm font-semibold mt-1">{activity.time}</span>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-semibold text-base">{activity.title}</h4>
+              {activity.googleMapsUrl && (
+                <a 
+                  href={activity.googleMapsUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0"
+                  title="Abrir no Google Maps"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+              {activity.description}
+            </p>
+
+            {/* Location */}
+            <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{activity.location}</span>
+            </div>
+
+            {/* Meta info */}
+            <div className="flex flex-wrap gap-3 mt-3">
               <div className="flex items-center gap-1 text-xs">
-                <Coins className="w-3 h-3 text-muted-foreground" />
-                <span>{activity.cost}</span>
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                <span>{activity.duration}</span>
+              </div>
+              {activity.cost && (
+                <div className="flex items-center gap-1 text-xs">
+                  <Coins className="w-3 h-3 text-muted-foreground" />
+                  <span>{activity.cost}</span>
+                </div>
+              )}
+              {/* Rating without photo */}
+              {activity.rating && !activity.photoReference && (
+                <div className="flex items-center gap-1 text-xs">
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  <span>{activity.rating.toFixed(1)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Tips */}
+            {activity.tips && (
+              <div className="flex items-start gap-2 mt-3 p-2 rounded-lg bg-yellow-500/10 text-xs">
+                <Lightbulb className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <span className="text-yellow-700 dark:text-yellow-300">{activity.tips}</span>
               </div>
             )}
           </div>
-
-          {/* Tips */}
-          {activity.tips && (
-            <div className="flex items-start gap-2 mt-3 p-2 rounded-lg bg-yellow-500/10 text-xs">
-              <Lightbulb className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-              <span className="text-yellow-700 dark:text-yellow-300">{activity.tips}</span>
-            </div>
-          )}
         </div>
       </div>
     </motion.div>
