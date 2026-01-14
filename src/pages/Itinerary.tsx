@@ -9,7 +9,7 @@ import { usePDFExport } from "@/hooks/usePDFExport";
 import ItineraryHeader from "@/components/itinerary/ItineraryHeader";
 import DaySelector from "@/components/itinerary/DaySelector";
 import DayTimeline from "@/components/itinerary/DayTimeline";
-import ItineraryMap from "@/components/itinerary/ItineraryMap";
+import LazyItineraryMap from "@/components/itinerary/LazyItineraryMap";
 import { QuizAnswers } from "@/types/quiz";
 
 const GENERATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
@@ -323,7 +323,7 @@ const Itinerary = () => {
               🗺️ Mapa do Roteiro
             </h2>
             <div className="h-[calc(100%-40px)]">
-              <ItineraryMap
+              <LazyItineraryMap
                 days={itinerary.days}
                 selectedDay={selectedDay}
                 onSelectDay={setSelectedDay}

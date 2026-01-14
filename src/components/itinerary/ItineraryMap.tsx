@@ -64,6 +64,7 @@ const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => 
   return (
     <div className="w-full h-full rounded-xl overflow-hidden border border-border">
       <MapContainer
+        key={`map-${days.length}-${days[0]?.day || 0}`}
         center={center}
         zoom={6}
         className="w-full h-full"
