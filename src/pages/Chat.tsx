@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Plane, ArrowLeft, Sparkles, Loader2, User, Bot } from "lucide-react";
+import { Send, Plane, ArrowLeft, Sparkles, Loader2, User, Bot, Map, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -200,9 +200,21 @@ const Chat = () => {
               </a>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm text-muted-foreground">Chat com IA</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground hidden sm:inline">Chat com IA</span>
+              </div>
+              {messages.length >= 2 && (
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/itinerary")}
+                  className="gradient-primary text-primary-foreground gap-2"
+                >
+                  <Map className="w-4 h-4" />
+                  <span className="hidden sm:inline">Ver Roteiro</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -264,6 +276,26 @@ const Chat = () => {
                       <div className="whitespace-pre-wrap text-sm leading-relaxed">
                         {message.content}
                       </div>
+                      
+                      {/* Show itinerary button after substantial AI response */}
+                      {message.role === "assistant" && 
+                       message.content.length > 500 && 
+                       index === messages.length - 1 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 }}
+                          className="mt-4 pt-3 border-t border-border/50"
+                        >
+                          <Button
+                            onClick={() => navigate("/itinerary")}
+                            className="w-full gradient-primary text-primary-foreground gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Visualizar Roteiro Completo
+                          </Button>
+                        </motion.div>
+                      )}
                     </div>
 
                     {message.role === "user" && (
