@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Loader2, AlertCircle, RefreshCw, ArrowLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Itinerary as ItineraryType, createEmptyItinerary } from "@/types/itinerary";
+import { Itinerary as ItineraryType } from "@/types/itinerary";
 import { usePDFExport } from "@/hooks/usePDFExport";
 import ItineraryHeader from "@/components/itinerary/ItineraryHeader";
 import DaySelector from "@/components/itinerary/DaySelector";
@@ -14,38 +14,30 @@ import { QuizAnswers } from "@/types/quiz";
 
 const GENERATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
 
+interface ProgressState {
+  step: string;
+  message: string;
+  model?: string;
+  attempt?: number;
+  totalModels?: number;
+}
+
 const Itinerary = () => {
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ProgressState | null>(null);
   const { toast } = useToast();
   const { exportToPDF, isExporting } = usePDFExport();
 
-  useEffect(() => {
-    // Check if we have a cached itinerary
-    const cached = sessionStorage.getItem("generatedItinerary");
-    if (cached) {
-      try {
-        setItinerary(JSON.parse(cached));
-        setIsLoading(false);
-        return;
-      } catch (e) {
-        console.error("Error parsing cached itinerary:", e);
-      }
-    }
-
-    // Generate new itinerary
-    generateItinerary();
-  }, []);
-
-  const generateItinerary = async () => {
+  const generateItineraryWithStreaming = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setProgress({ step: "starting", message: "Iniciando geração do roteiro..." });
 
     try {
-      // Get quiz answers from session
       const quizData = sessionStorage.getItem("quizAnswers");
       const quizAnswers: QuizAnswers | null = quizData ? JSON.parse(quizData) : null;
 
@@ -55,7 +47,6 @@ const Itinerary = () => {
         return;
       }
 
-      // Get conversation summary if available
       const conversationSummary = sessionStorage.getItem("chatSummary") || "";
 
       const response = await fetch(GENERATE_URL, {
@@ -64,10 +55,10 @@ const Itinerary = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ quizAnswers, conversationSummary }),
+        body: JSON.stringify({ quizAnswers, conversationSummary, stream: true }),
       });
 
-      if (!response.ok) {
+      if (!response.ok || !response.body) {
         const errorData = await response.json().catch(() => ({}));
         if (response.status === 429) {
           throw new Error("Limite de requisições atingido. Aguarde um momento.");
@@ -78,20 +69,46 @@ const Itinerary = () => {
         throw new Error(errorData.error || "Erro ao gerar roteiro");
       }
 
-      const data = await response.json();
-      
-      if (!data.itinerary) {
-        throw new Error("Roteiro não gerado corretamente");
-      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-      // Cache the itinerary
-      sessionStorage.setItem("generatedItinerary", JSON.stringify(data.itinerary));
-      setItinerary(data.itinerary);
-      
-      toast({
-        title: "Roteiro criado! 🎉",
-        description: "Seu roteiro personalizado está pronto.",
-      });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const event = JSON.parse(jsonStr);
+
+            if (event.type === "progress") {
+              setProgress(event.data);
+            } else if (event.type === "complete") {
+              sessionStorage.setItem("generatedItinerary", JSON.stringify(event.data.itinerary));
+              setItinerary(event.data.itinerary);
+              setProgress({ step: "done", message: "Roteiro pronto!" });
+              toast({
+                title: "Roteiro criado! 🎉",
+                description: "Seu roteiro personalizado está pronto.",
+              });
+            } else if (event.type === "error") {
+              throw new Error(event.data.error);
+            }
+          } catch (parseError) {
+            console.error("Error parsing SSE event:", parseError);
+          }
+        }
+      }
     } catch (err) {
       console.error("Error generating itinerary:", err);
       setError(err instanceof Error ? err.message : "Erro ao gerar roteiro");
@@ -103,7 +120,22 @@ const Itinerary = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    const cached = sessionStorage.getItem("generatedItinerary");
+    if (cached) {
+      try {
+        setItinerary(JSON.parse(cached));
+        setIsLoading(false);
+        return;
+      } catch (e) {
+        console.error("Error parsing cached itinerary:", e);
+      }
+    }
+
+    generateItineraryWithStreaming();
+  }, [generateItineraryWithStreaming]);
 
   const handleExportPDF = async () => {
     if (!itinerary) return;
@@ -124,23 +156,74 @@ const Itinerary = () => {
 
   const handleRegenerate = () => {
     sessionStorage.removeItem("generatedItinerary");
-    generateItinerary();
+    generateItineraryWithStreaming();
   };
 
-  // Loading state
+  const getProgressIcon = () => {
+    if (!progress) return <Loader2 className="w-6 h-6 animate-spin" />;
+    
+    switch (progress.step) {
+      case "ai_generation":
+        return <Sparkles className="w-6 h-6 animate-pulse" />;
+      case "ai_retry":
+        return <RefreshCw className="w-6 h-6 animate-spin" />;
+      case "ai_success":
+        return <CheckCircle2 className="w-6 h-6 text-green-500" />;
+      case "enriching":
+        return <MapPin className="w-6 h-6 animate-bounce" />;
+      case "complete":
+      case "done":
+        return <CheckCircle2 className="w-6 h-6 text-green-500" />;
+      default:
+        return <Loader2 className="w-6 h-6 animate-spin" />;
+    }
+  };
+
+  // Loading state with detailed progress
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          className="text-center max-w-md px-4"
         >
           <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6">
             <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Criando seu roteiro...</h2>
-          <p className="text-muted-foreground max-w-md">
+          <h2 className="text-2xl font-bold mb-4">Criando seu roteiro...</h2>
+          
+          {/* Progress Steps */}
+          <div className="bg-card border border-border rounded-xl p-4 mb-4">
+            <AnimatePresence mode="wait">
+              {progress && (
+                <motion.div
+                  key={progress.step}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    {getProgressIcon()}
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="font-medium text-sm">{progress.message}</p>
+                    {progress.model && (
+                      <p className="text-xs text-muted-foreground">
+                        Modelo: {progress.model}
+                        {progress.attempt && progress.totalModels && progress.totalModels > 1 && (
+                          <span> ({progress.attempt}/{progress.totalModels})</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <p className="text-muted-foreground text-sm">
             A IA está gerando um roteiro personalizado baseado nas suas preferências. 
             Isso pode levar alguns segundos.
           </p>

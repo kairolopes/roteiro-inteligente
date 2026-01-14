@@ -460,7 +460,7 @@ serve(async (req) => {
   }
 
   try {
-    const { quizAnswers, conversationSummary } = await req.json();
+    const { quizAnswers, conversationSummary, stream = false } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -613,7 +613,143 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
     const toolChoice = { type: "function", function: { name: "generate_itinerary" } };
 
-    // Try models in order until one succeeds
+    // If streaming is enabled, use SSE
+    if (stream) {
+      const encoder = new TextEncoder();
+      
+      const readable = new ReadableStream({
+        async start(controller) {
+          const sendEvent = (event: { type: string; data: any }) => {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          };
+
+          try {
+            // Try models in order until one succeeds
+            let itinerary = null;
+            let modelIndex = 0;
+
+            for (const model of AI_MODELS) {
+              modelIndex++;
+              const modelName = model.split("/")[1] || model;
+              
+              sendEvent({ 
+                type: "progress", 
+                data: { 
+                  step: "ai_generation",
+                  message: `Gerando roteiro com ${modelName}...`,
+                  model: modelName,
+                  attempt: modelIndex,
+                  totalModels: AI_MODELS.length
+                } 
+              });
+
+              const result = await callAIGateway(
+                LOVABLE_API_KEY,
+                model,
+                ITINERARY_SYSTEM_PROMPT,
+                userPrompt,
+                tools,
+                toolChoice
+              );
+
+              if (result.status === 429) {
+                sendEvent({ type: "error", data: { error: "Muitas requisições. Por favor, aguarde um momento." } });
+                controller.close();
+                return;
+              }
+              if (result.status === 402) {
+                sendEvent({ type: "error", data: { error: "Créditos insuficientes." } });
+                controller.close();
+                return;
+              }
+
+              if (result.success && result.data) {
+                itinerary = extractItineraryFromResponse(result.data);
+                
+                if (itinerary) {
+                  sendEvent({ 
+                    type: "progress", 
+                    data: { 
+                      step: "ai_success",
+                      message: `Roteiro gerado com sucesso!`,
+                      model: modelName
+                    } 
+                  });
+                  break;
+                } else {
+                  sendEvent({ 
+                    type: "progress", 
+                    data: { 
+                      step: "ai_retry",
+                      message: `Tentando modelo alternativo...`,
+                      model: modelName
+                    } 
+                  });
+                }
+              } else {
+                if (modelIndex < AI_MODELS.length) {
+                  sendEvent({ 
+                    type: "progress", 
+                    data: { 
+                      step: "ai_retry",
+                      message: `Modelo ${modelName} falhou, tentando alternativo...`,
+                      model: modelName
+                    } 
+                  });
+                }
+              }
+            }
+
+            if (!itinerary) {
+              sendEvent({ type: "error", data: { error: "Não foi possível gerar o roteiro. Tente novamente." } });
+              controller.close();
+              return;
+            }
+
+            // Enrich with Places data
+            sendEvent({ 
+              type: "progress", 
+              data: { 
+                step: "enriching",
+                message: "Enriquecendo com dados de locais reais..."
+              } 
+            });
+
+            itinerary = await enrichItineraryWithPlaces(itinerary);
+
+            // Add metadata
+            itinerary.id = crypto.randomUUID();
+            itinerary.createdAt = new Date().toISOString();
+
+            sendEvent({ 
+              type: "progress", 
+              data: { 
+                step: "complete",
+                message: "Roteiro pronto!"
+              } 
+            });
+
+            sendEvent({ type: "complete", data: { itinerary } });
+            controller.close();
+          } catch (error) {
+            console.error("Streaming error:", error);
+            sendEvent({ type: "error", data: { error: error instanceof Error ? error.message : "Erro desconhecido" } });
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(readable, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
+    }
+
+    // Non-streaming mode (original behavior)
     let itinerary = null;
     let lastError = null;
     let lastStatus = 500;
@@ -628,7 +764,6 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
         toolChoice
       );
 
-      // Handle rate limit and payment errors immediately
       if (result.status === 429) {
         return new Response(
           JSON.stringify({ error: "Muitas requisições. Por favor, aguarde um momento." }),
