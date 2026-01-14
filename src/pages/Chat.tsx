@@ -208,11 +208,15 @@ const Chat = () => {
               {messages.length >= 2 && (
                 <Button
                   size="sm"
-                  onClick={() => navigate("/itinerary")}
+                  onClick={() => {
+                    // Clear any cached itinerary to generate fresh
+                    sessionStorage.removeItem("generatedItinerary");
+                    navigate("/itinerary");
+                  }}
                   className="gradient-primary text-primary-foreground gap-2"
                 >
                   <Map className="w-4 h-4" />
-                  <span className="hidden sm:inline">Ver Roteiro</span>
+                  <span className="hidden sm:inline">Criar Roteiro</span>
                 </Button>
               )}
             </div>
@@ -288,11 +292,14 @@ const Chat = () => {
                           className="mt-4 pt-3 border-t border-border/50"
                         >
                           <Button
-                            onClick={() => navigate("/itinerary")}
+                            onClick={() => {
+                              sessionStorage.removeItem("generatedItinerary");
+                              navigate("/itinerary");
+                            }}
                             className="w-full gradient-primary text-primary-foreground gap-2"
                           >
                             <Eye className="w-4 h-4" />
-                            Visualizar Roteiro Completo
+                            Gerar Roteiro Visual Completo
                           </Button>
                         </motion.div>
                       )}
