@@ -89,14 +89,14 @@ const Quiz = () => {
   };
 
   const handleCreateItinerary = () => {
-    // Store answers in sessionStorage for now
+    // Store answers in sessionStorage
     sessionStorage.setItem("quizAnswers", JSON.stringify(answers));
     toast({
       title: "Roteiro em criação!",
       description: "Nossa IA está montando seu roteiro personalizado...",
     });
-    // Navigate to chat/itinerary page (to be created)
-    navigate("/");
+    // Navigate to chat page
+    navigate("/chat");
   };
 
   const CurrentStepComponent = stepComponents[currentStep];
