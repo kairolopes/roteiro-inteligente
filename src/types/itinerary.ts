@@ -1,3 +1,15 @@
+export interface FoursquareTip {
+  id: string;
+  text: string;
+  createdAt: string;
+  agreeCount: number;
+}
+
+export interface FoursquareCategory {
+  name: string;
+  shortName: string;
+}
+
 export interface Activity {
   id: string;
   time: string;
@@ -15,6 +27,12 @@ export interface Activity {
   rating?: number;
   userRatingsTotal?: number;
   googleMapsUrl?: string;
+  // Foursquare integration
+  foursquareId?: string;
+  foursquareRating?: number;
+  foursquareTips?: FoursquareTip[];
+  foursquareCategories?: FoursquareCategory[];
+  foursquareTastes?: string[];
 }
 
 export interface ItineraryDay {

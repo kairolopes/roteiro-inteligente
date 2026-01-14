@@ -29,6 +29,17 @@ interface PlaceResult {
   location?: { lat: number; lng: number };
 }
 
+interface FoursquareResult {
+  fsqId: string;
+  name: string;
+  address?: string;
+  rating?: number;
+  categories: Array<{ name: string; shortName: string }>;
+  tastes: string[];
+  tips: Array<{ id: string; text: string; createdAt: string; agreeCount: number }>;
+  location?: { lat: number; lng: number };
+}
+
 interface CachedPlace {
   place_id: string;
   name: string;
@@ -39,6 +50,12 @@ interface CachedPlace {
   google_maps_url: string | null;
   location_lat: number | null;
   location_lng: number | null;
+  // Foursquare fields
+  foursquare_id: string | null;
+  foursquare_rating: number | null;
+  foursquare_tips: any[] | null;
+  foursquare_categories: any[] | null;
+  foursquare_tastes: string[] | null;
 }
 
 function getSupabaseClient() {
@@ -47,7 +64,7 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
-async function getCachedPlace(searchQuery: string): Promise<PlaceResult | null> {
+async function getCachedPlace(searchQuery: string): Promise<{ google: PlaceResult | null; foursquare: FoursquareResult | null }> {
   const supabase = getSupabaseClient();
   
   const { data, error } = await supabase
@@ -55,15 +72,13 @@ async function getCachedPlace(searchQuery: string): Promise<PlaceResult | null> 
     .select("*")
     .eq("search_query", searchQuery.toLowerCase())
     .gt("expires_at", new Date().toISOString())
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  if (error || !data) return { google: null, foursquare: null };
 
   const cached = data as CachedPlace;
   
-  if (!cached.place_id) return null;
-
-  return {
+  const google: PlaceResult | null = cached.place_id ? {
     placeId: cached.place_id,
     name: cached.name || "",
     address: cached.address || "",
@@ -74,23 +89,49 @@ async function getCachedPlace(searchQuery: string): Promise<PlaceResult | null> 
     location: cached.location_lat && cached.location_lng 
       ? { lat: cached.location_lat, lng: cached.location_lng }
       : undefined,
-  };
+  } : null;
+
+  const foursquare: FoursquareResult | null = cached.foursquare_id ? {
+    fsqId: cached.foursquare_id,
+    name: cached.name || "",
+    address: cached.address ?? undefined,
+    rating: cached.foursquare_rating ?? undefined,
+    categories: cached.foursquare_categories || [],
+    tastes: cached.foursquare_tastes || [],
+    tips: cached.foursquare_tips || [],
+    location: cached.location_lat && cached.location_lng 
+      ? { lat: cached.location_lat, lng: cached.location_lng }
+      : undefined,
+  } : null;
+
+  return { google, foursquare };
 }
 
-async function cachePlace(searchQuery: string, place: PlaceResult | null): Promise<void> {
+async function cachePlace(
+  searchQuery: string, 
+  google: PlaceResult | null, 
+  foursquare: FoursquareResult | null
+): Promise<void> {
   const supabase = getSupabaseClient();
   
   const cacheData = {
     search_query: searchQuery.toLowerCase(),
-    place_id: place?.placeId ?? null,
-    name: place?.name ?? null,
-    address: place?.address ?? null,
-    rating: place?.rating ?? null,
-    user_ratings_total: place?.userRatingsTotal ?? null,
-    photo_reference: place?.photoReference ?? null,
-    google_maps_url: place?.googleMapsUrl ?? null,
-    location_lat: place?.location?.lat ?? null,
-    location_lng: place?.location?.lng ?? null,
+    // Google data
+    place_id: google?.placeId ?? null,
+    name: google?.name ?? foursquare?.name ?? null,
+    address: google?.address ?? foursquare?.address ?? null,
+    rating: google?.rating ?? null,
+    user_ratings_total: google?.userRatingsTotal ?? null,
+    photo_reference: google?.photoReference ?? null,
+    google_maps_url: google?.googleMapsUrl ?? null,
+    location_lat: google?.location?.lat ?? foursquare?.location?.lat ?? null,
+    location_lng: google?.location?.lng ?? foursquare?.location?.lng ?? null,
+    // Foursquare data
+    foursquare_id: foursquare?.fsqId ?? null,
+    foursquare_rating: foursquare?.rating ?? null,
+    foursquare_tips: foursquare?.tips ?? [],
+    foursquare_categories: foursquare?.categories ?? [],
+    foursquare_tastes: foursquare?.tastes ?? [],
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
   };
 
@@ -103,18 +144,9 @@ async function searchGooglePlaces(query: string, location?: string): Promise<Pla
   const GOOGLE_PLACES_API_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY");
   
   if (!GOOGLE_PLACES_API_KEY) {
-    console.log("GOOGLE_PLACES_API_KEY not configured, skipping place enrichment");
+    console.log("GOOGLE_PLACES_API_KEY not configured, skipping Google Places");
     return null;
   }
-
-  // Check cache first
-  const cached = await getCachedPlace(query);
-  if (cached) {
-    console.log(`Cache hit for: ${query}`);
-    return cached;
-  }
-
-  console.log(`Cache miss, fetching from API: ${query}`);
 
   try {
     let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}&language=pt-BR`;
@@ -127,8 +159,6 @@ async function searchGooglePlaces(query: string, location?: string): Promise<Pla
     const data = await response.json();
 
     if (data.status !== "OK" || !data.results?.length) {
-      // Cache the "not found" result to avoid repeated API calls
-      await cachePlace(query, null);
       return null;
     }
 
@@ -139,7 +169,7 @@ async function searchGooglePlaces(query: string, location?: string): Promise<Pla
     const detailsResponse = await fetch(detailsUrl);
     const detailsData = await detailsResponse.json();
 
-    const place: PlaceResult = {
+    return {
       placeId: apiPlace.place_id,
       name: apiPlace.name,
       address: apiPlace.formatted_address,
@@ -149,13 +179,91 @@ async function searchGooglePlaces(query: string, location?: string): Promise<Pla
       googleMapsUrl: detailsData.result?.url,
       location: apiPlace.geometry?.location,
     };
-
-    // Cache the result
-    await cachePlace(query, place);
-
-    return place;
   } catch (error) {
     console.error("Error searching Google Places:", error);
+    return null;
+  }
+}
+
+async function searchFoursquarePlaces(query: string, near: string): Promise<FoursquareResult | null> {
+  const FOURSQUARE_API_KEY = Deno.env.get("FOURSQUARE_API_KEY");
+  
+  if (!FOURSQUARE_API_KEY) {
+    console.log("FOURSQUARE_API_KEY not configured, skipping Foursquare");
+    return null;
+  }
+
+  try {
+    const searchUrl = new URL("https://api.foursquare.com/v3/places/search");
+    searchUrl.searchParams.append("query", query);
+    searchUrl.searchParams.append("near", near);
+    searchUrl.searchParams.append("limit", "1");
+    searchUrl.searchParams.append("fields", "fsq_id,name,location,categories,rating,tastes,geocodes");
+
+    const searchResponse = await fetch(searchUrl.toString(), {
+      headers: {
+        Authorization: FOURSQUARE_API_KEY,
+        Accept: "application/json",
+      },
+    });
+
+    if (!searchResponse.ok) {
+      console.error("Foursquare search error:", searchResponse.status);
+      return null;
+    }
+
+    const searchData = await searchResponse.json();
+    
+    if (!searchData.results?.length) {
+      return null;
+    }
+
+    const place = searchData.results[0];
+    
+    // Get tips for this place
+    let tips: Array<{ id: string; text: string; createdAt: string; agreeCount: number }> = [];
+    try {
+      const tipsUrl = new URL(`https://api.foursquare.com/v3/places/${place.fsq_id}/tips`);
+      tipsUrl.searchParams.append("limit", "3");
+      tipsUrl.searchParams.append("sort", "popular");
+
+      const tipsResponse = await fetch(tipsUrl.toString(), {
+        headers: {
+          Authorization: FOURSQUARE_API_KEY,
+          Accept: "application/json",
+        },
+      });
+
+      if (tipsResponse.ok) {
+        const tipsData = await tipsResponse.json();
+        tips = tipsData.map((t: any) => ({
+          id: t.id,
+          text: t.text,
+          createdAt: t.created_at,
+          agreeCount: t.agree_count || 0,
+        }));
+      }
+    } catch (e) {
+      console.log("Could not fetch Foursquare tips:", e);
+    }
+
+    return {
+      fsqId: place.fsq_id,
+      name: place.name,
+      address: place.location?.formatted_address || place.location?.address,
+      rating: place.rating,
+      categories: (place.categories || []).map((c: any) => ({
+        name: c.name,
+        shortName: c.short_name,
+      })),
+      tastes: place.tastes || [],
+      tips,
+      location: place.geocodes?.main 
+        ? { lat: place.geocodes.main.latitude, lng: place.geocodes.main.longitude }
+        : undefined,
+    };
+  } catch (error) {
+    console.error("Error searching Foursquare:", error);
     return null;
   }
 }
@@ -166,25 +274,60 @@ async function enrichActivityWithPlaces(activity: any, cityName: string, country
     return activity;
   }
 
-  // Build search query
   const searchQuery = `${activity.title} ${cityName} ${countryName}`;
+  const near = `${cityName}, ${countryName}`;
   
-  const placeResult = await searchGooglePlaces(searchQuery);
+  // Check cache first
+  const cached = await getCachedPlace(searchQuery);
   
-  if (placeResult) {
+  if (cached.google || cached.foursquare) {
+    console.log(`Cache hit for: ${searchQuery}`);
+    
     return {
       ...activity,
-      placeId: placeResult.placeId,
-      photoReference: placeResult.photoReference,
-      rating: placeResult.rating,
-      userRatingsTotal: placeResult.userRatingsTotal,
-      googleMapsUrl: placeResult.googleMapsUrl,
-      // Update location if we got a better one
-      location: placeResult.address || activity.location,
+      // Google data
+      placeId: cached.google?.placeId,
+      photoReference: cached.google?.photoReference,
+      rating: cached.google?.rating,
+      userRatingsTotal: cached.google?.userRatingsTotal,
+      googleMapsUrl: cached.google?.googleMapsUrl,
+      location: cached.google?.address || activity.location,
+      // Foursquare data
+      foursquareId: cached.foursquare?.fsqId,
+      foursquareRating: cached.foursquare?.rating,
+      foursquareTips: cached.foursquare?.tips,
+      foursquareCategories: cached.foursquare?.categories,
+      foursquareTastes: cached.foursquare?.tastes,
     };
   }
 
-  return activity;
+  console.log(`Cache miss, fetching from APIs: ${searchQuery}`);
+
+  // Fetch from both APIs in parallel
+  const [googleResult, foursquareResult] = await Promise.all([
+    searchGooglePlaces(searchQuery),
+    searchFoursquarePlaces(activity.title, near),
+  ]);
+
+  // Cache combined results
+  await cachePlace(searchQuery, googleResult, foursquareResult);
+
+  return {
+    ...activity,
+    // Google data
+    placeId: googleResult?.placeId,
+    photoReference: googleResult?.photoReference,
+    rating: googleResult?.rating,
+    userRatingsTotal: googleResult?.userRatingsTotal,
+    googleMapsUrl: googleResult?.googleMapsUrl,
+    location: googleResult?.address || activity.location,
+    // Foursquare data
+    foursquareId: foursquareResult?.fsqId,
+    foursquareRating: foursquareResult?.rating,
+    foursquareTips: foursquareResult?.tips,
+    foursquareCategories: foursquareResult?.categories,
+    foursquareTastes: foursquareResult?.tastes,
+  };
 }
 
 async function enrichItineraryWithPlaces(itinerary: any): Promise<any> {

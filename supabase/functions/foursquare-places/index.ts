@@ -1,0 +1,199 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const FOURSQUARE_API_URL = "https://api.foursquare.com/v3";
+
+interface FoursquarePlace {
+  fsq_id: string;
+  name: string;
+  location: {
+    address?: string;
+    formatted_address?: string;
+    locality?: string;
+    country?: string;
+  };
+  categories: Array<{
+    id: number;
+    name: string;
+    short_name: string;
+    icon: { prefix: string; suffix: string };
+  }>;
+  rating?: number;
+  tastes?: string[];
+  features?: {
+    payment?: { credit_cards?: boolean };
+    food_and_drink?: Record<string, boolean>;
+    services?: Record<string, boolean>;
+    amenities?: Record<string, boolean>;
+  };
+  geocodes?: {
+    main?: { latitude: number; longitude: number };
+  };
+}
+
+interface FoursquareTip {
+  id: string;
+  text: string;
+  created_at: string;
+  agree_count?: number;
+  disagree_count?: number;
+}
+
+async function foursquareRequest(endpoint: string, params?: Record<string, string>) {
+  const FOURSQUARE_API_KEY = Deno.env.get("FOURSQUARE_API_KEY");
+  
+  if (!FOURSQUARE_API_KEY) {
+    throw new Error("FOURSQUARE_API_KEY not configured");
+  }
+
+  const url = new URL(`${FOURSQUARE_API_URL}${endpoint}`);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.append(key, value);
+    });
+  }
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: FOURSQUARE_API_KEY,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Foursquare API error: ${response.status}`, errorText);
+    throw new Error(`Foursquare API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function searchPlaces(query: string, near?: string, limit: number = 5) {
+  const params: Record<string, string> = {
+    query,
+    limit: String(limit),
+    fields: "fsq_id,name,location,categories,rating,tastes,geocodes",
+  };
+
+  if (near) {
+    params.near = near;
+  }
+
+  const data = await foursquareRequest("/places/search", params);
+  return data.results as FoursquarePlace[];
+}
+
+async function getPlaceDetails(fsqId: string) {
+  const data = await foursquareRequest(`/places/${fsqId}`, {
+    fields: "fsq_id,name,location,categories,rating,tastes,features,geocodes",
+  });
+  return data as FoursquarePlace;
+}
+
+async function getPlaceTips(fsqId: string, limit: number = 5) {
+  const data = await foursquareRequest(`/places/${fsqId}/tips`, {
+    limit: String(limit),
+    sort: "popular",
+  });
+  return data as FoursquareTip[];
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { action, params } = await req.json();
+
+    let result;
+
+    switch (action) {
+      case "searchPlaces": {
+        const { query, near, limit } = params;
+        const places = await searchPlaces(query, near, limit);
+        result = { places };
+        break;
+      }
+      
+      case "getPlaceDetails": {
+        const { fsqId } = params;
+        const place = await getPlaceDetails(fsqId);
+        result = { place };
+        break;
+      }
+      
+      case "getPlaceTips": {
+        const { fsqId, limit } = params;
+        const tips = await getPlaceTips(fsqId, limit);
+        result = { tips };
+        break;
+      }
+      
+      case "searchWithTips": {
+        // Combined search: find place and get tips in one call
+        const { query, near } = params;
+        const places = await searchPlaces(query, near, 1);
+        
+        if (places.length === 0) {
+          result = { place: null, tips: [] };
+        } else {
+          const place = places[0];
+          let tips: FoursquareTip[] = [];
+          
+          try {
+            tips = await getPlaceTips(place.fsq_id, 3);
+          } catch (e) {
+            console.log("Could not fetch tips:", e);
+          }
+          
+          result = { 
+            place: {
+              fsqId: place.fsq_id,
+              name: place.name,
+              address: place.location.formatted_address || place.location.address,
+              rating: place.rating,
+              categories: place.categories.map(c => ({
+                name: c.name,
+                shortName: c.short_name,
+              })),
+              tastes: place.tastes || [],
+              location: place.geocodes?.main 
+                ? { lat: place.geocodes.main.latitude, lng: place.geocodes.main.longitude }
+                : undefined,
+            },
+            tips: tips.map(t => ({
+              id: t.id,
+              text: t.text,
+              createdAt: t.created_at,
+              agreeCount: t.agree_count || 0,
+            })),
+          };
+        }
+        break;
+      }
+      
+      default:
+        return new Response(
+          JSON.stringify({ error: `Unknown action: ${action}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+    }
+
+    return new Response(
+      JSON.stringify(result),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("foursquare-places error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});

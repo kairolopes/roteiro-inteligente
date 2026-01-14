@@ -19,6 +19,12 @@ export type Database = {
           address: string | null
           created_at: string
           expires_at: string
+          foursquare_categories: Json | null
+          foursquare_features: Json | null
+          foursquare_id: string | null
+          foursquare_rating: number | null
+          foursquare_tastes: string[] | null
+          foursquare_tips: Json | null
           google_maps_url: string | null
           id: string
           location_lat: number | null
@@ -34,6 +40,12 @@ export type Database = {
           address?: string | null
           created_at?: string
           expires_at?: string
+          foursquare_categories?: Json | null
+          foursquare_features?: Json | null
+          foursquare_id?: string | null
+          foursquare_rating?: number | null
+          foursquare_tastes?: string[] | null
+          foursquare_tips?: Json | null
           google_maps_url?: string | null
           id?: string
           location_lat?: number | null
@@ -49,6 +61,12 @@ export type Database = {
           address?: string | null
           created_at?: string
           expires_at?: string
+          foursquare_categories?: Json | null
+          foursquare_features?: Json | null
+          foursquare_id?: string | null
+          foursquare_rating?: number | null
+          foursquare_tastes?: string[] | null
+          foursquare_tips?: Json | null
           google_maps_url?: string | null
           id?: string
           location_lat?: number | null
