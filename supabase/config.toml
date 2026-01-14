@@ -1,1 +1,10 @@
 project_id = "rvmvoogyrafiogxdbisx"
+
+[functions.chat-travel]
+verify_jwt = false
+
+[functions.generate-itinerary]
+verify_jwt = false
+
+[functions.google-places]
+verify_jwt = false

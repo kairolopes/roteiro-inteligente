@@ -9,6 +9,12 @@ export interface Activity {
   category: "attraction" | "restaurant" | "transport" | "accommodation" | "activity";
   tips?: string;
   cost?: string;
+  // Google Places integration
+  placeId?: string;
+  photoReference?: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  googleMapsUrl?: string;
 }
 
 export interface ItineraryDay {
