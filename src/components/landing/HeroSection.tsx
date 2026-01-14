@@ -1,5 +1,6 @@
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, MapPin, Calendar, Plane } from "lucide-react";
+import { ArrowRight, Sparkles, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const stats = [
@@ -75,11 +76,14 @@ export function HeroSection() {
             className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
           >
             <Button
+              asChild
               size="lg"
               className="gradient-primary text-primary-foreground glow text-lg px-8 py-6 h-auto hover:opacity-90 transition-opacity group"
             >
-              Começar a Planejar
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <Link to="/quiz">
+                Começar a Planejar
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
             </Button>
             <Button
               size="lg"
