@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      places_cache: {
+        Row: {
+          address: string | null
+          created_at: string
+          expires_at: string
+          google_maps_url: string | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          name: string | null
+          photo_reference: string | null
+          place_id: string | null
+          rating: number | null
+          search_query: string
+          user_ratings_total: number | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          expires_at?: string
+          google_maps_url?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          name?: string | null
+          photo_reference?: string | null
+          place_id?: string | null
+          rating?: number | null
+          search_query: string
+          user_ratings_total?: number | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          expires_at?: string
+          google_maps_url?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          name?: string | null
+          photo_reference?: string | null
+          place_id?: string | null
+          rating?: number | null
+          search_query?: string
+          user_ratings_total?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
