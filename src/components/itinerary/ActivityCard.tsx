@@ -12,11 +12,13 @@ import {
   Coins,
   Star,
   ExternalLink,
-  ImageOff
+  MessageCircle,
+  ThumbsUp
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
 import { cn } from "@/lib/utils";
 import { getPhotoUrl } from "@/lib/googlePlaces";
+import { Badge } from "@/components/ui/badge";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -77,6 +79,8 @@ const ActivityCard = ({ activity, index }: ActivityCardProps) => {
     loadPhoto();
   }, [activity.photoReference]);
 
+  const hasFoursquareData = activity.foursquareTips?.length || activity.foursquareTastes?.length;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -102,16 +106,24 @@ const ActivityCard = ({ activity, index }: ActivityCardProps) => {
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )}
-          {/* Rating Badge */}
-          {activity.rating && (
-            <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
-              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-              <span>{activity.rating.toFixed(1)}</span>
-              {activity.userRatingsTotal && (
-                <span className="text-white/70">({activity.userRatingsTotal})</span>
-              )}
-            </div>
-          )}
+          {/* Ratings Badge */}
+          <div className="absolute top-2 right-2 flex gap-1">
+            {activity.rating && (
+              <div className="bg-black/70 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                <span>{activity.rating.toFixed(1)}</span>
+                {activity.userRatingsTotal && (
+                  <span className="text-white/70">({activity.userRatingsTotal})</span>
+                )}
+              </div>
+            )}
+            {activity.foursquareRating && (
+              <div className="bg-purple-600/90 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                <span className="font-semibold">{activity.foursquareRating.toFixed(1)}</span>
+                <span className="text-white/70">/10</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -145,6 +157,28 @@ const ActivityCard = ({ activity, index }: ActivityCardProps) => {
               {activity.description}
             </p>
 
+            {/* Foursquare Categories */}
+            {activity.foursquareCategories && activity.foursquareCategories.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {activity.foursquareCategories.slice(0, 3).map((cat, i) => (
+                  <Badge key={i} variant="secondary" className="text-xs py-0 px-2">
+                    {cat.shortName || cat.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Foursquare Tastes */}
+            {activity.foursquareTastes && activity.foursquareTastes.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {activity.foursquareTastes.slice(0, 4).map((taste, i) => (
+                  <Badge key={i} variant="outline" className="text-xs py-0 px-2 capitalize">
+                    {taste}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
             {/* Location */}
             <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
               <MapPin className="w-3 h-3 flex-shrink-0" />
@@ -177,6 +211,30 @@ const ActivityCard = ({ activity, index }: ActivityCardProps) => {
               <div className="flex items-start gap-2 mt-3 p-2 rounded-lg bg-yellow-500/10 text-xs">
                 <Lightbulb className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                 <span className="text-yellow-700 dark:text-yellow-300">{activity.tips}</span>
+              </div>
+            )}
+
+            {/* Foursquare Tips from Visitors */}
+            {activity.foursquareTips && activity.foursquareTips.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MessageCircle className="w-3 h-3" />
+                  <span>Dicas de visitantes</span>
+                </div>
+                {activity.foursquareTips.slice(0, 2).map((tip) => (
+                  <div 
+                    key={tip.id} 
+                    className="p-2 rounded-lg bg-purple-500/10 text-xs"
+                  >
+                    <p className="text-foreground/80 italic">"{tip.text}"</p>
+                    {tip.agreeCount > 0 && (
+                      <div className="flex items-center gap-1 mt-1 text-purple-600 dark:text-purple-400">
+                        <ThumbsUp className="w-3 h-3" />
+                        <span>{tip.agreeCount}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
