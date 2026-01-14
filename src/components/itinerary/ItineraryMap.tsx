@@ -53,6 +53,14 @@ const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => 
 
   const routeCoordinates = days.map((day) => day.coordinates as LatLngExpression);
 
+  if (days.length === 0) {
+    return (
+      <div className="w-full h-full rounded-xl overflow-hidden border border-border flex items-center justify-center bg-muted">
+        <p className="text-muted-foreground">Carregando mapa...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full rounded-xl overflow-hidden border border-border">
       <MapContainer
@@ -66,8 +74,6 @@ const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => 
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <MapController days={days} selectedDay={selectedDay} />
-        
-        {/* Route line */}
         <Polyline
           positions={routeCoordinates}
           pathOptions={{
@@ -77,8 +83,6 @@ const ItineraryMap = ({ days, selectedDay, onSelectDay }: ItineraryMapProps) => 
             dashArray: "10, 10",
           }}
         />
-
-        {/* City markers */}
         {days.map((day) => (
           <Marker
             key={day.day}
