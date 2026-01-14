@@ -25,7 +25,7 @@ interface ActivityCardProps {
   index: number;
 }
 
-const categoryConfig = {
+const categoryConfig: Record<string, { icon: typeof Camera; bgClass: string; textClass: string; borderClass: string }> = {
   attraction: {
     icon: Camera,
     bgClass: "bg-blue-500/10",
@@ -58,8 +58,15 @@ const categoryConfig = {
   },
 };
 
+const defaultConfig = {
+  icon: Sparkles,
+  bgClass: "bg-gray-500/10",
+  textClass: "text-gray-500",
+  borderClass: "border-l-gray-500",
+};
+
 const ActivityCard = ({ activity, index }: ActivityCardProps) => {
-  const config = categoryConfig[activity.category];
+  const config = categoryConfig[activity.category] || defaultConfig;
   const CategoryIcon = config.icon;
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState(false);
