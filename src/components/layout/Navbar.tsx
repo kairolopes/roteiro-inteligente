@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Plane, MapPin, MessageCircle, User } from "lucide-react";
+import { Menu, X, Plane, MapPin, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import UserMenu from "@/components/auth/UserMenu";
 
 const navLinks = [
   { name: "Destinos", href: "#destinos", icon: MapPin },
@@ -12,6 +13,7 @@ const navLinks = [
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <motion.header
@@ -49,11 +51,11 @@ export function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              <User className="w-4 h-4 mr-2" />
-              Entrar
-            </Button>
-            <Button className="gradient-primary text-primary-foreground glow-sm hover:opacity-90 transition-opacity">
+            <UserMenu />
+            <Button 
+              onClick={() => navigate("/quiz")}
+              className="gradient-primary text-primary-foreground glow-sm hover:opacity-90 transition-opacity"
+            >
               Começar Agora
             </Button>
           </div>
@@ -91,11 +93,16 @@ export function Navbar() {
                   </a>
                 ))}
                 <div className="px-4 pt-4 space-y-3 border-t border-border">
-                  <Button variant="outline" className="w-full justify-center">
-                    <User className="w-4 h-4 mr-2" />
-                    Entrar
-                  </Button>
-                  <Button className="w-full gradient-primary text-primary-foreground">
+                  <div className="flex justify-center">
+                    <UserMenu />
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      navigate("/quiz");
+                      setIsOpen(false);
+                    }}
+                    className="w-full gradient-primary text-primary-foreground"
+                  >
                     Começar Agora
                   </Button>
                 </div>
