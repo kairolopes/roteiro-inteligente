@@ -29,8 +29,20 @@ export interface Itinerary {
   totalBudget: string;
   destinations: string[];
   days: ItineraryDay[];
-  createdAt: Date;
+  createdAt: string;
 }
+
+// Helper to create empty itinerary
+export const createEmptyItinerary = (): Itinerary => ({
+  id: "",
+  title: "Carregando roteiro...",
+  summary: "",
+  duration: "",
+  totalBudget: "",
+  destinations: [],
+  days: [],
+  createdAt: new Date().toISOString(),
+});
 
 // Sample itinerary for demonstration
 export const sampleItinerary: Itinerary = {
@@ -40,7 +52,7 @@ export const sampleItinerary: Itinerary = {
   duration: "7 dias",
   totalBudget: "€2.500 - €3.000 por pessoa",
   destinations: ["Roma", "Florença", "Veneza"],
-  createdAt: new Date(),
+  createdAt: new Date().toISOString(),
   days: [
     {
       day: 1,
