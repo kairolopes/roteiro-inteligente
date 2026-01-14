@@ -126,12 +126,28 @@ serve(async (req) => {
     } else if (action === "getPhotoUrl") {
       const { photoReference, maxWidth = 400 } = params;
       
-      const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
+      const googlePhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${photoReference}&key=${GOOGLE_PLACES_API_KEY}`;
 
-      return new Response(
-        JSON.stringify({ photoUrl }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      try {
+        // Fetch to get the final redirected URL (hides API key from frontend)
+        const response = await fetch(googlePhotoUrl, {
+          redirect: "follow",
+        });
+        
+        // The final URL after redirect is the actual CDN image URL
+        const finalUrl = response.url;
+        
+        return new Response(
+          JSON.stringify({ photoUrl: finalUrl }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error("Error fetching photo URL:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to resolve photo URL" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
     } else if (action === "searchNearby") {
       const { location, type, radius = 5000, maxResults = 10 } = params;
