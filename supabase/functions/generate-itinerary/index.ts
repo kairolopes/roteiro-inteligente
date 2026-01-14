@@ -202,7 +202,7 @@ async function searchFoursquarePlaces(query: string, near: string): Promise<Four
 
     const searchResponse = await fetch(searchUrl.toString(), {
       headers: {
-        Authorization: FOURSQUARE_API_KEY,
+        Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
         Accept: "application/json",
       },
     });
@@ -229,7 +229,7 @@ async function searchFoursquarePlaces(query: string, near: string): Promise<Four
 
       const tipsResponse = await fetch(tipsUrl.toString(), {
         headers: {
-          Authorization: FOURSQUARE_API_KEY,
+          Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
           Accept: "application/json",
         },
       });
@@ -529,7 +529,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
             }
           }
         ],
-        tool_choice: { type: "function", function: { name: "generate_itinerary" } }
+        tool_choice: "auto"
       }),
     });
 
@@ -556,18 +556,50 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
     const data = await response.json();
     console.log("AI response received");
+    console.log("AI response structure:", JSON.stringify({
+      hasToolCalls: !!data.choices?.[0]?.message?.tool_calls,
+      toolCallsCount: data.choices?.[0]?.message?.tool_calls?.length,
+      hasContent: !!data.choices?.[0]?.message?.content,
+      contentPreview: data.choices?.[0]?.message?.content?.substring(0, 200)
+    }, null, 2));
 
     // Extract the tool call result
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "generate_itinerary") {
-      console.error("No valid tool call in response");
-      return new Response(
-        JSON.stringify({ error: "Formato de resposta inválido" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    let itinerary;
 
-    let itinerary = JSON.parse(toolCall.function.arguments);
+    if (toolCall && toolCall.function.name === "generate_itinerary") {
+      // Ideal: response via tool call
+      console.log("Parsing itinerary from tool call");
+      itinerary = JSON.parse(toolCall.function.arguments);
+    } else {
+      // Fallback: try to extract JSON from message content
+      console.log("No tool call found, trying fallback extraction from content");
+      const content = data.choices?.[0]?.message?.content;
+      
+      if (content) {
+        // Try to find JSON in markdown code block or raw JSON
+        const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
+                          content.match(/```\s*([\s\S]*?)\s*```/) ||
+                          content.match(/(\{[\s\S]*"title"[\s\S]*"days"[\s\S]*\})/);
+        
+        if (jsonMatch) {
+          try {
+            itinerary = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+            console.log("Successfully extracted itinerary from content");
+          } catch (parseError) {
+            console.error("Failed to parse extracted JSON:", parseError);
+          }
+        }
+      }
+      
+      if (!itinerary) {
+        console.error("Could not extract itinerary from response");
+        return new Response(
+          JSON.stringify({ error: "Não foi possível gerar o roteiro. Tente novamente." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
     
     // Enrich with Google Places data
     console.log("Enriching itinerary with Google Places data...");
