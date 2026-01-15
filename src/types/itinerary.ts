@@ -21,13 +21,14 @@ export interface Activity {
   category: "attraction" | "restaurant" | "transport" | "accommodation" | "activity";
   tips?: string;
   cost?: string;
-  // Google Places integration
+  // AI-generated rating estimate (1-5)
+  estimatedRating?: number;
+  // Legacy fields for backwards compatibility
+  rating?: number;
+  googleMapsUrl?: string;
   placeId?: string;
   photoReference?: string;
-  rating?: number;
   userRatingsTotal?: number;
-  googleMapsUrl?: string;
-  // Foursquare integration
   foursquareId?: string;
   foursquareRating?: number;
   foursquareTips?: FoursquareTip[];
