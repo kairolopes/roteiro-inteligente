@@ -20,18 +20,18 @@ export function Navbar() {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-50 glass"
+      className="fixed top-0 left-0 right-0 z-50 glass safe-area-top"
     >
       <nav className="container mx-auto px-4 lg:px-8">
-        <div className="flex h-16 lg:h-20 items-center justify-between">
+        <div className="flex h-14 lg:h-20 items-center justify-between">
           {/* Logo */}
           <a href="/" className="flex items-center gap-2">
             <div className="relative">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center glow-sm">
-                <Plane className="w-5 h-5 text-primary-foreground" />
+              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl gradient-primary flex items-center justify-center glow-sm">
+                <Plane className="w-4 h-4 lg:w-5 lg:h-5 text-primary-foreground" />
               </div>
             </div>
-            <span className="text-xl font-bold text-foreground">
+            <span className="text-lg lg:text-xl font-bold text-foreground">
               Travel<span className="text-primary">Plan</span>
             </span>
           </a>
@@ -63,7 +63,7 @@ export function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden p-2 text-foreground"
+            className="lg:hidden p-3 -mr-2 text-foreground touch-target touch-active"
             aria-label="Toggle menu"
           >
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
