@@ -105,14 +105,14 @@ const Quiz = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 glass">
+      <header className="fixed top-0 left-0 right-0 z-50 glass safe-area-top">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex h-16 lg:h-20 items-center justify-between">
+          <div className="flex h-14 lg:h-20 items-center justify-between">
             <a href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                <Plane className="w-5 h-5 text-primary-foreground" />
+              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl gradient-primary flex items-center justify-center">
+                <Plane className="w-4 h-4 lg:w-5 lg:h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold">
+              <span className="text-lg lg:text-xl font-bold">
                 Travel<span className="text-primary">Plan</span>
               </span>
             </a>
@@ -120,19 +120,19 @@ const Quiz = () => {
             <Button
               variant="ghost"
               onClick={() => navigate("/")}
-              className="text-muted-foreground"
+              className="text-muted-foreground text-sm touch-active"
             >
-              Sair do Quiz
+              Sair
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="pt-24 lg:pt-28 pb-32">
+      <main className="pt-20 lg:pt-28 pb-28 lg:pb-32">
         <div className="container mx-auto px-4 lg:px-8 max-w-4xl">
           {/* Progress */}
-          <div className="mb-10">
+          <div className="mb-6 lg:mb-10">
             <QuizProgress
               currentStep={currentStep}
               totalSteps={steps.length}
@@ -169,26 +169,26 @@ const Quiz = () => {
 
       {/* Navigation Footer */}
       {!isLastStep && (
-        <footer className="fixed bottom-0 left-0 right-0 glass border-t border-border">
-          <div className="container mx-auto px-4 lg:px-8 py-4">
+        <footer className="fixed bottom-0 left-0 right-0 glass border-t border-border safe-area-bottom">
+          <div className="container mx-auto px-4 lg:px-8 py-3 lg:py-4">
             <div className="flex items-center justify-between max-w-4xl mx-auto">
               <Button
                 variant="ghost"
                 onClick={handleBack}
                 disabled={currentStep === 0}
-                className="gap-2"
+                className="gap-1.5 lg:gap-2 touch-active h-11 lg:h-10 px-3 lg:px-4"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Voltar
+                <span className="hidden sm:inline">Voltar</span>
               </Button>
 
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs lg:text-sm text-muted-foreground">
                 {currentStep + 1} / {steps.length}
               </span>
 
               <Button
                 onClick={handleNext}
-                className="gradient-primary text-primary-foreground gap-2"
+                className="gradient-primary text-primary-foreground gap-1.5 lg:gap-2 touch-active h-11 lg:h-10 px-4 lg:px-6"
               >
                 Próximo
                 <ArrowRight className="w-4 h-4" />

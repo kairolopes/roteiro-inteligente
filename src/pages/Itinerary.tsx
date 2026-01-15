@@ -279,29 +279,29 @@ const Itinerary = () => {
         onSelectDay={setSelectedDay}
       />
 
-      <main className="container mx-auto px-4 lg:px-8 py-6">
-        <div className="grid lg:grid-cols-2 gap-6">
+      <main className="container mx-auto px-3 lg:px-8 py-4 lg:py-6">
+        <div className="grid lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Timeline */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="order-2 lg:order-1"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2">
+            <div className="flex items-center justify-between mb-3 lg:mb-4">
+              <h2 className="text-base lg:text-lg font-bold flex items-center gap-2">
                 📅 {selectedDay ? `Dia ${selectedDay}` : "Todos os dias"}
               </h2>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRegenerate}
-                className="gap-2"
+                className="gap-1.5 lg:gap-2 text-xs lg:text-sm h-8 lg:h-9 touch-active"
               >
-                <RefreshCw className="w-4 h-4" />
-                Regenerar
+                <RefreshCw className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                <span className="hidden sm:inline">Regenerar</span>
               </Button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3 lg:space-y-4">
               {filteredDays.map((day) => (
                 <DayTimeline
                   key={day.day}
@@ -317,12 +317,12 @@ const Itinerary = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="order-1 lg:order-2 lg:sticky lg:top-[160px] h-[300px] lg:h-[calc(100vh-200px)]"
+            className="order-1 lg:order-2 lg:sticky lg:top-[140px] h-[200px] lg:h-[calc(100vh-180px)]"
           >
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-              🗺️ Mapa do Roteiro
+            <h2 className="text-base lg:text-lg font-bold mb-2 lg:mb-4 flex items-center gap-2">
+              🗺️ Mapa
             </h2>
-            <div className="h-[calc(100%-40px)]">
+            <div className="h-[calc(100%-32px)] lg:h-[calc(100%-48px)] rounded-lg lg:rounded-xl overflow-hidden">
               <ItineraryMap
                 days={itinerary.days}
                 selectedDay={selectedDay}
