@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,361 +8,31 @@ const corsHeaders = {
 const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem detalhados para a Europa. 
 Quando solicitado, você DEVE usar a função generate_itinerary para retornar um roteiro estruturado.
 
-INSTRUÇÕES IMPORTANTES:
-1. Crie roteiros realistas com atividades específicas
-2. Inclua coordenadas geográficas precisas para cada cidade
-3. Estime custos em euros de forma realista
-4. Adicione dicas práticas úteis
+INSTRUÇÕES CRÍTICAS:
+1. Crie roteiros realistas com atividades específicas e lugares REAIS que existem
+2. OBRIGATÓRIO: Inclua coordenadas geográficas PRECISAS [latitude, longitude] para CADA atividade - isso é essencial para o mapa funcionar
+3. Estime custos em euros de forma realista baseado em preços atuais
+4. Adicione dicas práticas úteis baseadas em experiências reais de viajantes
 5. Considere tempo de deslocamento entre atividades
-6. Sugira restaurantes e locais específicos reais
-7. Organize as atividades de forma lógica geograficamente`;
+6. Sugira restaurantes e locais específicos REAIS com nomes verdadeiros
+7. Organize as atividades de forma lógica geograficamente
+8. Para cada atividade, inclua:
+   - Coordenadas precisas do local (obrigatório para navegação)
+   - Descrição detalhada do que esperar
+   - Dicas práticas (horários, filas, reservas necessárias)
+   - Custo estimado realista
+   - Avaliação estimada (1-5) baseada em popularidade
 
-interface PlaceResult {
-  placeId: string;
-  name: string;
-  address: string;
-  rating?: number;
-  userRatingsTotal?: number;
-  photoReference?: string;
-  googleMapsUrl?: string;
-  location?: { lat: number; lng: number };
-}
+IMPORTANTE SOBRE COORDENADAS:
+- As coordenadas devem ser arrays [latitude, longitude]
+- Use coordenadas precisas de lugares reais
+- Exemplo para Coliseu: [41.8902, 12.4922]
+- Exemplo para Torre Eiffel: [48.8584, 2.2945]
 
-interface FoursquareResult {
-  fsqId: string;
-  name: string;
-  address?: string;
-  rating?: number;
-  categories: Array<{ name: string; shortName: string }>;
-  tastes: string[];
-  tips: Array<{ id: string; text: string; createdAt: string; agreeCount: number }>;
-  location?: { lat: number; lng: number };
-}
-
-interface CachedPlace {
-  place_id: string;
-  name: string;
-  address: string;
-  rating: number | null;
-  user_ratings_total: number | null;
-  photo_reference: string | null;
-  google_maps_url: string | null;
-  location_lat: number | null;
-  location_lng: number | null;
-  // Foursquare fields
-  foursquare_id: string | null;
-  foursquare_rating: number | null;
-  foursquare_tips: any[] | null;
-  foursquare_categories: any[] | null;
-  foursquare_tastes: string[] | null;
-}
-
-function getSupabaseClient() {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  return createClient(supabaseUrl, supabaseKey);
-}
-
-async function getCachedPlace(searchQuery: string): Promise<{ google: PlaceResult | null; foursquare: FoursquareResult | null }> {
-  const supabase = getSupabaseClient();
-  
-  const { data, error } = await supabase
-    .from("places_cache")
-    .select("*")
-    .eq("search_query", searchQuery.toLowerCase())
-    .gt("expires_at", new Date().toISOString())
-    .maybeSingle();
-
-  if (error || !data) return { google: null, foursquare: null };
-
-  const cached = data as CachedPlace;
-  
-  const google: PlaceResult | null = cached.place_id ? {
-    placeId: cached.place_id,
-    name: cached.name || "",
-    address: cached.address || "",
-    rating: cached.rating ?? undefined,
-    userRatingsTotal: cached.user_ratings_total ?? undefined,
-    photoReference: cached.photo_reference ?? undefined,
-    googleMapsUrl: cached.google_maps_url ?? undefined,
-    location: cached.location_lat && cached.location_lng 
-      ? { lat: cached.location_lat, lng: cached.location_lng }
-      : undefined,
-  } : null;
-
-  const foursquare: FoursquareResult | null = cached.foursquare_id ? {
-    fsqId: cached.foursquare_id,
-    name: cached.name || "",
-    address: cached.address ?? undefined,
-    rating: cached.foursquare_rating ?? undefined,
-    categories: cached.foursquare_categories || [],
-    tastes: cached.foursquare_tastes || [],
-    tips: cached.foursquare_tips || [],
-    location: cached.location_lat && cached.location_lng 
-      ? { lat: cached.location_lat, lng: cached.location_lng }
-      : undefined,
-  } : null;
-
-  return { google, foursquare };
-}
-
-async function cachePlace(
-  searchQuery: string, 
-  google: PlaceResult | null, 
-  foursquare: FoursquareResult | null
-): Promise<void> {
-  const supabase = getSupabaseClient();
-  
-  const cacheData = {
-    search_query: searchQuery.toLowerCase(),
-    // Google data
-    place_id: google?.placeId ?? null,
-    name: google?.name ?? foursquare?.name ?? null,
-    address: google?.address ?? foursquare?.address ?? null,
-    rating: google?.rating ?? null,
-    user_ratings_total: google?.userRatingsTotal ?? null,
-    photo_reference: google?.photoReference ?? null,
-    google_maps_url: google?.googleMapsUrl ?? null,
-    location_lat: google?.location?.lat ?? foursquare?.location?.lat ?? null,
-    location_lng: google?.location?.lng ?? foursquare?.location?.lng ?? null,
-    // Foursquare data
-    foursquare_id: foursquare?.fsqId ?? null,
-    foursquare_rating: foursquare?.rating ?? null,
-    foursquare_tips: foursquare?.tips ?? [],
-    foursquare_categories: foursquare?.categories ?? [],
-    foursquare_tastes: foursquare?.tastes ?? [],
-    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-  };
-
-  await supabase
-    .from("places_cache")
-    .upsert(cacheData, { onConflict: "search_query" });
-}
-
-async function searchGooglePlaces(query: string, location?: string): Promise<PlaceResult | null> {
-  const GOOGLE_PLACES_API_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY");
-  
-  if (!GOOGLE_PLACES_API_KEY) {
-    console.log("GOOGLE_PLACES_API_KEY not configured, skipping Google Places");
-    return null;
-  }
-
-  try {
-    let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_PLACES_API_KEY}&language=pt-BR`;
-    
-    if (location) {
-      url += `&location=${encodeURIComponent(location)}&radius=5000`;
-    }
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status !== "OK" || !data.results?.length) {
-      return null;
-    }
-
-    const apiPlace = data.results[0];
-    
-    // Get Google Maps URL
-    const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${apiPlace.place_id}&key=${GOOGLE_PLACES_API_KEY}&fields=url`;
-    const detailsResponse = await fetch(detailsUrl);
-    const detailsData = await detailsResponse.json();
-
-    return {
-      placeId: apiPlace.place_id,
-      name: apiPlace.name,
-      address: apiPlace.formatted_address,
-      rating: apiPlace.rating,
-      userRatingsTotal: apiPlace.user_ratings_total,
-      photoReference: apiPlace.photos?.[0]?.photo_reference,
-      googleMapsUrl: detailsData.result?.url,
-      location: apiPlace.geometry?.location,
-    };
-  } catch (error) {
-    console.error("Error searching Google Places:", error);
-    return null;
-  }
-}
-
-async function searchFoursquarePlaces(query: string, near: string): Promise<FoursquareResult | null> {
-  const FOURSQUARE_API_KEY = Deno.env.get("FOURSQUARE_API_KEY");
-  
-  if (!FOURSQUARE_API_KEY) {
-    console.log("FOURSQUARE_API_KEY not configured, skipping Foursquare");
-    return null;
-  }
-
-  try {
-    // New Foursquare API endpoint (migrated from api.foursquare.com/v3)
-    const searchUrl = new URL("https://places-api.foursquare.com/places/search");
-    searchUrl.searchParams.append("query", query);
-    searchUrl.searchParams.append("near", near);
-    searchUrl.searchParams.append("limit", "1");
-    searchUrl.searchParams.append("fields", "fsq_place_id,name,location,categories,rating,tastes,latitude,longitude");
-
-    const searchResponse = await fetch(searchUrl.toString(), {
-      headers: {
-        Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
-        Accept: "application/json",
-        "X-Places-Api-Version": "2025-06-17",
-      },
-    });
-
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error("Foursquare search error:", searchResponse.status, errorText);
-      return null;
-    }
-
-    const searchData = await searchResponse.json();
-    
-    if (!searchData.results?.length) {
-      return null;
-    }
-
-    const place = searchData.results[0];
-    
-    // Get tips for this place using new API
-    let tips: Array<{ id: string; text: string; createdAt: string; agreeCount: number }> = [];
-    try {
-      const tipsUrl = new URL(`https://places-api.foursquare.com/places/${place.fsq_place_id}/tips`);
-      tipsUrl.searchParams.append("limit", "3");
-      tipsUrl.searchParams.append("sort", "popular");
-
-      const tipsResponse = await fetch(tipsUrl.toString(), {
-        headers: {
-          Authorization: `Bearer ${FOURSQUARE_API_KEY}`,
-          Accept: "application/json",
-          "X-Places-Api-Version": "2025-06-17",
-        },
-      });
-
-      if (tipsResponse.ok) {
-        const tipsData = await tipsResponse.json();
-        tips = (Array.isArray(tipsData) ? tipsData : tipsData.results || []).map((t: any) => ({
-          id: t.id,
-          text: t.text,
-          createdAt: t.created_at,
-          agreeCount: t.agree_count || 0,
-        }));
-      }
-    } catch (e) {
-      console.log("Could not fetch Foursquare tips:", e);
-    }
-
-    return {
-      fsqId: place.fsq_place_id,
-      name: place.name,
-      address: place.location?.formatted_address || place.location?.address,
-      rating: place.rating,
-      categories: (place.categories || []).map((c: any) => ({
-        name: c.name,
-        shortName: c.short_name,
-      })),
-      tastes: place.tastes || [],
-      tips,
-      location: place.latitude && place.longitude 
-        ? { lat: place.latitude, lng: place.longitude }
-        : undefined,
-    };
-  } catch (error) {
-    console.error("Error searching Foursquare:", error);
-    return null;
-  }
-}
-
-async function enrichActivityWithPlaces(activity: any, cityName: string, countryName: string): Promise<any> {
-  // Skip transport activities as they don't have a fixed location
-  if (activity.category === "transport") {
-    return activity;
-  }
-
-  const searchQuery = `${activity.title} ${cityName} ${countryName}`;
-  const near = `${cityName}, ${countryName}`;
-  
-  // Check cache first
-  const cached = await getCachedPlace(searchQuery);
-  
-  if (cached.google || cached.foursquare) {
-    console.log(`Cache hit for: ${searchQuery}`);
-    
-    return {
-      ...activity,
-      // Google data
-      placeId: cached.google?.placeId,
-      photoReference: cached.google?.photoReference,
-      rating: cached.google?.rating,
-      userRatingsTotal: cached.google?.userRatingsTotal,
-      googleMapsUrl: cached.google?.googleMapsUrl,
-      location: cached.google?.address || activity.location,
-      // Foursquare data
-      foursquareId: cached.foursquare?.fsqId,
-      foursquareRating: cached.foursquare?.rating,
-      foursquareTips: cached.foursquare?.tips,
-      foursquareCategories: cached.foursquare?.categories,
-      foursquareTastes: cached.foursquare?.tastes,
-    };
-  }
-
-  console.log(`Cache miss, fetching from APIs: ${searchQuery}`);
-
-  // Fetch from both APIs in parallel
-  const [googleResult, foursquareResult] = await Promise.all([
-    searchGooglePlaces(searchQuery),
-    searchFoursquarePlaces(activity.title, near),
-  ]);
-
-  // Cache combined results
-  await cachePlace(searchQuery, googleResult, foursquareResult);
-
-  return {
-    ...activity,
-    // Google data
-    placeId: googleResult?.placeId,
-    photoReference: googleResult?.photoReference,
-    rating: googleResult?.rating,
-    userRatingsTotal: googleResult?.userRatingsTotal,
-    googleMapsUrl: googleResult?.googleMapsUrl,
-    location: googleResult?.address || activity.location,
-    // Foursquare data
-    foursquareId: foursquareResult?.fsqId,
-    foursquareRating: foursquareResult?.rating,
-    foursquareTips: foursquareResult?.tips,
-    foursquareCategories: foursquareResult?.categories,
-    foursquareTastes: foursquareResult?.tastes,
-  };
-}
-
-async function enrichItineraryWithPlaces(itinerary: any): Promise<any> {
-  const enrichedDays = await Promise.all(
-    itinerary.days.map(async (day: any) => {
-      // Process activities in batches to avoid rate limiting
-      const enrichedActivities = [];
-      
-      for (const activity of day.activities) {
-        // Add a small delay between requests to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const enrichedActivity = await enrichActivityWithPlaces(
-          activity, 
-          day.city, 
-          day.country
-        );
-        enrichedActivities.push(enrichedActivity);
-      }
-
-      return {
-        ...day,
-        activities: enrichedActivities,
-      };
-    })
-  );
-
-  return {
-    ...itinerary,
-    days: enrichedDays,
-  };
-}
+DICAS DE QUALIDADE:
+- Inclua dicas como "Reserve com antecedência", "Chegue cedo para evitar filas"
+- Mencione melhores horários para visitar
+- Sugira alternativas para dias de chuva quando aplicável`;
 
 // Models to try in order (primary, fallback)
 const AI_MODELS = ["google/gemini-2.5-flash", "google/gemini-2.5-pro"];
@@ -526,6 +195,11 @@ ${contextParts.join("\n")}
 
 ${conversationSummary ? `Contexto adicional da conversa: ${conversationSummary}` : ""}
 
+IMPORTANTE: 
+- Inclua coordenadas [latitude, longitude] PRECISAS para cada atividade
+- Use nomes de lugares REAIS e existentes
+- Adicione dicas práticas úteis para cada atividade
+
 Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
     const tools = [
@@ -570,7 +244,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
                     coordinates: {
                       type: "array",
                       items: { type: "number" },
-                      description: "Coordenadas [latitude, longitude] da cidade"
+                      description: "Coordenadas [latitude, longitude] da cidade - OBRIGATÓRIO"
                     },
                     highlights: {
                       type: "array",
@@ -585,12 +259,12 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
                           id: { type: "string", description: "ID único (ex: 1-1, 1-2)" },
                           time: { type: "string", description: "Horário (ex: 09:00)" },
                           title: { type: "string", description: "Nome da atividade" },
-                          description: { type: "string", description: "Descrição detalhada" },
+                          description: { type: "string", description: "Descrição detalhada do que esperar" },
                           location: { type: "string", description: "Endereço ou local" },
                           coordinates: {
                             type: "array",
                             items: { type: "number" },
-                            description: "Coordenadas [lat, lng] do local"
+                            description: "Coordenadas [lat, lng] do local - OBRIGATÓRIO para navegação"
                           },
                           duration: { type: "string", description: "Duração estimada (ex: 2h)" },
                           category: { 
@@ -598,10 +272,11 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
                             enum: ["attraction", "restaurant", "transport", "accommodation", "activity"],
                             description: "Categoria da atividade"
                           },
-                          tips: { type: "string", description: "Dica útil (opcional)" },
-                          cost: { type: "string", description: "Custo estimado (ex: €25)" }
+                          tips: { type: "string", description: "Dica útil prática (ex: Reserve com antecedência, Chegue às 8h para evitar filas)" },
+                          cost: { type: "string", description: "Custo estimado (ex: €25)" },
+                          estimatedRating: { type: "number", description: "Avaliação estimada 1-5 baseada em popularidade" }
                         },
-                        required: ["id", "time", "title", "description", "location", "duration", "category"]
+                        required: ["id", "time", "title", "description", "location", "coordinates", "duration", "category"]
                       }
                     }
                   },
@@ -710,17 +385,6 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
               return;
             }
 
-            // Enrich with Places data
-            sendEvent({ 
-              type: "progress", 
-              data: { 
-                step: "enriching",
-                message: "Enriquecendo com dados de locais reais..."
-              } 
-            });
-
-            itinerary = await enrichItineraryWithPlaces(itinerary);
-
             // Add metadata
             itinerary.id = crypto.randomUUID();
             itinerary.createdAt = new Date().toISOString();
@@ -804,11 +468,6 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
         { status: lastStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    // Enrich with Google Places data
-    console.log("Enriching itinerary with Google Places data...");
-    itinerary = await enrichItineraryWithPlaces(itinerary);
-    console.log("Enrichment complete");
     
     // Add metadata
     itinerary.id = crypto.randomUUID();

@@ -168,9 +168,6 @@ const Itinerary = () => {
       case "ai_retry":
         return <RefreshCw className="w-6 h-6 animate-spin" />;
       case "ai_success":
-        return <CheckCircle2 className="w-6 h-6 text-green-500" />;
-      case "enriching":
-        return <MapPin className="w-6 h-6 animate-bounce" />;
       case "complete":
       case "done":
         return <CheckCircle2 className="w-6 h-6 text-green-500" />;
