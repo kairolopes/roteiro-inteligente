@@ -47,7 +47,7 @@ DICAS DE QUALIDADE:
 - Considere fuso horário e clima local do destino`;
 
 // Models to try in order (primary, fallback)
-const AI_MODELS = ["google/gemini-2.5-flash", "google/gemini-2.5-pro"];
+const AI_MODELS = ["google/gemini-3-flash-preview", "google/gemini-2.5-pro"];
 
 async function callAIGateway(
   apiKey: string,
