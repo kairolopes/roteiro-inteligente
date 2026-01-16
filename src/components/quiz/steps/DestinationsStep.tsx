@@ -1,7 +1,18 @@
-import { motion } from "framer-motion";
-import { Check, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, Globe, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuizAnswers } from "@/types/quiz";
+
+const regions = [
+  { id: "all", label: "Todos", icon: "🌍" },
+  { id: "americas", label: "Américas", icon: "🌎" },
+  { id: "europe", label: "Europa", icon: "🇪🇺" },
+  { id: "asia", label: "Ásia", icon: "🌏" },
+  { id: "oceania", label: "Oceania", icon: "🏝️" },
+  { id: "africa", label: "África", icon: "🌍" },
+  { id: "middleeast", label: "Oriente Médio", icon: "🕌" },
+];
 
 const destinations = [
   // América do Sul
@@ -187,6 +198,8 @@ interface DestinationsStepProps {
 }
 
 export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
+  const [activeRegion, setActiveRegion] = useState("all");
+
   const toggleDestination = (id: string) => {
     const current = answers.destinations;
     if (current.includes(id)) {
@@ -196,6 +209,12 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
     }
   };
 
+  const filteredDestinations = activeRegion === "all" 
+    ? destinations 
+    : destinations.filter(d => d.region === activeRegion || d.region === "special");
+
+  const selectedCount = answers.destinations.length;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -203,60 +222,97 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
       exit={{ opacity: 0, x: -20 }}
       className="space-y-6"
     >
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h2 className="text-2xl lg:text-3xl font-bold mb-3">
           Quais <span className="text-primary">destinos</span> te interessam?
         </h2>
         <p className="text-muted-foreground">
           Selecione um ou mais países que você gostaria de visitar.
         </p>
+        {selectedCount > 0 && (
+          <p className="text-sm text-primary mt-2 font-medium">
+            {selectedCount} destino{selectedCount > 1 ? "s" : ""} selecionado{selectedCount > 1 ? "s" : ""}
+          </p>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {destinations.map((destination) => {
-          const isSelected = answers.destinations.includes(destination.id);
-          
-          return (
-            <motion.button
-              key={destination.id}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => toggleDestination(destination.id)}
-              className={cn(
-                "relative overflow-hidden rounded-xl aspect-[4/3] group",
-                isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-              )}
-            >
-              <img
-                src={destination.image}
-                alt={destination.name}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-              
-              {/* Selected indicator */}
-              {isSelected && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute top-3 right-3 w-6 h-6 rounded-full gradient-primary flex items-center justify-center"
-                >
-                  <Check className="w-4 h-4 text-primary-foreground" />
-                </motion.div>
-              )}
+      {/* Region Filters */}
+      <div className="flex flex-wrap justify-center gap-2 mb-6">
+        {regions.map((region) => (
+          <motion.button
+            key={region.id}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setActiveRegion(region.id)}
+            className={cn(
+              "px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2",
+              activeRegion === region.id
+                ? "bg-primary text-primary-foreground shadow-lg"
+                : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span>{region.icon}</span>
+            <span>{region.label}</span>
+          </motion.button>
+        ))}
+      </div>
 
-              {/* Content */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 text-left">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">{destination.flag}</span>
-                  <h3 className="font-bold text-white">{destination.name}</h3>
+      {/* Destinations Grid */}
+      <motion.div 
+        layout
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+      >
+        <AnimatePresence mode="popLayout">
+          {filteredDestinations.map((destination) => {
+            const isSelected = answers.destinations.includes(destination.id);
+            
+            return (
+              <motion.button
+                key={destination.id}
+                layout
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.2 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => toggleDestination(destination.id)}
+                className={cn(
+                  "relative overflow-hidden rounded-xl aspect-[4/3] group",
+                  isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                )}
+              >
+                <img
+                  src={destination.image}
+                  alt={destination.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                
+                {/* Selected indicator */}
+                {isSelected && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-3 right-3 w-6 h-6 rounded-full gradient-primary flex items-center justify-center"
+                  >
+                    <Check className="w-4 h-4 text-primary-foreground" />
+                  </motion.div>
+                )}
+
+                {/* Content */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 text-left">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">{destination.flag}</span>
+                    <h3 className="font-bold text-white">{destination.name}</h3>
+                  </div>
+                  <p className="text-xs text-white/70">{destination.cities}</p>
                 </div>
-                <p className="text-xs text-white/70">{destination.cities}</p>
-              </div>
-            </motion.button>
-          );
-        })}
-      </div>
+              </motion.button>
+            );
+          })}
+        </AnimatePresence>
+      </motion.div>
     </motion.div>
   );
 }
