@@ -68,6 +68,20 @@ export function getBookingLink(context: BookingContext): string {
   return `https://www.booking.com/searchresults.html?${params.toString()}`;
 }
 
+/**
+ * Airbnb - Commission: varies (requires separate affiliate program)
+ * Note: Airbnb Associates program - sign up at airbnb.com/associates
+ */
+export function getAirbnbLink(context: BookingContext): string {
+  const params = new URLSearchParams({
+    query: context.city,
+  });
+  if (context.checkIn) params.set("checkin", context.checkIn);
+  if (context.checkOut) params.set("checkout", context.checkOut);
+  // Add affiliate tag when approved - replace YOUR_AIRBNB_ID
+  return `https://www.airbnb.com/s/${encodeURIComponent(context.city)}/homes?${params.toString()}`;
+}
+
 // ============================================
 // FLIGHT AFFILIATE LINKS
 // ============================================
@@ -82,6 +96,34 @@ export function getAviasalesLink(context: BookingContext): string {
   if (context.city) params.set("destination", context.city);
   if (context.activityDate) params.set("depart_date", context.activityDate);
   return `https://www.aviasales.com/?${params.toString()}`;
+}
+
+/**
+ * Skyscanner - Commission: ~50% revenue share
+ * Note: Skyscanner Travel APIs - sign up at partners.skyscanner.net
+ */
+export function getSkyscannerLink(context: BookingContext): string {
+  const params = new URLSearchParams({
+    locale: "pt-BR",
+    market: "BR",
+    currency: "EUR",
+  });
+  if (context.city) params.set("destination", context.city);
+  if (context.activityDate) params.set("outboundDate", context.activityDate);
+  // Add affiliate tag when approved - replace with your associate ID
+  return `https://www.skyscanner.com.br/transport/flights/bra/${encodeURIComponent(context.city.toLowerCase().substring(0, 3))}/?${params.toString()}`;
+}
+
+/**
+ * KAYAK - Commission: CPC model
+ * Note: KAYAK Partner Program
+ */
+export function getKayakLink(context: BookingContext): string {
+  const params = new URLSearchParams({
+    sort: "bestflight_a",
+  });
+  if (context.activityDate) params.set("depart", context.activityDate);
+  return `https://www.kayak.com.br/flights/-${encodeURIComponent(context.city)}?${params.toString()}`;
 }
 
 // ============================================
@@ -176,6 +218,14 @@ export const AFFILIATE_CONFIG = {
       getLink: getBookingLink,
       available: true,
     },
+    {
+      id: "airbnb",
+      name: "Airbnb",
+      icon: "home",
+      color: "rose",
+      getLink: getAirbnbLink,
+      available: false, // Enable when Airbnb Associates approved
+    },
   ] as AffiliateCompany[],
   
   flights: [
@@ -186,6 +236,22 @@ export const AFFILIATE_CONFIG = {
       color: "green",
       getLink: getAviasalesLink,
       available: true,
+    },
+    {
+      id: "skyscanner",
+      name: "Skyscanner",
+      icon: "search",
+      color: "cyan",
+      getLink: getSkyscannerLink,
+      available: false, // Enable when Skyscanner Partners approved
+    },
+    {
+      id: "kayak",
+      name: "KAYAK",
+      icon: "compass",
+      color: "orange",
+      getLink: getKayakLink,
+      available: false, // Enable when KAYAK Partners approved
     },
   ] as AffiliateCompany[],
   
