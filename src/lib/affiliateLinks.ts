@@ -174,7 +174,7 @@ export const AFFILIATE_CONFIG = {
       icon: "building",
       color: "blue",
       getLink: getBookingLink,
-      available: false, // Enable when approved
+      available: true,
     },
   ] as AffiliateCompany[],
   
