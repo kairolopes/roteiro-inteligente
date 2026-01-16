@@ -47,7 +47,7 @@ DICAS DE QUALIDADE:
 - Considere fuso horário e clima local do destino`;
 
 // Models to try in order (primary, fallback)
-const AI_MODELS = ["google/gemini-3-flash-preview", "google/gemini-2.5-pro"];
+const AI_MODELS = ["gemini-2.0-flash", "gemini-1.5-pro"];
 
 async function callAIGateway(
   apiKey: string,
@@ -60,7 +60,7 @@ async function callAIGateway(
   console.log(`Calling AI Gateway with model: ${model}`);
   
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -146,10 +146,10 @@ serve(async (req) => {
 
   try {
     const { quizAnswers, conversationSummary, stream = false } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!GOOGLE_GEMINI_API_KEY) {
+      throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
     }
 
     // Build context from quiz answers
@@ -375,7 +375,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
               });
 
               const result = await callAIGateway(
-                LOVABLE_API_KEY,
+                GOOGLE_GEMINI_API_KEY,
                 model,
                 ITINERARY_SYSTEM_PROMPT,
                 userPrompt,
@@ -488,7 +488,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
     for (const model of AI_MODELS) {
       const result = await callAIGateway(
-        LOVABLE_API_KEY,
+        GOOGLE_GEMINI_API_KEY,
         model,
         ITINERARY_SYSTEM_PROMPT,
         userPrompt,
