@@ -8,6 +8,14 @@ const corsHeaders = {
 const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem detalhados para a Europa. 
 Quando solicitado, você DEVE usar a função generate_itinerary para retornar um roteiro estruturado.
 
+⚠️ REGRA CRÍTICA E OBRIGATÓRIA DE DURAÇÃO:
+- O roteiro DEVE ter EXATAMENTE o número de dias especificado pelo usuário
+- Se o usuário escolheu 7 dias, crie EXATAMENTE 7 dias (Dia 1 até Dia 7)
+- Se o usuário escolheu 4 dias, crie EXATAMENTE 4 dias (Dia 1 até Dia 4)
+- Se o usuário escolheu 14 dias, crie EXATAMENTE 14 dias (Dia 1 até Dia 14)
+- NUNCA crie mais ou menos dias do que o solicitado
+- Esta regra é OBRIGATÓRIA e tem prioridade máxima
+
 INSTRUÇÕES CRÍTICAS:
 1. Crie roteiros realistas com atividades específicas e lugares REAIS que existem
 2. OBRIGATÓRIO: Inclua coordenadas geográficas PRECISAS [latitude, longitude] para CADA atividade - isso é essencial para o mapa funcionar
@@ -190,15 +198,43 @@ serve(async (req) => {
       }
     }
 
+    // Get expected number of days
+    const durationLabels: Record<string, number> = {
+      weekend: 4, week: 7, twoweeks: 14, month: 21, flexible: 7
+    };
+    const numDays = durationLabels[quizAnswers?.duration] || 7;
+
     const userPrompt = `Crie um roteiro de viagem detalhado com base nestas preferências:
 ${contextParts.join("\n")}
 
-${conversationSummary ? `Contexto adicional da conversa: ${conversationSummary}` : ""}
+⚠️ ATENÇÃO MÁXIMA - NÚMERO DE DIAS:
+Este roteiro DEVE ter EXATAMENTE ${numDays} dias.
+- NÃO crie ${numDays - 1} dias
+- NÃO crie ${numDays + 1} dias  
+- Crie EXATAMENTE ${numDays} dias (Dia 1 até Dia ${numDays})
 
-IMPORTANTE: 
-- Inclua coordenadas [latitude, longitude] PRECISAS para cada atividade
-- Use nomes de lugares REAIS e existentes
-- Adicione dicas práticas úteis para cada atividade
+${conversationSummary ? `
+=== CONVERSA COM O USUÁRIO (PRIORIDADE MÁXIMA) ===
+O usuário conversou com a assistente Sofia e fez os seguintes ajustes e escolhas.
+VOCÊ DEVE RESPEITAR TODAS as preferências mencionadas abaixo:
+
+${conversationSummary}
+
+IMPORTANTE: Se o usuário mencionou:
+- Cidades ou bairros específicos → INCLUA obrigatoriamente no roteiro
+- Restaurantes ou atrações específicas → INCLUA obrigatoriamente no roteiro
+- Horários ou preferências específicas → RESPEITE
+- Ajustes ao pré-roteiro → APLIQUE as alterações
+
+As preferências da conversa TÊM PRIORIDADE sobre as respostas do quiz inicial.
+===
+` : ""}
+
+REGRAS FINAIS OBRIGATÓRIAS:
+1. Inclua coordenadas [latitude, longitude] PRECISAS para cada atividade
+2. Use nomes de lugares REAIS e existentes
+3. Adicione dicas práticas úteis para cada atividade
+4. O roteiro DEVE ter EXATAMENTE ${numDays} dias
 
 Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
@@ -385,6 +421,18 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
               return;
             }
 
+            // Validar e ajustar número de dias
+            const durationMap: Record<string, number> = {
+              weekend: 4, week: 7, twoweeks: 14, month: 21, flexible: 7
+            };
+            const expectedDays = durationMap[quizAnswers?.duration] || 7;
+            if (itinerary.days && itinerary.days.length !== expectedDays) {
+              console.log(`Ajustando dias: gerado ${itinerary.days.length}, esperado ${expectedDays}`);
+              itinerary.days = itinerary.days.slice(0, expectedDays);
+              itinerary.days.forEach((day: any, idx: number) => { day.day = idx + 1; });
+              itinerary.duration = `${expectedDays} dias`;
+            }
+
             // Add metadata
             itinerary.id = crypto.randomUUID();
             itinerary.createdAt = new Date().toISOString();
@@ -467,6 +515,18 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
         JSON.stringify({ error: "Não foi possível gerar o roteiro. Tente novamente." }),
         { status: lastStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Validar e ajustar número de dias (non-streaming)
+    const durationMap: Record<string, number> = {
+      weekend: 4, week: 7, twoweeks: 14, month: 21, flexible: 7
+    };
+    const expectedDays = durationMap[quizAnswers?.duration] || 7;
+    if (itinerary.days && itinerary.days.length !== expectedDays) {
+      console.log(`Ajustando dias (non-stream): gerado ${itinerary.days.length}, esperado ${expectedDays}`);
+      itinerary.days = itinerary.days.slice(0, expectedDays);
+      itinerary.days.forEach((day: any, idx: number) => { day.day = idx + 1; });
+      itinerary.duration = `${expectedDays} dias`;
     }
     
     // Add metadata
