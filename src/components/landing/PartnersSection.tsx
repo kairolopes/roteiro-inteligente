@@ -18,27 +18,27 @@ const categoryLabels: Record<string, string> = {
   insurance: "Seguro Viagem",
 };
 
-// Generic links without context (for landing page)
+// Travelpayouts Marker ID
+const TRAVELPAYOUTS_MARKER = "489165";
+
+// Generic links without context (for landing page) - with affiliate tracking
 const genericLinks: Record<string, Record<string, string>> = {
   hotels: {
-    hotellook: "https://search.hotellook.com/?marker=604441",
-    booking: "https://www.booking.com/",
-    airbnb: "https://www.airbnb.com/",
+    hotellook: `https://search.hotellook.com/?marker=${TRAVELPAYOUTS_MARKER}`,
+    booking: `https://www.booking.com/searchresults.html?aid=${TRAVELPAYOUTS_MARKER}`,
   },
   flights: {
-    aviasales: "https://www.aviasales.com/?marker=604441",
-    skyscanner: "https://www.skyscanner.com.br/",
-    kayak: "https://www.kayak.com.br/",
+    aviasales: `https://www.aviasales.com/?marker=${TRAVELPAYOUTS_MARKER}`,
   },
   tours: {
-    getyourguide: "https://www.getyourguide.com/?partner_id=QH8O7AF",
-    viator: "https://www.viator.com/",
+    getyourguide: `https://www.getyourguide.com/?partner_id=${TRAVELPAYOUTS_MARKER}`,
+    viator: `https://www.viator.com/?pid=${TRAVELPAYOUTS_MARKER}`,
   },
   carRental: {
-    rentalcars: "https://www.rentalcars.com/",
+    rentalcars: `https://www.rentalcars.com/?affiliateCode=${TRAVELPAYOUTS_MARKER}`,
   },
   insurance: {
-    travelinsurance: "https://www.worldnomads.com/",
+    travelinsurance: `https://www.travelinsurance.com/?marker=${TRAVELPAYOUTS_MARKER}`,
   },
 };
 
