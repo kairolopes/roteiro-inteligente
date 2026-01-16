@@ -8,9 +8,20 @@ interface DayTimelineProps {
   day: ItineraryDay;
   isSelected: boolean;
   onSelect: () => void;
+  tripDates?: {
+    startDate: string;
+    endDate: string;
+  };
 }
 
-const DayTimeline = ({ day, isSelected, onSelect }: DayTimelineProps) => {
+const DayTimeline = ({ day, isSelected, onSelect, tripDates }: DayTimelineProps) => {
+  // Create day context for affiliate links
+  const dayContext = {
+    city: day.city,
+    country: day.country,
+    date: day.date,
+    dayNumber: day.day,
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -72,7 +83,13 @@ const DayTimeline = ({ day, isSelected, onSelect }: DayTimelineProps) => {
 
           {/* Activity Cards */}
           {day.activities.map((activity, idx) => (
-            <ActivityCard key={activity.id} activity={activity} index={idx} />
+            <ActivityCard 
+              key={activity.id} 
+              activity={activity} 
+              index={idx}
+              dayContext={dayContext}
+              tripDates={tripDates}
+            />
           ))}
         </motion.div>
       )}
