@@ -11,18 +11,21 @@ import {
   Coins,
   Star,
   ExternalLink,
-  Navigation,
-  Bed,
-  Plane,
-  Ticket
+  Navigation
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
 import { cn } from "@/lib/utils";
-import { getHotelLink, getFlightLink, getTourLink } from "@/lib/affiliateLinks";
+import { DayContext } from "@/lib/affiliateLinks";
+import AffiliateButtons from "./AffiliateButtons";
 
 interface ActivityCardProps {
   activity: Activity;
   index: number;
+  dayContext?: DayContext;
+  tripDates?: {
+    startDate: string;
+    endDate: string;
+  };
 }
 
 const categoryConfig: Record<string, { icon: typeof Camera; bgClass: string; textClass: string; borderClass: string; imageQuery: string }> = {
@@ -84,7 +87,7 @@ function getGoogleMapsUrl(activity: Activity): string | null {
   return null;
 }
 
-const ActivityCard = ({ activity, index }: ActivityCardProps) => {
+const ActivityCard = ({ activity, index, dayContext, tripDates }: ActivityCardProps) => {
   const config = categoryConfig[activity.category] || defaultConfig;
   const CategoryIcon = config.icon;
   const googleMapsUrl = getGoogleMapsUrl(activity);
@@ -192,41 +195,13 @@ const ActivityCard = ({ activity, index }: ActivityCardProps) => {
                 </a>
               )}
 
-              {/* Affiliate Booking Buttons */}
-              {activity.category === "accommodation" && (
-                <a 
-                  href={getHotelLink(activity.location)}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 transition-colors text-xs lg:text-sm font-medium text-purple-600 dark:text-purple-400"
-                >
-                  <Bed className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  <span>Reservar Hotel</span>
-                </a>
-              )}
-
-              {activity.category === "transport" && (
-                <a 
-                  href={getFlightLink(activity.location)}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-green-500/10 hover:bg-green-500/20 transition-colors text-xs lg:text-sm font-medium text-green-600 dark:text-green-400"
-                >
-                  <Plane className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  <span>Buscar Voos</span>
-                </a>
-              )}
-
-              {(activity.category === "attraction" || activity.category === "activity") && (
-                <a 
-                  href={getTourLink(activity.location, activity.title)}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 transition-colors text-xs lg:text-sm font-medium text-blue-600 dark:text-blue-400"
-                >
-                  <Ticket className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  <span>Ver Tours</span>
-                </a>
+              {/* Affiliate Booking Buttons - Contextual */}
+              {dayContext && (
+                <AffiliateButtons 
+                  activity={activity} 
+                  dayContext={dayContext}
+                  tripDates={tripDates}
+                />
               )}
             </div>
           </div>
