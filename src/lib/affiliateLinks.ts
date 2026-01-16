@@ -68,19 +68,6 @@ export function getBookingLink(context: BookingContext): string {
   return `https://www.booking.com/searchresults.html?${params.toString()}`;
 }
 
-/**
- * Airbnb - Commission: varies (requires separate affiliate program)
- * Note: Airbnb Associates program - sign up at airbnb.com/associates
- */
-export function getAirbnbLink(context: BookingContext): string {
-  const params = new URLSearchParams({
-    query: context.city,
-  });
-  if (context.checkIn) params.set("checkin", context.checkIn);
-  if (context.checkOut) params.set("checkout", context.checkOut);
-  // Add affiliate tag when approved - replace YOUR_AIRBNB_ID
-  return `https://www.airbnb.com/s/${encodeURIComponent(context.city)}/homes?${params.toString()}`;
-}
 
 // ============================================
 // FLIGHT AFFILIATE LINKS
@@ -217,14 +204,6 @@ export const AFFILIATE_CONFIG = {
       color: "blue",
       getLink: getBookingLink,
       available: true,
-    },
-    {
-      id: "airbnb",
-      name: "Airbnb",
-      icon: "home",
-      color: "rose",
-      getLink: getAirbnbLink,
-      available: false, // Enable when Airbnb Associates approved
     },
   ] as AffiliateCompany[],
   
