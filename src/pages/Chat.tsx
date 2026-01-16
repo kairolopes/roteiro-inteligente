@@ -209,7 +209,11 @@ const Chat = () => {
                 <Button
                   size="sm"
                   onClick={() => {
-                    // Clear any cached itinerary to generate fresh
+                    // Salvar conversa completa para a geração do roteiro
+                    const chatHistory = messages.map(m => 
+                      `${m.role === 'user' ? 'Usuário' : 'Sofia'}: ${m.content}`
+                    ).join('\n\n---\n\n');
+                    sessionStorage.setItem("chatSummary", chatHistory);
                     sessionStorage.removeItem("generatedItinerary");
                     navigate("/itinerary");
                   }}
@@ -293,6 +297,11 @@ const Chat = () => {
                         >
                           <Button
                             onClick={() => {
+                              // Salvar conversa completa para a geração do roteiro
+                              const chatHistory = messages.map(m => 
+                                `${m.role === 'user' ? 'Usuário' : 'Sofia'}: ${m.content}`
+                              ).join('\n\n---\n\n');
+                              sessionStorage.setItem("chatSummary", chatHistory);
                               sessionStorage.removeItem("generatedItinerary");
                               navigate("/itinerary");
                             }}
