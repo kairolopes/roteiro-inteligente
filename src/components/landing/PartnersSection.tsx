@@ -1,58 +1,84 @@
 import { motion } from "framer-motion";
-import { ExternalLink, Bed, Plane, Ticket, Car, Shield } from "lucide-react";
-import { AFFILIATE_CONFIG } from "@/lib/affiliateLinks";
-
-const categoryIcons = {
-  hotels: Bed,
-  flights: Plane,
-  tours: Ticket,
-  carRental: Car,
-  insurance: Shield,
-};
-
-const categoryLabels: Record<string, string> = {
-  hotels: "Hospedagem",
-  flights: "Voos",
-  tours: "Passeios",
-  carRental: "Aluguel de Carros",
-  insurance: "Seguro Viagem",
-};
+import { MapPin, ExternalLink } from "lucide-react";
 
 // Travelpayouts Marker ID
 const TRAVELPAYOUTS_MARKER = "489165";
 
-// Generic links without context (for landing page) - with affiliate tracking
-const genericLinks: Record<string, Record<string, string>> = {
-  hotels: {
-    hotellook: `https://search.hotellook.com/?marker=${TRAVELPAYOUTS_MARKER}`,
-    booking: `https://www.booking.com/searchresults.html?aid=${TRAVELPAYOUTS_MARKER}`,
+interface FeaturedHotel {
+  id: number;
+  name: string;
+  location: string;
+  image: string;
+  priceFrom: string;
+  partner: "booking" | "hotellook";
+  partnerName: string;
+  link: string;
+}
+
+const featuredHotels: FeaturedHotel[] = [
+  {
+    id: 1,
+    name: "Resort Vista Mar",
+    location: "Santorini, Grécia",
+    image: "https://images.unsplash.com/photo-1570213489059-0aac6626cade?w=800&q=80",
+    priceFrom: "€120",
+    partner: "booking",
+    partnerName: "Booking.com",
+    link: `https://www.booking.com/searchresults.html?ss=Santorini&aid=${TRAVELPAYOUTS_MARKER}`,
   },
-  flights: {
-    aviasales: `https://www.aviasales.com/?marker=${TRAVELPAYOUTS_MARKER}`,
+  {
+    id: 2,
+    name: "Boutique Hotel Charme",
+    location: "Paris, França",
+    image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80",
+    priceFrom: "€95",
+    partner: "hotellook",
+    partnerName: "Hotellook",
+    link: `https://search.hotellook.com/?destination=Paris&marker=${TRAVELPAYOUTS_MARKER}`,
   },
-  tours: {
-    getyourguide: `https://www.getyourguide.com/?partner_id=${TRAVELPAYOUTS_MARKER}`,
-    viator: `https://www.viator.com/?pid=${TRAVELPAYOUTS_MARKER}`,
+  {
+    id: 3,
+    name: "Villa Toscana",
+    location: "Florença, Itália",
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
+    priceFrom: "€150",
+    partner: "booking",
+    partnerName: "Booking.com",
+    link: `https://www.booking.com/searchresults.html?ss=Florence&aid=${TRAVELPAYOUTS_MARKER}`,
   },
-  carRental: {
-    rentalcars: `https://www.rentalcars.com/?affiliateCode=${TRAVELPAYOUTS_MARKER}`,
+  {
+    id: 4,
+    name: "Pousada Histórica",
+    location: "Lisboa, Portugal",
+    image: "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80",
+    priceFrom: "€75",
+    partner: "hotellook",
+    partnerName: "Hotellook",
+    link: `https://search.hotellook.com/?destination=Lisbon&marker=${TRAVELPAYOUTS_MARKER}`,
   },
-  insurance: {
-    travelinsurance: `https://www.travelinsurance.com/?marker=${TRAVELPAYOUTS_MARKER}`,
+  {
+    id: 5,
+    name: "Hotel Centro Histórico",
+    location: "Barcelona, Espanha",
+    image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
+    priceFrom: "€110",
+    partner: "booking",
+    partnerName: "Booking.com",
+    link: `https://www.booking.com/searchresults.html?ss=Barcelona&aid=${TRAVELPAYOUTS_MARKER}`,
   },
-};
+  {
+    id: 6,
+    name: "Beach Resort Premium",
+    location: "Algarve, Portugal",
+    image: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80",
+    priceFrom: "€130",
+    partner: "hotellook",
+    partnerName: "Hotellook",
+    link: `https://search.hotellook.com/?destination=Algarve&marker=${TRAVELPAYOUTS_MARKER}`,
+  },
+];
 
 export function PartnersSection() {
-  // Get only available partners
-  const availablePartners = Object.entries(AFFILIATE_CONFIG)
-    .map(([category, companies]) => ({
-      category,
-      companies: companies.filter((c) => c.available),
-    }))
-    .filter((cat) => cat.companies.length > 0);
-
-  if (availablePartners.length === 0) return null;
-
   return (
     <section className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -64,66 +90,72 @@ export function PartnersSection() {
           className="text-center mb-12"
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Nossos Parceiros
+            🏨 Hotéis em Destaque
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Reserve com nossos parceiros de confiança e aproveite as melhores ofertas
+            Hospedagens selecionadas com as melhores ofertas dos nossos parceiros
           </p>
         </motion.div>
 
-        <div className="grid gap-8 md:gap-12">
-          {availablePartners.map(({ category, companies }, categoryIndex) => {
-            const CategoryIcon = categoryIcons[category as keyof typeof categoryIcons];
-            
-            return (
-              <motion.div
-                key={category}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: categoryIndex * 0.1 }}
-                className="text-center"
-              >
-                <div className="flex items-center justify-center gap-2 mb-6">
-                  {CategoryIcon && (
-                    <CategoryIcon className="w-5 h-5 text-primary" />
-                  )}
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {categoryLabels[category] || category}
-                  </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {featuredHotels.map((hotel, index) => (
+            <motion.a
+              key={hotel.id}
+              href={hotel.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="group relative overflow-hidden rounded-2xl bg-background border border-border shadow-sm hover:shadow-xl transition-all duration-300"
+            >
+              {/* Image Container */}
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src={hotel.image}
+                  alt={hotel.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                {/* Price Badge */}
+                <div className="absolute top-3 right-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
+                  A partir de {hotel.priceFrom}/noite
                 </div>
-                
-                <div className="flex flex-wrap justify-center gap-4">
-                  {companies.map((company, companyIndex) => {
-                    const link = genericLinks[category]?.[company.id] || "#";
-                    
-                    return (
-                      <motion.a
-                        key={company.id}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ 
-                          duration: 0.3, 
-                          delay: categoryIndex * 0.1 + companyIndex * 0.05 
-                        }}
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        className="group flex items-center gap-2 px-5 py-3 bg-background border border-border rounded-xl shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-300"
-                      >
-                        <span className="font-medium text-foreground group-hover:text-primary transition-colors">
-                          {company.name}
-                        </span>
-                        <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </motion.a>
-                    );
-                  })}
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                <h3 className="text-lg font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+                  {hotel.name}
+                </h3>
+                <div className="flex items-center gap-1 text-muted-foreground text-sm mb-3">
+                  <MapPin className="w-4 h-4" />
+                  <span>{hotel.location}</span>
                 </div>
-              </motion.div>
-            );
-          })}
+
+                {/* Partner Badge */}
+                <div className="flex items-center justify-between pt-3 border-t border-border">
+                  <span className="text-xs text-muted-foreground">
+                    Reserve via
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-sm font-medium ${
+                        hotel.partner === "booking"
+                          ? "text-blue-600"
+                          : "text-orange-500"
+                      }`}
+                    >
+                      {hotel.partnerName}
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+            </motion.a>
+          ))}
         </div>
 
         <motion.p
