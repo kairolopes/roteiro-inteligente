@@ -4,12 +4,64 @@ import { cn } from "@/lib/utils";
 import { QuizAnswers } from "@/types/quiz";
 
 const destinations = [
+  // América do Sul
+  {
+    id: "brazil",
+    name: "Brasil",
+    cities: "Rio, São Paulo, Salvador",
+    image: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=400&auto=format&fit=crop&q=80",
+    flag: "🇧🇷",
+    region: "americas",
+  },
+  {
+    id: "argentina",
+    name: "Argentina",
+    cities: "Buenos Aires, Mendoza, Patagônia",
+    image: "https://images.unsplash.com/photo-1589909202802-8f4aadce1849?w=400&auto=format&fit=crop&q=80",
+    flag: "🇦🇷",
+    region: "americas",
+  },
+  {
+    id: "peru",
+    name: "Peru",
+    cities: "Lima, Cusco, Machu Picchu",
+    image: "https://images.unsplash.com/photo-1526392060635-9d6019884377?w=400&auto=format&fit=crop&q=80",
+    flag: "🇵🇪",
+    region: "americas",
+  },
+  // América do Norte
+  {
+    id: "usa",
+    name: "Estados Unidos",
+    cities: "Nova York, Miami, Los Angeles",
+    image: "https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=400&auto=format&fit=crop&q=80",
+    flag: "🇺🇸",
+    region: "americas",
+  },
+  {
+    id: "mexico",
+    name: "México",
+    cities: "Cancún, Cidade do México, Tulum",
+    image: "https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?w=400&auto=format&fit=crop&q=80",
+    flag: "🇲🇽",
+    region: "americas",
+  },
+  {
+    id: "canada",
+    name: "Canadá",
+    cities: "Toronto, Vancouver, Montreal",
+    image: "https://images.unsplash.com/photo-1517935706615-2717063c2225?w=400&auto=format&fit=crop&q=80",
+    flag: "🇨🇦",
+    region: "americas",
+  },
+  // Europa
   {
     id: "italy",
     name: "Itália",
     cities: "Roma, Florença, Veneza",
     image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&auto=format&fit=crop&q=80",
     flag: "🇮🇹",
+    region: "europe",
   },
   {
     id: "france",
@@ -17,6 +69,7 @@ const destinations = [
     cities: "Paris, Nice, Lyon",
     image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&auto=format&fit=crop&q=80",
     flag: "🇫🇷",
+    region: "europe",
   },
   {
     id: "spain",
@@ -24,6 +77,7 @@ const destinations = [
     cities: "Barcelona, Madrid, Sevilha",
     image: "https://images.unsplash.com/photo-1583422409516-2895a77efded?w=400&auto=format&fit=crop&q=80",
     flag: "🇪🇸",
+    region: "europe",
   },
   {
     id: "portugal",
@@ -31,6 +85,7 @@ const destinations = [
     cities: "Lisboa, Porto, Algarve",
     image: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=400&auto=format&fit=crop&q=80",
     flag: "🇵🇹",
+    region: "europe",
   },
   {
     id: "greece",
@@ -38,13 +93,7 @@ const destinations = [
     cities: "Atenas, Santorini, Mykonos",
     image: "https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&auto=format&fit=crop&q=80",
     flag: "🇬🇷",
-  },
-  {
-    id: "netherlands",
-    name: "Holanda",
-    cities: "Amsterdam, Rotterdam",
-    image: "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=400&auto=format&fit=crop&q=80",
-    flag: "🇳🇱",
+    region: "europe",
   },
   {
     id: "germany",
@@ -52,20 +101,83 @@ const destinations = [
     cities: "Berlim, Munique, Frankfurt",
     image: "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=400&auto=format&fit=crop&q=80",
     flag: "🇩🇪",
+    region: "europe",
+  },
+  // Ásia
+  {
+    id: "japan",
+    name: "Japão",
+    cities: "Tóquio, Kyoto, Osaka",
+    image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&auto=format&fit=crop&q=80",
+    flag: "🇯🇵",
+    region: "asia",
   },
   {
-    id: "switzerland",
-    name: "Suíça",
-    cities: "Zurique, Genebra, Alpes",
-    image: "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=400&auto=format&fit=crop&q=80",
-    flag: "🇨🇭",
+    id: "thailand",
+    name: "Tailândia",
+    cities: "Bangkok, Phuket, Chiang Mai",
+    image: "https://images.unsplash.com/photo-1528181304800-259b08848526?w=400&auto=format&fit=crop&q=80",
+    flag: "🇹🇭",
+    region: "asia",
   },
+  {
+    id: "indonesia",
+    name: "Indonésia",
+    cities: "Bali, Jakarta, Lombok",
+    image: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&auto=format&fit=crop&q=80",
+    flag: "🇮🇩",
+    region: "asia",
+  },
+  // Oceania
+  {
+    id: "australia",
+    name: "Austrália",
+    cities: "Sydney, Melbourne, Gold Coast",
+    image: "https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=400&auto=format&fit=crop&q=80",
+    flag: "🇦🇺",
+    region: "oceania",
+  },
+  // Oriente Médio & África
+  {
+    id: "uae",
+    name: "Emirados Árabes",
+    cities: "Dubai, Abu Dhabi",
+    image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&auto=format&fit=crop&q=80",
+    flag: "🇦🇪",
+    region: "middleeast",
+  },
+  {
+    id: "egypt",
+    name: "Egito",
+    cities: "Cairo, Luxor, Hurghada",
+    image: "https://images.unsplash.com/photo-1539650116574-8efeb43e2750?w=400&auto=format&fit=crop&q=80",
+    flag: "🇪🇬",
+    region: "africa",
+  },
+  {
+    id: "morocco",
+    name: "Marrocos",
+    cities: "Marrakech, Fez, Casablanca",
+    image: "https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?w=400&auto=format&fit=crop&q=80",
+    flag: "🇲🇦",
+    region: "africa",
+  },
+  {
+    id: "southafrica",
+    name: "África do Sul",
+    cities: "Cape Town, Joanesburgo, Kruger",
+    image: "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=400&auto=format&fit=crop&q=80",
+    flag: "🇿🇦",
+    region: "africa",
+  },
+  // Opção surpresa
   {
     id: "surprise",
     name: "Me Surpreenda!",
     cities: "Deixe a IA decidir",
     image: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=400&auto=format&fit=crop&q=80",
     flag: "✨",
+    region: "special",
   },
 ];
 
@@ -100,7 +212,7 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {destinations.map((destination) => {
           const isSelected = answers.destinations.includes(destination.id);
           

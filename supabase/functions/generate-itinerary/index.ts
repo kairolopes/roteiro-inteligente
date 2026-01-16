@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem detalhados para a Europa. 
+const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem detalhados para qualquer lugar do mundo. 
 Quando solicitado, você DEVE usar a função generate_itinerary para retornar um roteiro estruturado.
 
 ⚠️ REGRA CRÍTICA E OBRIGATÓRIA DE DURAÇÃO:
@@ -19,7 +19,7 @@ Quando solicitado, você DEVE usar a função generate_itinerary para retornar u
 INSTRUÇÕES CRÍTICAS:
 1. Crie roteiros realistas com atividades específicas e lugares REAIS que existem
 2. OBRIGATÓRIO: Inclua coordenadas geográficas PRECISAS [latitude, longitude] para CADA atividade - isso é essencial para o mapa funcionar
-3. Estime custos em euros de forma realista baseado em preços atuais
+3. Estime custos na moeda local ou em reais (R$) de forma realista baseado em preços atuais
 4. Adicione dicas práticas úteis baseadas em experiências reais de viajantes
 5. Considere tempo de deslocamento entre atividades
 6. Sugira restaurantes e locais específicos REAIS com nomes verdadeiros
@@ -36,11 +36,15 @@ IMPORTANTE SOBRE COORDENADAS:
 - Use coordenadas precisas de lugares reais
 - Exemplo para Coliseu: [41.8902, 12.4922]
 - Exemplo para Torre Eiffel: [48.8584, 2.2945]
+- Exemplo para Cristo Redentor: [-22.9519, -43.2105]
+- Exemplo para Monte Fuji: [35.3606, 138.7274]
+- Exemplo para Burj Khalifa: [25.1972, 55.2744]
 
 DICAS DE QUALIDADE:
 - Inclua dicas como "Reserve com antecedência", "Chegue cedo para evitar filas"
 - Mencione melhores horários para visitar
-- Sugira alternativas para dias de chuva quando aplicável`;
+- Sugira alternativas para dias de chuva quando aplicável
+- Considere fuso horário e clima local do destino`;
 
 // Models to try in order (primary, fallback)
 const AI_MODELS = ["google/gemini-2.5-flash", "google/gemini-2.5-pro"];
@@ -153,9 +157,21 @@ serve(async (req) => {
     
     if (quizAnswers) {
       const destLabels: Record<string, string> = {
+        // Américas
+        brazil: "Brasil", argentina: "Argentina", peru: "Peru",
+        usa: "Estados Unidos", mexico: "México", canada: "Canadá",
+        // Europa
         italy: "Itália", france: "França", spain: "Espanha",
         portugal: "Portugal", greece: "Grécia", netherlands: "Holanda",
-        germany: "Alemanha", switzerland: "Suíça", surprise: "destino surpresa"
+        germany: "Alemanha", switzerland: "Suíça",
+        // Ásia
+        japan: "Japão", thailand: "Tailândia", indonesia: "Indonésia",
+        // Oceania
+        australia: "Austrália",
+        // Oriente Médio & África
+        uae: "Emirados Árabes", egypt: "Egito", morocco: "Marrocos", southafrica: "África do Sul",
+        // Especial
+        surprise: "destino surpresa"
       };
       
       if (quizAnswers.destinations?.length > 0) {

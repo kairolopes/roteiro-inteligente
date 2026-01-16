@@ -5,13 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TRAVEL_SYSTEM_PROMPT = `Você é um agente de viagens especializado em roteiros pela Europa. Seu nome é Sofia, e você é simpática, conhecedora e apaixonada por viagens.
+const TRAVEL_SYSTEM_PROMPT = `Você é um agente de viagens especializado em roteiros pelo mundo inteiro. Seu nome é Sofia, e você é simpática, conhecedora e apaixonada por viagens.
 
 SUAS RESPONSABILIDADES:
 1. Criar roteiros personalizados baseados nas preferências do viajante
-2. Sugerir destinos, atividades e experiências únicas
+2. Sugerir destinos, atividades e experiências únicas em qualquer lugar do mundo
 3. Dar dicas práticas sobre transporte, hospedagem e custos
-4. Responder dúvidas sobre destinos europeus
+4. Responder dúvidas sobre qualquer destino global
 5. Ajudar a otimizar tempo e orçamento
 
 ESTILO DE COMUNICAÇÃO:
@@ -32,7 +32,8 @@ IMPORTANTE:
 - Sempre pergunte se o viajante quer ajustar algo
 - Ofereça alternativas para dias de chuva
 - Mencione se algum lugar precisa de reserva antecipada
-- Considere restrições alimentares e de mobilidade mencionadas`;
+- Considere restrições alimentares e de mobilidade mencionadas
+- Adapte sugestões de acordo com a cultura e costumes locais do destino`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -54,9 +55,21 @@ serve(async (req) => {
       
       if (quizAnswers.destinations?.length > 0) {
         const destLabels: Record<string, string> = {
+          // Américas
+          brazil: "Brasil", argentina: "Argentina", peru: "Peru",
+          usa: "Estados Unidos", mexico: "México", canada: "Canadá",
+          // Europa
           italy: "Itália", france: "França", spain: "Espanha",
           portugal: "Portugal", greece: "Grécia", netherlands: "Holanda",
-          germany: "Alemanha", switzerland: "Suíça", surprise: "Destino surpresa"
+          germany: "Alemanha", switzerland: "Suíça",
+          // Ásia
+          japan: "Japão", thailand: "Tailândia", indonesia: "Indonésia",
+          // Oceania
+          australia: "Austrália",
+          // Oriente Médio & África
+          uae: "Emirados Árabes", egypt: "Egito", morocco: "Marrocos", southafrica: "África do Sul",
+          // Especial
+          surprise: "Destino surpresa"
         };
         parts.push(`Destinos de interesse: ${quizAnswers.destinations.map((d: string) => destLabels[d] || d).join(", ")}`);
       }
@@ -80,8 +93,8 @@ serve(async (req) => {
 
       if (quizAnswers.budget) {
         const budgetLabels: Record<string, string> = {
-          economic: "econômico (até €80/dia)", moderate: "moderado (€80-150/dia)",
-          comfortable: "confortável (€150-300/dia)", luxury: "luxo (€300+/dia)",
+          economic: "econômico (até R$400/dia)", moderate: "moderado (R$400-800/dia)",
+          comfortable: "confortável (R$800-1500/dia)", luxury: "luxo (R$1500+/dia)",
           flexible: "flexível"
         };
         parts.push(`Orçamento: ${budgetLabels[quizAnswers.budget] || quizAnswers.budget}`);

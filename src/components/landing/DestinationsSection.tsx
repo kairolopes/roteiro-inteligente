@@ -5,6 +5,42 @@ import { Button } from "@/components/ui/button";
 const destinations = [
   {
     id: 1,
+    name: "Japão",
+    cities: "Tóquio, Kyoto, Osaka, Nara",
+    image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&auto=format&fit=crop&q=80",
+    rating: 4.9,
+    trips: "18k+ roteiros",
+    highlight: "Tradição & Tecnologia",
+  },
+  {
+    id: 2,
+    name: "Estados Unidos",
+    cities: "Nova York, Miami, Los Angeles, Las Vegas",
+    image: "https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=800&auto=format&fit=crop&q=80",
+    rating: 4.8,
+    trips: "25k+ roteiros",
+    highlight: "Diversidade & Aventura",
+  },
+  {
+    id: 3,
+    name: "Brasil",
+    cities: "Rio, São Paulo, Salvador, Floripa",
+    image: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=800&auto=format&fit=crop&q=80",
+    rating: 4.8,
+    trips: "20k+ roteiros",
+    highlight: "Praias & Natureza",
+  },
+  {
+    id: 4,
+    name: "Tailândia",
+    cities: "Bangkok, Phuket, Chiang Mai, Krabi",
+    image: "https://images.unsplash.com/photo-1528181304800-259b08848526?w=800&auto=format&fit=crop&q=80",
+    rating: 4.9,
+    trips: "14k+ roteiros",
+    highlight: "Templos & Praias",
+  },
+  {
+    id: 5,
     name: "Itália",
     cities: "Roma, Florença, Veneza, Milão",
     image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800&auto=format&fit=crop&q=80",
@@ -13,49 +49,13 @@ const destinations = [
     highlight: "Arte & Gastronomia",
   },
   {
-    id: 2,
-    name: "França",
-    cities: "Paris, Nice, Lyon, Bordeaux",
-    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop&q=80",
-    rating: 4.8,
-    trips: "12k+ roteiros",
-    highlight: "Romance & Cultura",
-  },
-  {
-    id: 3,
-    name: "Espanha",
-    cities: "Barcelona, Madrid, Sevilha, Valencia",
-    image: "https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800&auto=format&fit=crop&q=80",
+    id: 6,
+    name: "Emirados Árabes",
+    cities: "Dubai, Abu Dhabi",
+    image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&auto=format&fit=crop&q=80",
     rating: 4.8,
     trips: "10k+ roteiros",
-    highlight: "Festas & Praias",
-  },
-  {
-    id: 4,
-    name: "Portugal",
-    cities: "Lisboa, Porto, Algarve, Sintra",
-    image: "https://images.unsplash.com/photo-1555881400-74d7acaacd8b?w=800&auto=format&fit=crop&q=80",
-    rating: 4.9,
-    trips: "8k+ roteiros",
-    highlight: "História & Vinhos",
-  },
-  {
-    id: 5,
-    name: "Grécia",
-    cities: "Atenas, Santorini, Mykonos, Creta",
-    image: "https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=800&auto=format&fit=crop&q=80",
-    rating: 4.9,
-    trips: "9k+ roteiros",
-    highlight: "Ilhas & Mitologia",
-  },
-  {
-    id: 6,
-    name: "Holanda",
-    cities: "Amsterdam, Rotterdam, Utrecht",
-    image: "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=800&auto=format&fit=crop&q=80",
-    rating: 4.7,
-    trips: "5k+ roteiros",
-    highlight: "Canais & Museus",
+    highlight: "Luxo & Modernidade",
   },
 ];
 
@@ -79,11 +79,11 @@ export function DestinationsSection() {
               Destinos Populares
             </span>
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-bold mb-2 lg:mb-4">
-              Explore a <span className="text-primary">Europa</span>
+              Explore o <span className="text-primary">Mundo</span>
             </h2>
             <p className="text-muted-foreground text-sm lg:text-lg max-w-xl">
-              Descubra os destinos mais procurados e deixe nossa IA criar o 
-              roteiro perfeito.
+              Descubra destinos incríveis em todos os continentes e deixe nossa IA criar o 
+              roteiro perfeito para você.
             </p>
           </div>
           <Button variant="outline" className="w-fit text-sm">
