@@ -32,7 +32,6 @@ interface AffiliateButtonsProps {
 const iconMap: Record<string, typeof Bed> = {
   hotel: Bed,
   building: Building,
-  home: Building, // Airbnb
   plane: Plane,
   search: Plane, // Skyscanner
   compass: Plane, // KAYAK
@@ -72,11 +71,6 @@ const colorClasses: Record<string, { bg: string; hover: string; text: string }> 
     bg: "bg-sky-500/10",
     hover: "hover:bg-sky-500/20",
     text: "text-sky-600 dark:text-sky-400",
-  },
-  rose: {
-    bg: "bg-rose-500/10",
-    hover: "hover:bg-rose-500/20",
-    text: "text-rose-600 dark:text-rose-400",
   },
   cyan: {
     bg: "bg-cyan-500/10",
