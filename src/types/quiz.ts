@@ -8,6 +8,8 @@ export interface QuizAnswers {
   destinations: string[];
   interests: string[];
   travelWith: string;
+  hasChildren: boolean;
+  hasPet: string;
   dietary: string[];
   mobility: string;
 }
@@ -22,6 +24,8 @@ export const defaultQuizAnswers: QuizAnswers = {
   destinations: [],
   interests: [],
   travelWith: "",
+  hasChildren: false,
+  hasPet: "none",
   dietary: [],
   mobility: "",
 };

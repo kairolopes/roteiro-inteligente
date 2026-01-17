@@ -57,9 +57,13 @@ const labels: Record<string, Record<string, string>> = {
     solo: "Sozinho(a)",
     couple: "Casal",
     friends: "Amigos",
-    "family-kids": "Família com crianças",
-    "family-adults": "Família adultos",
-    pets: "Com pet",
+    family: "Família",
+  },
+  hasPet: {
+    dog: "Com cachorro",
+    cat: "Com gato",
+    other: "Com outro pet",
+    none: "",
   },
 };
 
@@ -141,6 +145,8 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
             <h4 className="font-semibold mb-1">Companhia</h4>
             <p className="text-muted-foreground">
               {labels.travelWith[answers.travelWith] || "Não definido"}
+              {answers.hasChildren && " • Com crianças"}
+              {answers.hasPet !== "none" && labels.hasPet[answers.hasPet] && ` • ${labels.hasPet[answers.hasPet]}`}
             </p>
           </div>
         </div>
