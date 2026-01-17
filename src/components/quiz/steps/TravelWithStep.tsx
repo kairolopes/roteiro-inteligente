@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { User, Users, Heart, Baby, Dog } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { User, Users, Heart, Baby, Dog, Cat, PawPrint, Check, X } from "lucide-react";
 import { QuizOption } from "../QuizOption";
 import { QuizAnswers } from "@/types/quiz";
 
@@ -23,23 +23,18 @@ const companions = [
     description: "Grupo de amigos",
   },
   {
-    id: "family-kids",
-    icon: Baby,
-    title: "Família com crianças",
-    description: "Pais e filhos pequenos",
-  },
-  {
-    id: "family-adults",
+    id: "family",
     icon: Users,
-    title: "Família adultos",
-    description: "Pais e filhos adultos",
+    title: "Família",
+    description: "Viajando com parentes",
   },
-  {
-    id: "pets",
-    icon: Dog,
-    title: "Com pet",
-    description: "Viajando com animal de estimação",
-  },
+];
+
+const petOptions = [
+  { id: "dog", icon: Dog, label: "Sim, cachorro" },
+  { id: "cat", icon: Cat, label: "Sim, gato" },
+  { id: "other", icon: PawPrint, label: "Sim, outro animal" },
+  { id: "none", icon: X, label: "Não" },
 ];
 
 const dietary = [
@@ -64,6 +59,8 @@ interface TravelWithStepProps {
 }
 
 export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
+  const showChildrenQuestion = answers.travelWith === "friends" || answers.travelWith === "family";
+
   const toggleDietary = (id: string) => {
     if (id === "none") {
       onUpdate("dietary", ["none"]);
@@ -77,6 +74,14 @@ export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
       current = [...current, id];
     }
     onUpdate("dietary", current.length > 0 ? current : []);
+  };
+
+  const handleCompanionSelect = (id: string) => {
+    onUpdate("travelWith", id);
+    // Reset children question if not applicable
+    if (id !== "friends" && id !== "family") {
+      onUpdate("hasChildren", false);
+    }
   };
 
   return (
@@ -94,7 +99,7 @@ export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
           </h2>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {companions.map((companion) => (
             <QuizOption
               key={companion.id}
@@ -102,10 +107,91 @@ export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
               title={companion.title}
               description={companion.description}
               selected={answers.travelWith === companion.id}
-              onClick={() => onUpdate("travelWith", companion.id)}
+              onClick={() => handleCompanionSelect(companion.id)}
               variant="compact"
             />
           ))}
+        </div>
+      </div>
+
+      {/* Children question - Conditional */}
+      <AnimatePresence>
+        {showChildrenQuestion && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold">
+                Terá <span className="text-primary">crianças</span> no grupo?
+              </h3>
+            </div>
+
+            <div className="flex justify-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onUpdate("hasChildren", true)}
+                className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl border text-sm font-medium transition-all ${
+                  answers.hasChildren
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card hover:border-primary/50"
+                }`}
+              >
+                <Baby className="w-5 h-5" />
+                <span>Sim</span>
+                {answers.hasChildren && <Check className="w-4 h-4 ml-1" />}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onUpdate("hasChildren", false)}
+                className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl border text-sm font-medium transition-all ${
+                  !answers.hasChildren
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card hover:border-primary/50"
+                }`}
+              >
+                <X className="w-5 h-5" />
+                <span>Não</span>
+                {!answers.hasChildren && <Check className="w-4 h-4 ml-1" />}
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pet question - Universal */}
+      <div>
+        <div className="text-center mb-4">
+          <h3 className="text-lg font-semibold">
+            Vai viajar com <span className="text-primary">pet</span>?
+          </h3>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-3">
+          {petOptions.map((option) => {
+            const Icon = option.icon;
+            return (
+              <motion.button
+                key={option.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onUpdate("hasPet", option.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                  answers.hasPet === option.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card hover:border-primary/50"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{option.label}</span>
+              </motion.button>
+            );
+          })}
         </div>
       </div>
 
