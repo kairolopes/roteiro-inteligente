@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2, Lock, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Itinerary as ItineraryType } from "@/types/itinerary";
@@ -11,6 +11,10 @@ import DaySelector from "@/components/itinerary/DaySelector";
 import DayTimeline from "@/components/itinerary/DayTimeline";
 import ItineraryMap from "@/components/itinerary/ItineraryMap";
 import { QuizAnswers } from "@/types/quiz";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserCredits } from "@/hooks/useUserCredits";
+import { PaywallModal } from "@/components/PaywallModal";
+import AuthModal from "@/components/auth/AuthModal";
 
 const GENERATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
 
@@ -24,15 +28,34 @@ interface ProgressState {
 
 const Itinerary = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits } = useUserCredits();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressState | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isPartialItinerary, setIsPartialItinerary] = useState(false);
   const { toast } = useToast();
   const { exportToPDF, isExporting } = usePDFExport();
 
-  const generateItineraryWithStreaming = useCallback(async () => {
+  const generateItineraryWithStreaming = useCallback(async (skipCreditCheck = false) => {
+    // Check if user needs to login
+    if (!user) {
+      setShowAuthModal(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // Check credits (unless skipping for regeneration with existing credit)
+    if (!skipCreditCheck && !canGenerateItinerary) {
+      setShowPaywall(true);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setProgress({ step: "starting", message: "Iniciando geração do roteiro..." });
@@ -94,8 +117,14 @@ const Itinerary = () => {
             if (event.type === "progress") {
               setProgress(event.data);
             } else if (event.type === "complete") {
+              // Consume credit on successful generation
+              if (!skipCreditCheck) {
+                await consumeItineraryCredit();
+                await refetchCredits();
+              }
               sessionStorage.setItem("generatedItinerary", JSON.stringify(event.data.itinerary));
               setItinerary(event.data.itinerary);
+              setIsPartialItinerary(false);
               setProgress({ step: "done", message: "Roteiro pronto!" });
               toast({
                 title: "Roteiro criado! 🎉",
@@ -120,7 +149,7 @@ const Itinerary = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, user, canGenerateItinerary, consumeItineraryCredit, refetchCredits]);
 
   useEffect(() => {
     const cached = sessionStorage.getItem("generatedItinerary");
@@ -155,8 +184,12 @@ const Itinerary = () => {
   };
 
   const handleRegenerate = () => {
+    if (!canGenerateItinerary) {
+      setShowPaywall(true);
+      return;
+    }
     sessionStorage.removeItem("generatedItinerary");
-    generateItineraryWithStreaming();
+    generateItineraryWithStreaming(false);
   };
 
   const getProgressIcon = () => {
@@ -329,6 +362,19 @@ const Itinerary = () => {
           </motion.div>
         </div>
       </main>
+
+      {/* Paywall Modal */}
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        type="itinerary"
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 };
