@@ -170,6 +170,81 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          credits_added: number | null
+          id: string
+          mp_payment_id: string | null
+          mp_preference_id: string | null
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          credits_added?: number | null
+          id?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credits_added?: number | null
+          id?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_credits: {
+        Row: {
+          chat_messages_reset_at: string | null
+          chat_messages_used: number
+          created_at: string
+          free_itineraries_used: number
+          id: string
+          paid_credits: number
+          subscription_expires_at: string | null
+          subscription_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_messages_reset_at?: string | null
+          chat_messages_used?: number
+          created_at?: string
+          free_itineraries_used?: number
+          id?: string
+          paid_credits?: number
+          subscription_expires_at?: string | null
+          subscription_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_messages_reset_at?: string | null
+          chat_messages_used?: number
+          created_at?: string
+          free_itineraries_used?: number
+          id?: string
+          paid_credits?: number
+          subscription_expires_at?: string | null
+          subscription_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -10,6 +10,7 @@ import Chat from "./pages/Chat";
 import Itinerary from "./pages/Itinerary";
 import MyItineraries from "./pages/MyItineraries";
 import Profile from "./pages/Profile";
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/my-itineraries" element={<MyItineraries />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/pricing" element={<Pricing />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

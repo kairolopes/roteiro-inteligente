@@ -7,6 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { QuizAnswers } from "@/types/quiz";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserCredits } from "@/hooks/useUserCredits";
+import { PaywallModal } from "@/components/PaywallModal";
+import AuthModal from "@/components/auth/AuthModal";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,10 +22,14 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`
 const Chat = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { canSendChatMessage, consumeChatMessage, remainingChatMessages, hasActiveSubscription } = useUserCredits();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswers | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -54,7 +62,7 @@ const Chat = () => {
     const destinations = answers.destinations?.map(d => destLabels[d] || d).join(", ") || "Europa";
     const initialMessage = `Olá! Acabei de responder o quiz e estou planejando uma viagem para ${destinations}. Pode me ajudar a criar um roteiro personalizado?`;
     
-    await sendMessage(initialMessage, answers);
+    await sendMessage(initialMessage, answers, true); // Pass true for isInitial
   };
 
   const streamChat = async (
@@ -121,9 +129,20 @@ const Chat = () => {
     onDone();
   };
 
-  const sendMessage = async (messageText: string, answers?: QuizAnswers | null) => {
+  const sendMessage = async (messageText: string, answers?: QuizAnswers | null, isInitial = false) => {
     if (!messageText.trim() || isLoading) return;
 
+    // Check if user needs to login (skip for initial auto-message)
+    if (!isInitial && !user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    // Check chat message limit (skip for initial auto-message)
+    if (!isInitial && !canSendChatMessage) {
+      setShowPaywall(true);
+      return;
+    }
     const userMessage: Message = { role: "user", content: messageText.trim() };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
@@ -150,7 +169,13 @@ const Chat = () => {
         newMessages,
         answers !== undefined ? answers : quizAnswers,
         updateAssistant,
-        () => setIsLoading(false)
+        async () => {
+          setIsLoading(false);
+          // Consume chat message credit after successful response (skip for initial)
+          if (!isInitial) {
+            await consumeChatMessage();
+          }
+        }
       );
     } catch (error) {
       console.error("Chat error:", error);
@@ -370,11 +395,33 @@ const Chat = () => {
               )}
             </Button>
           </form>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            Sofia pode cometer erros. Verifique informações importantes.
-          </p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-muted-foreground">
+              Sofia pode cometer erros. Verifique informações importantes.
+            </p>
+            {user && !hasActiveSubscription && (
+              <p className="text-xs text-muted-foreground">
+                {remainingChatMessages === Infinity
+                  ? "∞ mensagens"
+                  : `${remainingChatMessages} mensagens restantes`}
+              </p>
+            )}
+          </div>
         </div>
       </footer>
+
+      {/* Paywall Modal */}
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        type="chat"
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 };
