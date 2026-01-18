@@ -11,13 +11,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
+import { getNetlifyFunctionsUrl } from "@/lib/supabaseClient";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`;
+// Use Netlify Functions if available, otherwise fallback to Supabase Edge Functions
+const getChatUrl = () => {
+  // Check if we're in Netlify environment
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return `${getNetlifyFunctionsUrl()}/chat-travel`;
+  }
+  // Fallback to Supabase for development or Lovable preview
+  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`;
+};
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -71,7 +80,7 @@ const Chat = () => {
     onDelta: (text: string) => void,
     onDone: () => void
   ) => {
-    const resp = await fetch(CHAT_URL, {
+    const resp = await fetch(getChatUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

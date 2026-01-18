@@ -15,8 +15,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
+import { getNetlifyFunctionsUrl } from "@/lib/supabaseClient";
 
-const GENERATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
+// Use Netlify Functions if available, otherwise fallback to Supabase Edge Functions
+const getGenerateUrl = () => {
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return `${getNetlifyFunctionsUrl()}/generate-itinerary`;
+  }
+  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
+};
 
 interface ProgressState {
   step: string;
@@ -72,7 +79,7 @@ const Itinerary = () => {
 
       const conversationSummary = sessionStorage.getItem("chatSummary") || "";
 
-      const response = await fetch(GENERATE_URL, {
+      const response = await fetch(getGenerateUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
