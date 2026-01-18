@@ -43,12 +43,7 @@ export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlight
       const params = new URLSearchParams({ origin });
       if (destination) params.append('destination', destination);
 
-      const { data, error: fnError } = await supabase.functions.invoke('flight-prices', {
-        body: null,
-        headers: {},
-      });
-
-      // Use query params approach via direct fetch since invoke doesn't support query params well
+      // Use direct fetch with query params
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flight-prices?${params.toString()}`,
         {

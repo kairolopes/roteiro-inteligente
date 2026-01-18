@@ -1,19 +1,36 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plane, Clock, TrendingDown, ExternalLink, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { Plane, Clock, TrendingDown, ExternalLink, Sparkles, RefreshCw, MapPin, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAviasalesLink } from "@/lib/affiliateLinks";
 import { useFlightPrices, destinationImages, formatFlightDate } from "@/hooks/useFlightPrices";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Origin cities available
+const originCities = [
+  { value: "São Paulo", label: "São Paulo", code: "SAO" },
+  { value: "Rio de Janeiro", label: "Rio de Janeiro", code: "RIO" },
+  { value: "Brasília", label: "Brasília", code: "BSB" },
+  { value: "Fortaleza", label: "Fortaleza", code: "FOR" },
+  { value: "Salvador", label: "Salvador", code: "SSA" },
+];
 
 // Fallback static deals for when API fails
 const fallbackDeals = [
   { id: 1, route: "São Paulo → Londres", airline: "British Airways", price: 3290, originalPrice: 5200, discount: 37, dates: "Mar - Abr 2025", stops: "1 parada", tag: "Promoção", image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600", destination: "LON", link: "" },
-  { id: 2, route: "Rio de Janeiro → Madri", airline: "Iberia", price: 2890, originalPrice: 4100, discount: 30, dates: "Fev - Mar 2025", stops: "Direto", tag: "Cashback 10%", image: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=600", destination: "MAD", link: "" },
+  { id: 2, route: "São Paulo → Madri", airline: "Iberia", price: 2890, originalPrice: 4100, discount: 30, dates: "Fev - Mar 2025", stops: "Direto", tag: "Cashback 10%", image: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=600", destination: "MAD", link: "" },
   { id: 3, route: "São Paulo → Nova York", airline: "American Airlines", price: 2490, originalPrice: 3800, discount: 34, dates: "Jan - Fev 2025", stops: "Direto", tag: "Promoção", image: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600", destination: "NYC", link: "" },
   { id: 4, route: "São Paulo → Amsterdam", airline: "KLM", price: 3590, originalPrice: 5500, discount: 35, dates: "Abr - Mai 2025", stops: "1 parada", tag: "Últimas Vagas", image: "https://images.unsplash.com/photo-1534351590666-13e3e96b5017?w=600", destination: "AMS", link: "" },
   { id: 5, route: "São Paulo → Lisboa", airline: "TAP Portugal", price: 2890, originalPrice: 4500, discount: 36, dates: "Mar - Abr 2025", stops: "Direto", tag: "Mais Barato", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=600", destination: "LIS", link: "" },
-  { id: 6, route: "Rio de Janeiro → Cancún", airline: "Aeromexico", price: 1990, originalPrice: 3200, discount: 38, dates: "Fev - Mar 2025", stops: "1 parada", tag: "Praia", image: "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?w=600", destination: "CUN", link: "" },
+  { id: 6, route: "São Paulo → Cancún", airline: "Aeromexico", price: 1990, originalPrice: 3200, discount: 38, dates: "Fev - Mar 2025", stops: "1 parada", tag: "Praia", image: "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?w=600", destination: "CUN", link: "" },
 ];
 
 const getTagForPrice = (price: number, transfers: number): string => {
@@ -37,7 +54,8 @@ const getTagColor = (tag: string) => {
 };
 
 export const FlightDealsSection = () => {
-  const { prices, isLoading, error, refetch } = useFlightPrices({ origin: "São Paulo" });
+  const [selectedOrigin, setSelectedOrigin] = useState("São Paulo");
+  const { prices, isLoading, error, refetch } = useFlightPrices({ origin: selectedOrigin });
 
   const handleDealClick = (link: string) => {
     window.open(link, "_blank");
@@ -48,11 +66,15 @@ export const FlightDealsSection = () => {
     window.open(link, "_blank");
   };
 
+  const handleOriginChange = (value: string) => {
+    setSelectedOrigin(value);
+  };
+
   // Transform API prices to display format or use fallback
   const deals = prices.length > 0 
     ? prices.slice(0, 6).map((price, index) => ({
         id: index + 1,
-        route: `São Paulo → ${price.destinationName}`,
+        route: `${selectedOrigin} → ${price.destinationName}`,
         airline: price.airline,
         price: price.price,
         originalPrice: Math.round(price.price * 1.4), // Estimate original price
@@ -64,7 +86,10 @@ export const FlightDealsSection = () => {
         destination: price.destination,
         link: price.link,
       }))
-    : fallbackDeals;
+    : fallbackDeals.map(deal => ({
+        ...deal,
+        route: `${selectedOrigin} → ${deal.route.split(' → ')[1]}`,
+      }));
 
   const isLive = prices.length > 0;
 
@@ -110,13 +135,42 @@ export const FlightDealsSection = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="text-muted-foreground max-w-2xl mx-auto"
+            className="text-muted-foreground max-w-2xl mx-auto mb-6"
           >
             {isLive 
               ? "Preços atualizados em tempo real direto das companhias aéreas."
               : "Passagens com até 50% de desconto. Preços atualizados diariamente."
             }
           </motion.p>
+
+          {/* Origin City Selector */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center justify-center gap-3 mb-2"
+          >
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              Saindo de:
+            </span>
+            <Select value={selectedOrigin} onValueChange={handleOriginChange}>
+              <SelectTrigger className="w-48 bg-card border-border">
+                <SelectValue placeholder="Selecione a cidade" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border z-50">
+                {originCities.map((city) => (
+                  <SelectItem key={city.value} value={city.value}>
+                    <span className="flex items-center gap-2">
+                      <span>{city.label}</span>
+                      <span className="text-xs text-muted-foreground">({city.code})</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </motion.div>
 
           {error && (
             <motion.div
