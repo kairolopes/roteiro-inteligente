@@ -17,8 +17,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { supabase } from "@/integrations/supabase/client";
+import { getNetlifyFunctionsUrl } from "@/lib/supabaseClient";
 import AuthModal from "@/components/auth/AuthModal";
 import { cn } from "@/lib/utils";
+
+// Use Netlify Functions if available
+const getPaymentUrl = () => {
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return `${getNetlifyFunctionsUrl()}/create-payment`;
+  }
+  return null; // Use supabase.functions.invoke
+};
 
 interface Plan {
   id: "credits_1" | "credits_5" | "subscription_monthly" | "subscription_annual";
@@ -137,11 +146,38 @@ const Pricing = () => {
     setLoadingPlan(planId);
 
     try {
-      const { data, error } = await supabase.functions.invoke("create-payment", {
-        body: { type: planId },
-      });
+      const paymentUrl = getPaymentUrl();
+      let data, error;
 
-      if (error) throw error;
+      if (paymentUrl) {
+        // Use Netlify Function
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        
+        const response = await fetch(paymentUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ type: planId }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Erro ao criar pagamento");
+        }
+
+        data = await response.json();
+      } else {
+        // Use Supabase Edge Function (fallback for development/Lovable)
+        const result = await supabase.functions.invoke("create-payment", {
+          body: { type: planId },
+        });
+        data = result.data;
+        error = result.error;
+        if (error) throw error;
+      }
 
       if (data?.checkout_url) {
         window.location.href = data.checkout_url;
