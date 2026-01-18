@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { MapPin, ExternalLink } from "lucide-react";
 
 // Travelpayouts Marker ID
-const TRAVELPAYOUTS_MARKER = "489165";
+const TRAVELPAYOUTS_MARKER = "696718";
 
 interface FeaturedHotel {
   id: number;

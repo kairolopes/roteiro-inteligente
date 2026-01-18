@@ -142,7 +142,7 @@ serve(async (req) => {
         returnAt: flight.return_at,
         transfers: flight.transfers,
         flightNumber: flight.flight_number,
-        link: `https://www.aviasales.com${flight.link}?marker=489165`,
+        link: `https://www.aviasales.com${flight.link}?marker=696718`,
       }));
 
       return new Response(
@@ -177,7 +177,7 @@ serve(async (req) => {
             returnAt: flight.return_at,
             transfers: flight.transfers,
             flightNumber: flight.flight_number,
-            link: `https://www.aviasales.com${flight.link}?marker=489165`,
+            link: `https://www.aviasales.com${flight.link}?marker=696718`,
           };
         }
         return null;
