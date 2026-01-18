@@ -74,6 +74,15 @@ export function getBookingLink(context: BookingContext): string {
 // ============================================
 
 /**
+ * WayAway (Travelpayouts) - 50% revenue share + $10/WayAway Plus
+ */
+export function getWayAwayLink(context: BookingContext): string {
+  const destination = context.city || 'europe';
+  const cleanDestination = destination.toLowerCase().replace(/\s+/g, '-');
+  return `https://tp.media/r?marker=${TRAVELPAYOUTS_MARKER}&trs=267029&p=4114&u=https%3A%2F%2Fwww.wayaway.io%2Fflights%2F${encodeURIComponent(cleanDestination)}`;
+}
+
+/**
  * Aviasales (Travelpayouts) - Commission: varies by route
  */
 export function getAviasalesLink(context: BookingContext): string {
@@ -209,9 +218,17 @@ export const AFFILIATE_CONFIG = {
   
   flights: [
     {
+      id: "wayaway",
+      name: "WayAway",
+      icon: "plane",
+      color: "primary",
+      getLink: getWayAwayLink,
+      available: true,
+    },
+    {
       id: "aviasales",
       name: "Aviasales",
-      icon: "plane",
+      icon: "plane-takeoff",
       color: "green",
       getLink: getAviasalesLink,
       available: true,

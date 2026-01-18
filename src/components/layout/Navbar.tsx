@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import UserMenu from "@/components/auth/UserMenu";
 
 const navLinks = [
+  { name: "Passagens", href: "#passagens", icon: Plane },
   { name: "Destinos", href: "#destinos", icon: MapPin },
-  { name: "Como Funciona", href: "#como-funciona", icon: Plane },
-  { name: "Planejar Viagem", href: "#planejar", icon: MessageCircle },
+  { name: "Planejar Viagem", href: "/quiz", icon: MessageCircle },
 ];
 
 export function Navbar() {
