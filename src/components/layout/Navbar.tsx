@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import UserMenu from "@/components/auth/UserMenu";
 
 const navLinks = [
-  { name: "Passagens", href: "#passagens", icon: Plane },
+  { name: "Passagens", href: "/passagens", icon: Plane },
   { name: "Destinos", href: "#destinos", icon: MapPin },
   { name: "Planejar Viagem", href: "/quiz", icon: MessageCircle },
 ];
