@@ -1,7 +1,7 @@
 // Multi-Company Affiliate Links Generator
 // Travelpayouts Marker ID: 489165
 
-const TRAVELPAYOUTS_MARKER = "489165";
+const TRAVELPAYOUTS_MARKER = "696718";
 
 /**
  * Booking context for generating precise affiliate links
