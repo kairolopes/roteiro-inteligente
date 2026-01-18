@@ -77,9 +77,11 @@ export function getBookingLink(context: BookingContext): string {
  * WayAway (Travelpayouts) - 50% revenue share + $10/WayAway Plus
  */
 export function getWayAwayLink(context: BookingContext): string {
-  const destination = context.city || 'europe';
-  const cleanDestination = destination.toLowerCase().replace(/\s+/g, '-');
-  return `https://tp.media/r?marker=${TRAVELPAYOUTS_MARKER}&trs=267029&p=4114&u=https%3A%2F%2Fwww.wayaway.io%2Fflights%2F${encodeURIComponent(cleanDestination)}`;
+  const destination = context.city || 'anywhere';
+  const cleanDestination = destination.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+    .replace(/\s+/g, '-');
+  return `https://www.aviasales.com/search/${cleanDestination}?marker=${TRAVELPAYOUTS_MARKER}`;
 }
 
 /**
