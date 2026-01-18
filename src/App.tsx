@@ -11,6 +11,7 @@ import Itinerary from "./pages/Itinerary";
 import MyItineraries from "./pages/MyItineraries";
 import Profile from "./pages/Profile";
 import Pricing from "./pages/Pricing";
+import Passagens from "./pages/Passagens";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/passagens" element={<Passagens />} />
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/itinerary" element={<Itinerary />} />
