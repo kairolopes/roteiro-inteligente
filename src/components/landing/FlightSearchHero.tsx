@@ -1,9 +1,59 @@
 import { motion } from "framer-motion";
-import { Plane, MapPin, Calendar, Search, Sparkles, TrendingDown } from "lucide-react";
+import { Plane, MapPin, Calendar, Search, Sparkles, TrendingDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { getWayAwayLink } from "@/lib/affiliateLinks";
+import { cn } from "@/lib/utils";
+
+// Brazilian cities with IATA codes
+const brazilianCities = [
+  { name: "São Paulo", iata: "SAO" },
+  { name: "Rio de Janeiro", iata: "RIO" },
+  { name: "Brasília", iata: "BSB" },
+  { name: "Salvador", iata: "SSA" },
+  { name: "Fortaleza", iata: "FOR" },
+  { name: "Belo Horizonte", iata: "BHZ" },
+  { name: "Manaus", iata: "MAO" },
+  { name: "Curitiba", iata: "CWB" },
+  { name: "Recife", iata: "REC" },
+  { name: "Porto Alegre", iata: "POA" },
+  { name: "Goiânia", iata: "GYN" },
+  { name: "Florianópolis", iata: "FLN" },
+  { name: "Natal", iata: "NAT" },
+  { name: "Maceió", iata: "MCZ" },
+  { name: "Vitória", iata: "VIX" },
+  { name: "Belém", iata: "BEL" },
+  { name: "Campinas", iata: "VCP" },
+  { name: "Campo Grande", iata: "CGR" },
+  { name: "João Pessoa", iata: "JPA" },
+  { name: "Aracaju", iata: "AJU" },
+];
+
+// International destinations
+const internationalCities = [
+  { name: "Lisboa", iata: "LIS" },
+  { name: "Paris", iata: "CDG" },
+  { name: "Miami", iata: "MIA" },
+  { name: "Roma", iata: "FCO" },
+  { name: "Nova York", iata: "NYC" },
+  { name: "Buenos Aires", iata: "BUE" },
+  { name: "Cancún", iata: "CUN" },
+  { name: "Orlando", iata: "MCO" },
+  { name: "Londres", iata: "LON" },
+  { name: "Madri", iata: "MAD" },
+  { name: "Barcelona", iata: "BCN" },
+  { name: "Amsterdam", iata: "AMS" },
+  { name: "Dubai", iata: "DXB" },
+  { name: "Santiago", iata: "SCL" },
+  { name: "Montevidéu", iata: "MVD" },
+  { name: "Porto", iata: "OPO" },
+  { name: "Cidade do México", iata: "MEX" },
+  { name: "Lima", iata: "LIM" },
+  { name: "Bogotá", iata: "BOG" },
+  { name: "Los Angeles", iata: "LAX" },
+];
+
+const allCities = [...brazilianCities, ...internationalCities];
 
 const popularFlights = [
   { from: "São Paulo", to: "Lisboa", price: "R$ 2.890", discount: "-35%", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400" },
@@ -12,9 +62,114 @@ const popularFlights = [
   { from: "Brasília", to: "Roma", price: "R$ 3.290", discount: "-30%", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400" },
 ];
 
+interface CityAutocompleteProps {
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon: React.ReactNode;
+}
+
+const CityAutocomplete = ({ placeholder, value, onChange, icon }: CityAutocompleteProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [filteredCities, setFilteredCities] = useState<typeof allCities>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    onChange(inputValue);
+
+    if (inputValue.length > 0) {
+      const normalizedInput = inputValue.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      
+      const filtered = allCities.filter(city => {
+        const normalizedCity = city.name.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return normalizedCity.includes(normalizedInput) || 
+               city.iata.toLowerCase().includes(normalizedInput);
+      });
+      
+      setFilteredCities(filtered.slice(0, 8));
+      setIsOpen(filtered.length > 0);
+    } else {
+      setFilteredCities([]);
+      setIsOpen(false);
+    }
+  };
+
+  const handleSelectCity = (city: typeof allCities[0]) => {
+    onChange(city.name);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+        {icon}
+      </div>
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={handleInputChange}
+        onFocus={() => value.length > 0 && filteredCities.length > 0 && setIsOpen(true)}
+        className={cn(
+          "flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+          "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+          "placeholder:text-muted-foreground",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          "pl-10"
+        )}
+      />
+      
+      {isOpen && filteredCities.length > 0 && (
+        <div 
+          ref={dropdownRef}
+          className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden"
+        >
+          {filteredCities.map((city, index) => (
+            <button
+              key={`${city.iata}-${index}`}
+              type="button"
+              onClick={() => handleSelectCity(city)}
+              className="w-full px-4 py-3 text-left hover:bg-accent flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">{city.name}</span>
+              </div>
+              <span className="text-xs text-muted-foreground font-mono">{city.iata}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const FlightSearchHero = () => {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
+  const [date, setDate] = useState("");
 
   const handleSearch = () => {
     const link = getWayAwayLink({ 
@@ -94,32 +249,31 @@ export const FlightSearchHero = () => {
             className="bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-4 md:p-6 shadow-xl mb-12"
           >
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="De onde?"
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  className="pl-10 h-12 bg-background"
-                />
-              </div>
-              <div className="relative">
-                <Plane className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="Para onde?"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className="pl-10 h-12 bg-background"
-                />
-              </div>
+              <CityAutocomplete
+                placeholder="De onde?"
+                value={origin}
+                onChange={setOrigin}
+                icon={<MapPin className="w-5 h-5" />}
+              />
+              <CityAutocomplete
+                placeholder="Para onde?"
+                value={destination}
+                onChange={setDestination}
+                icon={<Plane className="w-5 h-5" />}
+              />
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Quando?"
-                  className="pl-10 h-12 bg-background"
-                  onFocus={(e) => e.target.type = 'date'}
-                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text' }}
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={cn(
+                    "flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+                    "placeholder:text-muted-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "pl-10",
+                    !date && "text-muted-foreground"
+                  )}
                 />
               </div>
               <Button 
