@@ -41,12 +41,12 @@ export function Footer() {
                 <Plane className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="text-xl font-bold">
-                Travel<span className="text-primary">Plan</span>
+                Viage com <span className="text-primary">Sofia</span>
               </span>
             </a>
             <p className="text-sm text-muted-foreground mb-6">
               Planeje sua viagem dos sonhos com inteligência artificial. 
-              Roteiros personalizados para a Europa.
+              Roteiros personalizados para destinos pelo mundo.
             </p>
             <div className="flex gap-4">
               {socialLinks.map((social) => (
@@ -106,7 +106,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} TravelPlan AI. Todos os direitos reservados.
+            © {new Date().getFullYear()} Viage com Sofia. Todos os direitos reservados.
           </p>
           <p className="text-sm text-muted-foreground">
             Feito com ❤️ para viajantes sonhadores

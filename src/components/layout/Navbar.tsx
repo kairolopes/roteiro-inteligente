@@ -32,7 +32,7 @@ export function Navbar() {
               </div>
             </div>
             <span className="text-lg lg:text-xl font-bold text-foreground">
-              Travel<span className="text-primary">Plan</span>
+              Viage com <span className="text-primary">Sofia</span>
             </span>
           </a>
 
