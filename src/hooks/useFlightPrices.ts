@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface FlightPrice {
   origin: string;
@@ -14,6 +13,15 @@ export interface FlightPrice {
   link: string;
 }
 
+interface CacheEntry {
+  prices: FlightPrice[];
+  timestamp: number;
+}
+
+// Cache global para persistir entre re-renders e mudanças de componente
+const priceCache = new Map<string, CacheEntry>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
 interface UseFlightPricesOptions {
   origin?: string;
   destination?: string;
@@ -25,6 +33,7 @@ interface UseFlightPricesResult {
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
+  fromCache: boolean;
 }
 
 export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlightPricesResult {
@@ -32,18 +41,35 @@ export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlight
   const [prices, setPrices] = useState<FlightPrice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState(false);
 
-  const fetchPrices = async () => {
+  const getCacheKey = useCallback(() => {
+    return `${origin}|${destination || 'all'}`;
+  }, [origin, destination]);
+
+  const fetchPrices = useCallback(async (forceRefresh = false) => {
     if (!enabled) return;
+
+    const cacheKey = getCacheKey();
+    const cached = priceCache.get(cacheKey);
+    const now = Date.now();
+
+    // Usar cache se válido e não forçando refresh
+    if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_TTL) {
+      setPrices(cached.prices);
+      setFromCache(true);
+      setError(null);
+      return;
+    }
     
     setIsLoading(true);
     setError(null);
+    setFromCache(false);
 
     try {
       const params = new URLSearchParams({ origin });
       if (destination) params.append('destination', destination);
 
-      // Use direct fetch with query params
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flight-prices?${params.toString()}`,
         {
@@ -64,7 +90,14 @@ export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlight
         throw new Error(result.error);
       }
 
-      setPrices(result.prices || []);
+      const fetchedPrices = result.prices || [];
+      setPrices(fetchedPrices);
+
+      // Salvar no cache
+      priceCache.set(cacheKey, {
+        prices: fetchedPrices,
+        timestamp: now,
+      });
     } catch (err) {
       console.error('Error fetching flight prices:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch prices');
@@ -72,13 +105,17 @@ export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlight
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [enabled, getCacheKey, origin, destination]);
 
   useEffect(() => {
     fetchPrices();
-  }, [origin, destination, enabled]);
+  }, [fetchPrices]);
 
-  return { prices, isLoading, error, refetch: fetchPrices };
+  const refetch = useCallback(() => {
+    fetchPrices(true);
+  }, [fetchPrices]);
+
+  return { prices, isLoading, error, refetch, fromCache };
 }
 
 // Destination images for UI
