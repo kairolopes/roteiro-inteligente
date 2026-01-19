@@ -93,7 +93,8 @@ export function getHotellookLink(context: BookingContext): string {
  * Main flight aggregator
  */
 export function getAviasalesLink(context: BookingContext): string {
-  const destination = context.city || 'anywhere';
+  // Priorizar código IATA se disponível
+  const destination = context.destinationIata || context.city || 'anywhere';
   const cleanDestination = destination.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-');
@@ -115,7 +116,8 @@ export function getAviasalesLink(context: BookingContext): string {
  * Best for cashback program
  */
 export function getWayAwayLink(context: BookingContext): string {
-  const destination = context.city || 'anywhere';
+  // Priorizar código IATA se disponível
+  const destination = context.destinationIata || context.city || 'anywhere';
   const cleanDestination = destination.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-');
