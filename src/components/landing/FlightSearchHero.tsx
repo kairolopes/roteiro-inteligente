@@ -3,6 +3,7 @@ import { Plane, MapPin, Calendar, Sparkles, TrendingDown, ExternalLink } from "l
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
+import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { cn } from "@/lib/utils";
 
 // Brazilian cities with IATA codes
@@ -178,14 +179,37 @@ export const FlightSearchHero = () => {
   });
 
   const handleAviasalesSearch = () => {
+    trackAffiliateClick({
+      partnerId: "aviasales",
+      partnerName: "Aviasales",
+      category: "flights",
+      component: "FlightSearchHero",
+      destination: destination || "europe",
+      origin: origin || undefined,
+    });
     window.open(getAviasalesLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
   const handleSkyscannerSearch = () => {
+    trackAffiliateClick({
+      partnerId: "skyscanner",
+      partnerName: "Skyscanner",
+      category: "flights",
+      component: "FlightSearchHero",
+      destination: destination || "europe",
+      origin: origin || undefined,
+    });
     window.open(getSkyscannerLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
   const handleFlightClick = (to: string, provider: "aviasales" | "skyscanner") => {
+    trackAffiliateClick({
+      partnerId: provider,
+      partnerName: provider === "aviasales" ? "Aviasales" : "Skyscanner",
+      category: "flights",
+      component: "FlightSearchHero-PopularFlights",
+      destination: to,
+    });
     const context = { city: to };
     const link = provider === "aviasales" ? getAviasalesLink(context) : getSkyscannerLink(context);
     window.open(link, "_blank", "noopener,noreferrer");

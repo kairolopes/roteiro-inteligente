@@ -14,6 +14,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
 import { FlightCompareButtons } from "@/components/flights/FlightCompareButtons";
+import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import {
   Select,
   SelectContent,
@@ -114,17 +115,41 @@ const Passagens = () => {
   }, [searchOrigin, searchDestination, priceRange, selectedAirlines, selectedStops, sortBy]);
 
   const handleDealClick = (deal: typeof allFlightDeals[0], provider: "aviasales" | "skyscanner") => {
+    trackAffiliateClick({
+      partnerId: provider,
+      partnerName: provider === "aviasales" ? "Aviasales" : "Skyscanner",
+      category: "flights",
+      component: "Passagens-DealCard",
+      destination: deal.to,
+      origin: deal.from,
+    });
     const context = { city: deal.to, departureCity: deal.from };
     const link = provider === "aviasales" ? getAviasalesLink(context) : getSkyscannerLink(context);
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
   const handleAviasalesSearch = () => {
+    trackAffiliateClick({
+      partnerId: "aviasales",
+      partnerName: "Aviasales",
+      category: "flights",
+      component: "Passagens-Search",
+      destination: searchDestination || "europe",
+      origin: searchOrigin || undefined,
+    });
     const context = { city: searchDestination || "europe", departureCity: searchOrigin || undefined };
     window.open(getAviasalesLink(context), "_blank", "noopener,noreferrer");
   };
 
   const handleSkyscannerSearch = () => {
+    trackAffiliateClick({
+      partnerId: "skyscanner",
+      partnerName: "Skyscanner",
+      category: "flights",
+      component: "Passagens-Search",
+      destination: searchDestination || "europe",
+      origin: searchOrigin || undefined,
+    });
     const context = { city: searchDestination || "europe", departureCity: searchOrigin || undefined };
     window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
   };

@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_clicks: {
+        Row: {
+          category: string
+          component: string | null
+          created_at: string
+          destination: string | null
+          id: string
+          origin: string | null
+          partner_id: string
+          partner_name: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          component?: string | null
+          created_at?: string
+          destination?: string | null
+          id?: string
+          origin?: string | null
+          partner_id: string
+          partner_name: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          component?: string | null
+          created_at?: string
+          destination?: string | null
+          id?: string
+          origin?: string | null
+          partner_id?: string
+          partner_name?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       places_cache: {
         Row: {
           address: string | null
