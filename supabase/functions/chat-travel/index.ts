@@ -35,6 +35,32 @@ IMPORTANTE:
 - Considere restrições alimentares e de mobilidade mencionadas
 - Adapte sugestões de acordo com a cultura e costumes locais do destino`;
 
+// Helper para delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Função de fetch com retry automático para rate limits
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3
+): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url, options);
+    
+    if (response.status === 429) {
+      const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+      console.log(`Rate limit hit, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+      await delay(waitTime);
+      continue;
+    }
+    
+    return response;
+  }
+  
+  // Após todas as tentativas, retorna resposta de rate limit
+  return new Response(null, { status: 429 });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -141,21 +167,25 @@ serve(async (req) => {
 
     const systemPrompt = TRAVEL_SYSTEM_PROMPT + contextMessage;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-        "Content-Type": "application/json",
+    const response = await fetchWithRetry(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gemini-2.0-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages,
+          ],
+          stream: true,
+        }),
       },
-      body: JSON.stringify({
-        model: "gemini-2.0-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        stream: true,
-      }),
-    });
+      3 // máximo de 3 tentativas
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
