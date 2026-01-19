@@ -12,6 +12,7 @@ import MyItineraries from "./pages/MyItineraries";
 import Profile from "./pages/Profile";
 import Pricing from "./pages/Pricing";
 import Passagens from "./pages/Passagens";
+import FlightDetails from "./pages/FlightDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/passagens" element={<Passagens />} />
+            <Route path="/passagens/:origem/:destino/:data" element={<FlightDetails />} />
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/itinerary" element={<Itinerary />} />
