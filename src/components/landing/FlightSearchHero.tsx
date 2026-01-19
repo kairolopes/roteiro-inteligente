@@ -2,11 +2,10 @@ import { motion } from "framer-motion";
 import { Plane, MapPin, Calendar, TrendingDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { getAviasalesLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink, getSkyscannerLink, BookingContext } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { useFlightPrices, FlightPrice } from "@/hooks/useFlightPrices";
 import { cn } from "@/lib/utils";
-import { FlightCompareModal, FlightCompareData } from "@/components/flights/FlightCompareModal";
 
 // Brazilian cities with IATA codes
 const brazilianCities = [
@@ -180,8 +179,6 @@ export const FlightSearchHero = () => {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
-  const [selectedFlight, setSelectedFlight] = useState<FlightCompareData | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch real prices from API
   const { prices, isLoading } = useFlightPrices({ origin: 'São Paulo' });
@@ -224,15 +221,24 @@ export const FlightSearchHero = () => {
   };
 
   const handleFlightClick = (flight: typeof popularFlightsWithPrices[0]) => {
-    setSelectedFlight({
-      origin: flight.from,
+    const context: BookingContext = {
+      city: flight.to,
       originIata: 'SAO',
-      destination: flight.to,
       destinationIata: flight.apiIata,
-      price: flight.price,
-      departureAt: flight.departureAt,
+      activityDate: flight.departureAt?.split('T')[0],
+    };
+
+    trackAffiliateClick({
+      partnerId: "skyscanner",
+      partnerName: "Skyscanner Brasil",
+      category: "flights",
+      component: "FlightSearchHero",
+      destination: flight.to,
+      origin: "São Paulo",
     });
-    setIsModalOpen(true);
+
+    // Abre direto no Skyscanner
+    window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -383,11 +389,6 @@ export const FlightSearchHero = () => {
         </div>
       </div>
 
-      <FlightCompareModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        flight={selectedFlight}
-      />
     </section>
   );
 };
