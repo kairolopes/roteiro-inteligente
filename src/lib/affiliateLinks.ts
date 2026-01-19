@@ -1,7 +1,24 @@
 // Multi-Company Affiliate Links Generator
-// Travelpayouts Marker ID: 489165
+// Travelpayouts Marker ID: 696718
+// Focus: Brazilian Market
 
 const TRAVELPAYOUTS_MARKER = "696718";
+
+// ============================================
+// PARTNER IDs - Configure here when approved
+// ============================================
+const PARTNER_IDS = {
+  // Travelpayouts approved
+  hotellook: TRAVELPAYOUTS_MARKER,
+  aviasales: TRAVELPAYOUTS_MARKER,
+  wayaway: TRAVELPAYOUTS_MARKER, // Using same marker, update if you get specific trs ID
+  getyourguide: TRAVELPAYOUTS_MARKER, // Update with your GYG Partner ID when received
+  
+  // Pending approval - add IDs when approved
+  skyscanner: "", // Add Skyscanner associateId when approved
+  kayak: "", // Add KAYAK partner ID when approved
+  booking: "", // Add Booking.com aid when approved via Travelpayouts
+};
 
 /**
  * Booking context for generating precise affiliate links
@@ -14,6 +31,9 @@ export interface BookingContext {
   activityName?: string;
   activityDate?: string; // Format: "YYYY-MM-DD"
   location?: string;
+  origin?: string; // For flights
+  originIata?: string;
+  destinationIata?: string;
 }
 
 /**
@@ -35,7 +55,9 @@ export interface AffiliateCompany {
   icon: string;
   color: string;
   getLink: (context: BookingContext) => string;
-  available: boolean; // Whether the affiliate is approved/active
+  available: boolean;
+  requiresId?: boolean;
+  description?: string;
 }
 
 // ============================================
@@ -43,85 +65,103 @@ export interface AffiliateCompany {
 // ============================================
 
 /**
- * Hotellook (Travelpayouts) - Commission: ~5%
+ * Hotellook (Travelpayouts) - APPROVED ✅
+ * Commission: ~5%
+ * Popular in Brazil: Aggregates Booking.com, Hotels.com, etc.
  */
 export function getHotellookLink(context: BookingContext): string {
   const params = new URLSearchParams({
-    marker: TRAVELPAYOUTS_MARKER,
+    marker: PARTNER_IDS.hotellook,
     destination: context.city,
+    language: "pt",
+    currency: "BRL",
   });
   if (context.checkIn) params.set("checkIn", context.checkIn);
   if (context.checkOut) params.set("checkOut", context.checkOut);
   return `https://search.hotellook.com/?${params.toString()}`;
 }
 
-/**
- * Booking.com (via Travelpayouts) - Pending approval
- */
-export function getBookingLink(context: BookingContext): string {
-  const params = new URLSearchParams({
-    aid: TRAVELPAYOUTS_MARKER,
-    ss: context.city,
-  });
-  if (context.checkIn) params.set("checkin", context.checkIn);
-  if (context.checkOut) params.set("checkout", context.checkOut);
-  return `https://www.booking.com/searchresults.html?${params.toString()}`;
-}
-
-
 // ============================================
 // FLIGHT AFFILIATE LINKS
 // ============================================
 
 /**
- * WayAway (Travelpayouts) - 50% revenue share + $10/WayAway Plus
+ * Aviasales (Travelpayouts) - APPROVED ✅
+ * Commission: varies by route
+ * Main flight aggregator
+ */
+export function getAviasalesLink(context: BookingContext): string {
+  const destination = context.city || 'anywhere';
+  const cleanDestination = destination.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '-');
+  
+  const params = new URLSearchParams({
+    marker: PARTNER_IDS.aviasales,
+  });
+  
+  if (context.activityDate) params.set("depart_date", context.activityDate);
+  
+  return `https://www.aviasales.com/search/${cleanDestination}?${params.toString()}`;
+}
+
+/**
+ * WayAway (Travelpayouts) - APPROVED ✅
+ * 50% revenue share + $10/WayAway Plus subscription
+ * Best for cashback program
  */
 export function getWayAwayLink(context: BookingContext): string {
   const destination = context.city || 'anywhere';
   const cleanDestination = destination.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-');
-  return `https://www.aviasales.com/search/${cleanDestination}?marker=${TRAVELPAYOUTS_MARKER}`;
+  
+  return `https://www.aviasales.com/search/${cleanDestination}?marker=${PARTNER_IDS.wayaway}`;
 }
 
 /**
- * Aviasales (Travelpayouts) - Commission: varies by route
- */
-export function getAviasalesLink(context: BookingContext): string {
-  const params = new URLSearchParams({
-    marker: TRAVELPAYOUTS_MARKER,
-  });
-  if (context.city) params.set("destination", context.city);
-  if (context.activityDate) params.set("depart_date", context.activityDate);
-  return `https://www.aviasales.com/?${params.toString()}`;
-}
-
-/**
- * Skyscanner - Commission: ~50% revenue share
- * Note: Skyscanner Travel APIs - sign up at partners.skyscanner.net
+ * Skyscanner - PENDING ⏳
+ * Apply at: partners.skyscanner.net or FlexOffers
+ * Popular in Brazil - recognized brand
  */
 export function getSkyscannerLink(context: BookingContext): string {
+  if (!PARTNER_IDS.skyscanner) {
+    // Fallback to non-affiliate link
+    const destination = context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'anywhere';
+    return `https://www.skyscanner.com.br/transport/flights/bra/${destination.toLowerCase()}/`;
+  }
+  
   const params = new URLSearchParams({
+    associateId: PARTNER_IDS.skyscanner,
     locale: "pt-BR",
     market: "BR",
-    currency: "EUR",
+    currency: "BRL",
   });
-  if (context.city) params.set("destination", context.city);
+  
   if (context.activityDate) params.set("outboundDate", context.activityDate);
-  // Add affiliate tag when approved - replace with your associate ID
-  return `https://www.skyscanner.com.br/transport/flights/bra/${encodeURIComponent(context.city.toLowerCase().substring(0, 3))}/?${params.toString()}`;
+  
+  const destination = context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'anywhere';
+  return `https://www.skyscanner.com.br/transport/flights/bra/${destination.toLowerCase()}/?${params.toString()}`;
 }
 
 /**
- * KAYAK - Commission: CPC model
- * Note: KAYAK Partner Program
+ * KAYAK - PENDING ⏳
+ * CPC model via Travelpayouts or direct
+ * Popular in Brazil
  */
 export function getKayakLink(context: BookingContext): string {
+  const destination = context.city || 'anywhere';
   const params = new URLSearchParams({
     sort: "bestflight_a",
   });
   if (context.activityDate) params.set("depart", context.activityDate);
-  return `https://www.kayak.com.br/flights/-${encodeURIComponent(context.city)}?${params.toString()}`;
+  
+  // Add affiliate tracking when approved
+  if (PARTNER_IDS.kayak) {
+    params.set("a", PARTNER_IDS.kayak);
+  }
+  
+  return `https://www.kayak.com.br/flights/-${encodeURIComponent(destination)}?${params.toString()}`;
 }
 
 // ============================================
@@ -129,73 +169,28 @@ export function getKayakLink(context: BookingContext): string {
 // ============================================
 
 /**
- * GetYourGuide (Travelpayouts) - Commission: ~8%
+ * GetYourGuide (Travelpayouts) - APPROVED ✅
+ * Commission: ~8%
+ * Great for tours and activities
  */
 export function getGetYourGuideLink(context: BookingContext): string {
   const query = context.activityName 
     ? `${context.activityName} ${context.city}` 
     : context.city;
+  
   const params = new URLSearchParams({
     q: query,
-    partner_id: TRAVELPAYOUTS_MARKER,
+    partner_id: PARTNER_IDS.getyourguide,
   });
+  
   if (context.activityDate) params.set("date", context.activityDate);
+  
   return `https://www.getyourguide.com/s/?${params.toString()}`;
-}
-
-/**
- * Viator (Alternative) - Commission: ~8%
- */
-export function getViatorLink(context: BookingContext): string {
-  const query = context.activityName 
-    ? `${context.activityName} ${context.city}` 
-    : context.city;
-  const params = new URLSearchParams({
-    text: query,
-    pid: TRAVELPAYOUTS_MARKER,
-  });
-  return `https://www.viator.com/searchResults/all?${params.toString()}`;
-}
-
-// ============================================
-// CAR RENTAL AFFILIATE LINKS
-// ============================================
-
-/**
- * RentalCars (Travelpayouts) - Commission: ~4-6%
- */
-export function getRentalCarsLink(context: BookingContext): string {
-  const params = new URLSearchParams({
-    affiliateCode: TRAVELPAYOUTS_MARKER,
-    preflang: "pt",
-    prefcurrency: "EUR",
-    searchLocation: context.city,
-  });
-  if (context.checkIn) params.set("driversAge", "30");
-  if (context.checkIn) params.set("pickupDate", context.checkIn);
-  if (context.checkOut) params.set("dropoffDate", context.checkOut);
-  return `https://www.rentalcars.com/?${params.toString()}`;
-}
-
-// ============================================
-// TRAVEL INSURANCE AFFILIATE LINKS
-// ============================================
-
-/**
- * TravelInsurance (Travelpayouts) - Commission: varies
- */
-export function getTravelInsuranceLink(context: BookingContext): string {
-  const params = new URLSearchParams({
-    marker: TRAVELPAYOUTS_MARKER,
-    destination: context.country || context.city,
-  });
-  if (context.checkIn) params.set("startDate", context.checkIn);
-  if (context.checkOut) params.set("endDate", context.checkOut);
-  return `https://www.travelinsurance.com/?${params.toString()}`;
 }
 
 // ============================================
 // AFFILIATE CONFIGURATION BY CATEGORY
+// Brazilian Market Focus
 // ============================================
 
 export const AFFILIATE_CONFIG = {
@@ -203,53 +198,52 @@ export const AFFILIATE_CONFIG = {
     {
       id: "hotellook",
       name: "Hotellook",
+      description: "Compara Booking, Hotels.com e mais",
       icon: "hotel",
-      color: "purple",
+      color: "primary",
       getLink: getHotellookLink,
-      available: true,
-    },
-    {
-      id: "booking",
-      name: "Booking.com",
-      icon: "building",
-      color: "blue",
-      getLink: getBookingLink,
       available: true,
     },
   ] as AffiliateCompany[],
   
   flights: [
     {
-      id: "wayaway",
-      name: "WayAway",
+      id: "aviasales",
+      name: "Aviasales",
+      description: "Melhor preço garantido",
       icon: "plane",
       color: "primary",
-      getLink: getWayAwayLink,
+      getLink: getAviasalesLink,
       available: true,
     },
     {
-      id: "aviasales",
-      name: "Aviasales",
-      icon: "plane-takeoff",
-      color: "green",
-      getLink: getAviasalesLink,
+      id: "wayaway",
+      name: "WayAway",
+      description: "Ganhe cashback em voos",
+      icon: "sparkles",
+      color: "amber",
+      getLink: getWayAwayLink,
       available: true,
     },
     {
       id: "skyscanner",
       name: "Skyscanner",
+      description: "Compare milhares de voos",
       icon: "search",
       color: "cyan",
       getLink: getSkyscannerLink,
       available: false, // Enable when Skyscanner Partners approved
+      requiresId: true,
     },
     {
       id: "kayak",
       name: "KAYAK",
+      description: "Buscador popular no Brasil",
       icon: "compass",
       color: "orange",
       getLink: getKayakLink,
       available: false, // Enable when KAYAK Partners approved
+      requiresId: true,
     },
   ] as AffiliateCompany[],
   
@@ -257,43 +251,32 @@ export const AFFILIATE_CONFIG = {
     {
       id: "getyourguide",
       name: "GetYourGuide",
+      description: "Tours e experiências",
       icon: "ticket",
       color: "blue",
       getLink: getGetYourGuideLink,
       available: true,
     },
-    {
-      id: "viator",
-      name: "Viator",
-      icon: "map",
-      color: "orange",
-      getLink: getViatorLink,
-      available: true,
-    },
-  ] as AffiliateCompany[],
-  
-  carRental: [
-    {
-      id: "rentalcars",
-      name: "RentalCars",
-      icon: "car",
-      color: "emerald",
-      getLink: getRentalCarsLink,
-      available: true,
-    },
-  ] as AffiliateCompany[],
-  
-  insurance: [
-    {
-      id: "travelinsurance",
-      name: "Seguro Viagem",
-      icon: "shield",
-      color: "sky",
-      getLink: getTravelInsuranceLink,
-      available: true,
-    },
   ] as AffiliateCompany[],
 };
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Check if a partner is properly configured
+ */
+export function isPartnerConfigured(partnerId: keyof typeof PARTNER_IDS): boolean {
+  return Boolean(PARTNER_IDS[partnerId] && PARTNER_IDS[partnerId].length > 0);
+}
+
+/**
+ * Get all available partners for a category
+ */
+export function getAvailablePartners(category: keyof typeof AFFILIATE_CONFIG): AffiliateCompany[] {
+  return AFFILIATE_CONFIG[category].filter(partner => partner.available);
+}
 
 // Legacy functions for backwards compatibility
 export function getHotelLink(city: string, hotelName?: string): string {

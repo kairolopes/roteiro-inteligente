@@ -4,12 +4,12 @@ import {
   Bed, 
   Plane, 
   Ticket, 
-  Car, 
-  Shield, 
   ChevronDown,
-  Building,
   MapPin,
-  ExternalLink
+  ExternalLink,
+  Sparkles,
+  Search,
+  Compass
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
 import { 
@@ -31,46 +31,34 @@ interface AffiliateButtonsProps {
 
 const iconMap: Record<string, typeof Bed> = {
   hotel: Bed,
-  building: Building,
   plane: Plane,
-  search: Plane, // Skyscanner
-  compass: Plane, // KAYAK
+  sparkles: Sparkles,
+  search: Search,
+  compass: Compass,
   ticket: Ticket,
   map: MapPin,
-  car: Car,
-  shield: Shield,
 };
 
 const colorClasses: Record<string, { bg: string; hover: string; text: string }> = {
-  purple: {
-    bg: "bg-purple-500/10",
-    hover: "hover:bg-purple-500/20",
-    text: "text-purple-600 dark:text-purple-400",
+  primary: {
+    bg: "bg-primary/10",
+    hover: "hover:bg-primary/20",
+    text: "text-primary",
   },
   blue: {
     bg: "bg-blue-500/10",
     hover: "hover:bg-blue-500/20",
     text: "text-blue-600 dark:text-blue-400",
   },
-  green: {
-    bg: "bg-green-500/10",
-    hover: "hover:bg-green-500/20",
-    text: "text-green-600 dark:text-green-400",
+  amber: {
+    bg: "bg-amber-500/10",
+    hover: "hover:bg-amber-500/20",
+    text: "text-amber-600 dark:text-amber-400",
   },
   orange: {
     bg: "bg-orange-500/10",
     hover: "hover:bg-orange-500/20",
     text: "text-orange-600 dark:text-orange-400",
-  },
-  emerald: {
-    bg: "bg-emerald-500/10",
-    hover: "hover:bg-emerald-500/20",
-    text: "text-emerald-600 dark:text-emerald-400",
-  },
-  sky: {
-    bg: "bg-sky-500/10",
-    hover: "hover:bg-sky-500/20",
-    text: "text-sky-600 dark:text-sky-400",
   },
   cyan: {
     bg: "bg-cyan-500/10",
@@ -136,7 +124,6 @@ const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsP
 
   // Determine which affiliate categories apply to this activity
   const getRelevantCategories = (): { key: string; label: string; companies: AffiliateCompany[] }[] => {
-    const context = buildContext();
     const categories: { key: string; label: string; companies: AffiliateCompany[] }[] = [];
     
     if (activity.category === "accommodation") {
@@ -150,12 +137,6 @@ const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsP
       const availableFlights = AFFILIATE_CONFIG.flights.filter(c => c.available);
       if (availableFlights.length > 0) {
         categories.push({ key: "flights", label: "Buscar Voos", companies: availableFlights });
-      }
-      
-      // Also show car rental for transport
-      const availableCars = AFFILIATE_CONFIG.carRental.filter(c => c.available);
-      if (availableCars.length > 0) {
-        categories.push({ key: "carRental", label: "Alugar Carro", companies: availableCars });
       }
     }
     

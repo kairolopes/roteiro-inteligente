@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import { Plane, MapPin, Calendar, Search, Sparkles, TrendingDown, Check } from "lucide-react";
+import { Plane, MapPin, Calendar, Search, Sparkles, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { getWayAwayLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink } from "@/lib/affiliateLinks";
 import { cn } from "@/lib/utils";
 
 // Brazilian cities with IATA codes
@@ -172,7 +172,7 @@ export const FlightSearchHero = () => {
   const [date, setDate] = useState("");
 
   const handleSearch = () => {
-    const link = getWayAwayLink({ 
+    const link = getAviasalesLink({ 
       city: destination || "europe",
       activityName: "flight search"
     });
@@ -180,7 +180,7 @@ export const FlightSearchHero = () => {
   };
 
   const handleFlightClick = (to: string) => {
-    const link = getWayAwayLink({ 
+    const link = getAviasalesLink({ 
       city: to,
       activityName: "flight deal"
     });
@@ -286,10 +286,10 @@ export const FlightSearchHero = () => {
               </Button>
             </div>
 
-            {/* Cashback badge */}
+            {/* Partner badge */}
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>Ganhe cashback em todas as reservas com WayAway Plus</span>
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>Comparamos preços de centenas de companhias aéreas</span>
             </div>
           </motion.div>
 
