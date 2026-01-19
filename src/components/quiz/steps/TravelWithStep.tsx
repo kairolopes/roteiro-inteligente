@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Users, Heart, Baby, Dog, Cat, PawPrint, Check, X } from "lucide-react";
 import { QuizOption } from "../QuizOption";
@@ -59,6 +60,46 @@ interface TravelWithStepProps {
 }
 
 export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
+  const hasRomanticStyle = answers.travelStyle.includes("romantic");
+  const hasFamilyStyle = answers.travelStyle.includes("family");
+  const hasSoloStyle = answers.travelStyle.includes("solo");
+
+  // Pre-selecionar companhia baseada no estilo de viagem
+  useEffect(() => {
+    if (hasRomanticStyle && answers.travelWith !== "couple") {
+      onUpdate("travelWith", "couple");
+    } else if (hasFamilyStyle && !answers.travelWith) {
+      onUpdate("travelWith", "family");
+    } else if (hasSoloStyle && !answers.travelWith) {
+      onUpdate("travelWith", "solo");
+    }
+  }, [hasRomanticStyle, hasFamilyStyle, hasSoloStyle]);
+
+  // Filtrar opções de companhia conforme o estilo escolhido
+  const filteredCompanions = useMemo(() => {
+    if (hasRomanticStyle) {
+      return companions.filter(c => c.id === "couple");
+    }
+    if (hasFamilyStyle) {
+      return companions.filter(c => c.id === "family" || c.id === "friends");
+    }
+    if (hasSoloStyle) {
+      return companions.filter(c => c.id === "solo");
+    }
+    return companions;
+  }, [hasRomanticStyle, hasFamilyStyle, hasSoloStyle]);
+
+  // Determinar mensagem informativa quando há apenas uma opção
+  const inferredMessage = useMemo(() => {
+    if (hasRomanticStyle) {
+      return { style: "romântica", companion: "Viagem em Casal" };
+    }
+    if (hasSoloStyle) {
+      return { style: "solo", companion: "Viagem Sozinho(a)" };
+    }
+    return null;
+  }, [hasRomanticStyle, hasSoloStyle]);
+
   const showChildrenQuestion = answers.travelWith === "friends" || answers.travelWith === "family";
 
   const toggleDietary = (id: string) => {
@@ -78,7 +119,6 @@ export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
 
   const handleCompanionSelect = (id: string) => {
     onUpdate("travelWith", id);
-    // Reset children question if not applicable
     if (id !== "friends" && id !== "family") {
       onUpdate("hasChildren", false);
     }
@@ -99,19 +139,37 @@ export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
           </h2>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {companions.map((companion) => (
-            <QuizOption
-              key={companion.id}
-              icon={companion.icon}
-              title={companion.title}
-              description={companion.description}
-              selected={answers.travelWith === companion.id}
-              onClick={() => handleCompanionSelect(companion.id)}
-              variant="compact"
-            />
-          ))}
-        </div>
+        {/* Se há apenas uma opção inferida do estilo, mostrar mensagem informativa */}
+        {inferredMessage && filteredCompanions.length === 1 ? (
+          <div className="text-center">
+            <p className="text-muted-foreground mb-4">
+              Como você escolheu viagem <span className="text-primary font-medium">{inferredMessage.style}</span>, 
+              entendemos que é uma viagem adequada!
+            </p>
+            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-xl border-2 border-primary bg-primary/10">
+              {(() => {
+                const Icon = filteredCompanions[0]?.icon;
+                return Icon ? <Icon className="w-6 h-6 text-primary" /> : null;
+              })()}
+              <span className="font-semibold text-lg">{inferredMessage.companion}</span>
+              <Check className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {filteredCompanions.map((companion) => (
+              <QuizOption
+                key={companion.id}
+                icon={companion.icon}
+                title={companion.title}
+                description={companion.description}
+                selected={answers.travelWith === companion.id}
+                onClick={() => handleCompanionSelect(companion.id)}
+                variant="compact"
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Children question - Conditional */}
