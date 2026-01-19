@@ -68,8 +68,8 @@ const Chat = () => {
       germany: "Alemanha", switzerland: "Suíça", surprise: "destino surpresa"
     };
     
-    const destinations = answers.destinations?.map(d => destLabels[d] || d).join(", ") || "Europa";
-    const initialMessage = `Olá! Acabei de responder o quiz e estou planejando uma viagem para ${destinations}. Pode me ajudar a criar um roteiro personalizado?`;
+    const destination = answers.destination ? (destLabels[answers.destination] || answers.destination) : "Europa";
+    const initialMessage = `Olá! Acabei de responder o quiz e estou planejando uma viagem para ${destination}. Pode me ajudar a criar um roteiro personalizado?`;
     
     await sendMessage(initialMessage, answers, true); // Pass true for isInitial
   };

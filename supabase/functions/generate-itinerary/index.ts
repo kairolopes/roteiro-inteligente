@@ -174,8 +174,8 @@ serve(async (req) => {
         surprise: "destino surpresa"
       };
       
-      if (quizAnswers.destinations?.length > 0) {
-        contextParts.push(`Destinos: ${quizAnswers.destinations.map((d: string) => destLabels[d] || d).join(", ")}`);
+      if (quizAnswers.destination) {
+        contextParts.push(`Destino: ${destLabels[quizAnswers.destination] || quizAnswers.destination}`);
       }
       
       const durationLabels: Record<string, number> = {

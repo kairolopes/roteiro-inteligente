@@ -62,7 +62,7 @@ interface TravelWithStepProps {
 export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
   const hasRomanticStyle = answers.travelStyle === "romantic";
   const hasFamilyStyle = answers.travelStyle === "family";
-  const hasSoloStyle = answers.travelStyle === "solo";
+  const hasSoloStyle = answers.travelStyle === "solo" || answers.travelStyle === "backpacker";
 
   // Pre-selecionar companhia baseada no estilo de viagem
   useEffect(() => {

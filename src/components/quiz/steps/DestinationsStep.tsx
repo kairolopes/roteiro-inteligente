@@ -200,20 +200,14 @@ interface DestinationsStepProps {
 export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
   const [activeRegion, setActiveRegion] = useState("all");
 
-  const toggleDestination = (id: string) => {
-    const current = answers.destinations;
-    if (current.includes(id)) {
-      onUpdate("destinations", current.filter((d) => d !== id));
-    } else {
-      onUpdate("destinations", [...current, id]);
-    }
+  // Seleção única de destino
+  const selectDestination = (id: string) => {
+    onUpdate("destination", id);
   };
 
   const filteredDestinations = activeRegion === "all" 
     ? destinations 
     : destinations.filter(d => d.region === activeRegion || d.region === "special");
-
-  const selectedCount = answers.destinations.length;
 
   return (
     <motion.div
@@ -224,16 +218,11 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
     >
       <div className="text-center mb-6">
         <h2 className="text-2xl lg:text-3xl font-bold mb-3">
-          Quais <span className="text-primary">destinos</span> te interessam?
+          Para qual <span className="text-primary">destino</span> você quer ir?
         </h2>
         <p className="text-muted-foreground">
-          Selecione um ou mais países que você gostaria de visitar.
+          Selecione o país que você gostaria de visitar.
         </p>
-        {selectedCount > 0 && (
-          <p className="text-sm text-primary mt-2 font-medium">
-            {selectedCount} destino{selectedCount > 1 ? "s" : ""} selecionado{selectedCount > 1 ? "s" : ""}
-          </p>
-        )}
       </div>
 
       {/* Region Filters */}
@@ -264,7 +253,7 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
       >
         <AnimatePresence mode="popLayout">
           {filteredDestinations.map((destination) => {
-            const isSelected = answers.destinations.includes(destination.id);
+            const isSelected = answers.destination === destination.id;
             
             return (
               <motion.button
@@ -276,7 +265,7 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
                 transition={{ duration: 0.2 }}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => toggleDestination(destination.id)}
+                onClick={() => selectDestination(destination.id)}
                 className={cn(
                   "relative overflow-hidden rounded-xl aspect-[4/3] group",
                   isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"

@@ -13,13 +13,9 @@ interface QuizSummaryProps {
 const labels: Record<string, Record<string, string>> = {
   travelStyle: {
     romantic: "Romântica",
-    adventure: "Aventura",
-    cultural: "Cultural",
-    gastronomy: "Gastronômica",
-    family: "Família",
-    party: "Festas",
-    photography: "Fotogênica",
-    relaxing: "Relaxante",
+    family: "Em Família",
+    solo: "Solo",
+    backpacker: "Mochilão",
   },
   accommodation: {
     luxury: "Luxo",
@@ -93,15 +89,15 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
       </div>
 
       <div className="glass-card rounded-2xl p-6 lg:p-8 space-y-6">
-        {/* Destinations */}
+        {/* Destination */}
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <MapPin className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h4 className="font-semibold mb-1">Destinos</h4>
+            <h4 className="font-semibold mb-1">Destino</h4>
             <p className="text-muted-foreground">
-              {answers.destinations.map((d) => labels.destinations[d]).join(", ") || "Não selecionado"}
+              {labels.destinations[answers.destination] || answers.destination || "Não selecionado"}
             </p>
           </div>
         </div>

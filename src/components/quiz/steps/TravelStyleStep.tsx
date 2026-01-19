@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Heart, Mountain, Palette, Utensils, Users, PartyPopper, Camera, Sparkles } from "lucide-react";
+import { Heart, Mountain, Users, Sparkles } from "lucide-react";
 import { QuizOption } from "../QuizOption";
 import { QuizAnswers } from "@/types/quiz";
 
@@ -11,46 +11,22 @@ const travelStyles = [
     description: "Lua de mel, aniversário ou escapada a dois",
   },
   {
-    id: "adventure",
-    icon: Mountain,
-    title: "Aventura",
-    description: "Trilhas, esportes e experiências radicais",
-  },
-  {
-    id: "cultural",
-    icon: Palette,
-    title: "Cultural",
-    description: "Museus, história, arte e arquitetura",
-  },
-  {
-    id: "gastronomy",
-    icon: Utensils,
-    title: "Gastronômica",
-    description: "Restaurantes, vinícolas e culinária local",
-  },
-  {
     id: "family",
     icon: Users,
-    title: "Família",
+    title: "Em Família",
     description: "Atividades para todas as idades",
   },
   {
-    id: "party",
-    icon: PartyPopper,
-    title: "Festas & Vida Noturna",
-    description: "Baladas, bares e muita diversão",
-  },
-  {
-    id: "photography",
-    icon: Camera,
-    title: "Fotogênica",
-    description: "Lugares instagramáveis e paisagens",
-  },
-  {
-    id: "relaxing",
+    id: "solo",
     icon: Sparkles,
-    title: "Relaxante",
-    description: "Spas, praias e descanso total",
+    title: "Solo",
+    description: "Aventura e descoberta individual",
+  },
+  {
+    id: "backpacker",
+    icon: Mountain,
+    title: "Mochilão",
+    description: "Viagem econômica e imersiva",
   },
 ];
 
