@@ -133,19 +133,19 @@ serve(async (req) => {
       }
 
       const prices: PriceResult[] = data.data.map((flight: any) => {
-        const linkSeparator = flight.link.includes('?') ? '&' : '?';
-        return {
-          origin: originCode,
-          destination: destInfo.code,
-          destinationName: destInfo.name,
-          price: flight.price,
-          airline: airlineNames[flight.airline] || flight.airline,
-          departureAt: flight.departure_at,
-          returnAt: flight.return_at,
-          transfers: flight.transfers,
-          flightNumber: flight.flight_number,
-          link: `https://www.aviasales.com${flight.link}${linkSeparator}marker=696718&locale=pt&currency=brl`,
-        };
+          const linkSeparator = flight.link.includes('?') ? '&' : '?';
+          return {
+            origin: originCode,
+            destination: destInfo.code,
+            destinationName: destInfo.name,
+            price: flight.price,
+            airline: airlineNames[flight.airline] || flight.airline,
+            departureAt: flight.departure_at,
+            returnAt: flight.return_at,
+            transfers: flight.transfers,
+            flightNumber: flight.flight_number,
+            link: `https://www.passagensaereas.com.br${flight.link}${linkSeparator}marker=696718`,
+          };
       });
 
       return new Response(
@@ -181,7 +181,7 @@ serve(async (req) => {
             returnAt: flight.return_at,
             transfers: flight.transfers,
             flightNumber: flight.flight_number,
-            link: `https://www.aviasales.com${flight.link}${linkSeparator}marker=696718&locale=pt&currency=brl`,
+            link: `https://www.passagensaereas.com.br${flight.link}${linkSeparator}marker=696718`,
           };
         }
         return null;
