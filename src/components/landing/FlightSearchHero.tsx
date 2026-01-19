@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Plane, MapPin, Calendar, Sparkles, TrendingDown, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink, getWayAwayLink } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { cn } from "@/lib/utils";
 
@@ -190,28 +190,28 @@ export const FlightSearchHero = () => {
     window.open(getAviasalesLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
-  const handleSkyscannerSearch = () => {
+  const handleWayAwaySearch = () => {
     trackAffiliateClick({
-      partnerId: "skyscanner",
-      partnerName: "Skyscanner",
+      partnerId: "wayaway",
+      partnerName: "WayAway",
       category: "flights",
       component: "FlightSearchHero",
       destination: destination || "europe",
       origin: origin || undefined,
     });
-    window.open(getSkyscannerLink(getSearchContext()), "_blank", "noopener,noreferrer");
+    window.open(getWayAwayLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
-  const handleFlightClick = (to: string, provider: "aviasales" | "skyscanner") => {
+  const handleFlightClick = (to: string, provider: "aviasales" | "wayaway") => {
     trackAffiliateClick({
       partnerId: provider,
-      partnerName: provider === "aviasales" ? "Aviasales" : "Skyscanner",
+      partnerName: provider === "aviasales" ? "Aviasales" : "WayAway",
       category: "flights",
       component: "FlightSearchHero-PopularFlights",
       destination: to,
     });
     const context = { city: to };
-    const link = provider === "aviasales" ? getAviasalesLink(context) : getSkyscannerLink(context);
+    const link = provider === "aviasales" ? getAviasalesLink(context) : getWayAwayLink(context);
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
@@ -315,12 +315,12 @@ export const FlightSearchHero = () => {
                   <ExternalLink className="w-4 h-4" />
                 </Button>
                 <Button 
-                  onClick={handleSkyscannerSearch}
+                  onClick={handleWayAwaySearch}
                   size="lg" 
-                  className="h-12 gap-2 text-base flex-1 bg-cyan-500 hover:bg-cyan-600"
+                  className="h-12 gap-2 text-base flex-1 bg-amber-500 hover:bg-amber-600"
                 >
-                  <Plane className="w-5 h-5" />
-                  Skyscanner
+                  <Sparkles className="w-5 h-5" />
+                  Cashback
                   <ExternalLink className="w-4 h-4" />
                 </Button>
               </div>
@@ -328,8 +328,8 @@ export const FlightSearchHero = () => {
 
             {/* Partner badge */}
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span>Compare preços em Aviasales e Skyscanner</span>
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>Compare preços + ganhe até 10% de cashback no WayAway</span>
             </div>
           </motion.div>
 
@@ -371,10 +371,10 @@ export const FlightSearchHero = () => {
                         Aviasales
                       </button>
                       <button
-                        onClick={() => handleFlightClick(flight.to, "skyscanner")}
-                        className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs py-1 px-2 rounded transition-colors"
+                        onClick={() => handleFlightClick(flight.to, "wayaway")}
+                        className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs py-1 px-2 rounded transition-colors"
                       >
-                        Skyscanner
+                        Cashback
                       </button>
                     </div>
                   </div>

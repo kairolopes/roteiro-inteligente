@@ -14,8 +14,8 @@ const PARTNER_IDS = {
   wayaway: TRAVELPAYOUTS_MARKER, // Using same marker, update if you get specific trs ID
   getyourguide: TRAVELPAYOUTS_MARKER, // Update with your GYG Partner ID when received
   
-  // Approved partners
-  skyscanner: "2734876", // Skyscanner Partners - APPROVED ✅
+  // Rejected partners
+  skyscanner: "", // Skyscanner - REJECTED ❌
   
   // Pending approval - add IDs when approved
   kayak: "", // Add KAYAK partner ID when approved
@@ -100,6 +100,8 @@ export function getAviasalesLink(context: BookingContext): string {
   
   const params = new URLSearchParams({
     marker: PARTNER_IDS.aviasales,
+    locale: "pt",
+    currency: "brl",
   });
   
   if (context.activityDate) params.set("depart_date", context.activityDate);
@@ -118,7 +120,13 @@ export function getWayAwayLink(context: BookingContext): string {
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-');
   
-  return `https://www.aviasales.com/search/${cleanDestination}?marker=${PARTNER_IDS.wayaway}`;
+  const params = new URLSearchParams({
+    marker: PARTNER_IDS.wayaway,
+    locale: "pt",
+    currency: "brl",
+  });
+  
+  return `https://www.aviasales.com/search/${cleanDestination}?${params.toString()}`;
 }
 
 /**
@@ -234,8 +242,8 @@ export const AFFILIATE_CONFIG = {
       icon: "search",
       color: "cyan",
       getLink: getSkyscannerLink,
-      available: true, // APPROVED ✅
-      requiresId: false,
+      available: false, // REJECTED ❌
+      requiresId: true,
     },
     {
       id: "kayak",

@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink, getWayAwayLink } from "@/lib/affiliateLinks";
 import { FlightCompareButtons } from "@/components/flights/FlightCompareButtons";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import {
@@ -114,17 +114,17 @@ const Passagens = () => {
     return filtered;
   }, [searchOrigin, searchDestination, priceRange, selectedAirlines, selectedStops, sortBy]);
 
-  const handleDealClick = (deal: typeof allFlightDeals[0], provider: "aviasales" | "skyscanner") => {
+  const handleDealClick = (deal: typeof allFlightDeals[0], provider: "aviasales" | "wayaway") => {
     trackAffiliateClick({
       partnerId: provider,
-      partnerName: provider === "aviasales" ? "Aviasales" : "Skyscanner",
+      partnerName: provider === "aviasales" ? "Aviasales" : "WayAway",
       category: "flights",
       component: "Passagens-DealCard",
       destination: deal.to,
       origin: deal.from,
     });
     const context = { city: deal.to, departureCity: deal.from };
-    const link = provider === "aviasales" ? getAviasalesLink(context) : getSkyscannerLink(context);
+    const link = provider === "aviasales" ? getAviasalesLink(context) : getWayAwayLink(context);
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
@@ -141,17 +141,17 @@ const Passagens = () => {
     window.open(getAviasalesLink(context), "_blank", "noopener,noreferrer");
   };
 
-  const handleSkyscannerSearch = () => {
+  const handleWayAwaySearch = () => {
     trackAffiliateClick({
-      partnerId: "skyscanner",
-      partnerName: "Skyscanner",
+      partnerId: "wayaway",
+      partnerName: "WayAway",
       category: "flights",
       component: "Passagens-Search",
       destination: searchDestination || "europe",
       origin: searchOrigin || undefined,
     });
     const context = { city: searchDestination || "europe", departureCity: searchOrigin || undefined };
-    window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
+    window.open(getWayAwayLink(context), "_blank", "noopener,noreferrer");
   };
 
   const toggleAirline = (airline: string) => {
@@ -323,9 +323,9 @@ const Passagens = () => {
                   <Plane className="w-4 h-4" />
                   Aviasales
                 </Button>
-                <Button onClick={handleSkyscannerSearch} size="lg" className="h-12 gap-2 flex-1 bg-cyan-500 hover:bg-cyan-600">
-                  <Plane className="w-4 h-4" />
-                  Skyscanner
+                <Button onClick={handleWayAwaySearch} size="lg" className="h-12 gap-2 flex-1 bg-amber-500 hover:bg-amber-600">
+                  <Sparkles className="w-4 h-4" />
+                  Cashback
                 </Button>
               </div>
             </div>
@@ -499,10 +499,11 @@ const Passagens = () => {
                             </Button>
                             <Button
                               size="sm"
-                              className="flex-1 text-xs bg-cyan-500 hover:bg-cyan-600 text-white"
-                              onClick={() => handleDealClick(deal, "skyscanner")}
+                              className="flex-1 text-xs bg-amber-500 hover:bg-amber-600 text-white"
+                              onClick={() => handleDealClick(deal, "wayaway")}
                             >
-                              Skyscanner
+                              <Sparkles className="w-3 h-3 mr-1" />
+                              Cashback
                             </Button>
                           </div>
                         </div>
@@ -531,16 +532,16 @@ const Passagens = () => {
                     </Button>
                     <Button
                       size="lg"
-                      onClick={handleSkyscannerSearch}
-                      className="gap-2 bg-cyan-500 hover:bg-cyan-600"
+                      onClick={handleWayAwaySearch}
+                      className="gap-2 bg-amber-500 hover:bg-amber-600"
                     >
-                      <Plane className="w-4 h-4" />
-                      Ver Mais no Skyscanner
+                      <Sparkles className="w-4 h-4" />
+                      Ganhe Cashback
                     </Button>
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground flex items-center justify-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-500" />
-                    Compare preços em múltiplos sites
+                    Compare preços + ganhe até 10% de cashback
                   </p>
                 </motion.div>
               )}
