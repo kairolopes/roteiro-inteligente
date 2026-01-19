@@ -178,7 +178,21 @@ export function getKayakBrasilLink(context: BookingContext): string {
   return `https://www.kayak.com.br/flights/${origin}-${dest}/${datePath}?sort=price_a`;
 }
 
-// Decolar removida - deep links não funcionam mais
+/**
+ * Decolar - Maior agência da América Latina
+ * Deep links não funcionam mais, redireciona para homepage de passagens
+ */
+export function getDecolarLink(context: BookingContext): string {
+  return 'https://www.decolar.com/passagens-aereas/';
+}
+
+/**
+ * 123Milhas - Comparador brasileiro popular
+ * Parcelamento em até 12x sem juros
+ */
+export function get123MilhasLink(context: BookingContext): string {
+  return 'https://123milhas.com/passagens-aereas';
+}
 
 /**
  * Google Flights - Calendário de preços
