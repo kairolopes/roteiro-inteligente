@@ -2,9 +2,10 @@ import { motion } from "framer-motion";
 import { Plane, MapPin, Calendar, TrendingDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { getAviasalesLink, getSkyscannerLink, BookingContext } from "@/lib/affiliateLinks";
+import { useNavigate } from "react-router-dom";
+import { getAviasalesLink } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
-import { useFlightPrices, FlightPrice } from "@/hooks/useFlightPrices";
+import { useFlightPrices } from "@/hooks/useFlightPrices";
 import { cn } from "@/lib/utils";
 
 // Brazilian cities with IATA codes
@@ -220,25 +221,24 @@ export const FlightSearchHero = () => {
     window.open(getAviasalesLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
+  const navigate = useNavigate();
+
   const handleFlightClick = (flight: typeof popularFlightsWithPrices[0]) => {
-    const context: BookingContext = {
-      city: flight.to,
-      originIata: 'SAO',
-      destinationIata: flight.apiIata,
-      activityDate: flight.departureAt?.split('T')[0],
-    };
-
-    trackAffiliateClick({
-      partnerId: "skyscanner",
-      partnerName: "Skyscanner Brasil",
-      category: "flights",
-      component: "FlightSearchHero",
-      destination: flight.to,
-      origin: "São Paulo",
+    // Formata a data para YYMMDD
+    const dateParam = flight.departureAt?.split('T')[0]?.replace(/-/g, '') || 
+      new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
+    
+    // Navega para página de detalhes da Sofia
+    navigate(`/passagens/SAO/${flight.apiIata}/${dateParam}`, {
+      state: {
+        origin: 'São Paulo',
+        originIata: 'SAO',
+        destination: flight.to,
+        destinationIata: flight.apiIata,
+        price: flight.price,
+        departureAt: flight.departureAt,
+      }
     });
-
-    // Abre direto no Skyscanner
-    window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
   };
 
   return (

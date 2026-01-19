@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plane, Clock, TrendingDown, ExternalLink, RefreshCw, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAviasalesLink } from "@/lib/affiliateLinks";
 import { useFlightPrices, destinationImages, formatFlightDate } from "@/hooks/useFlightPrices";
-import { FlightCompareModal, FlightCompareData } from "@/components/flights/FlightCompareModal";
 import {
   Select,
   SelectContent,
@@ -56,9 +56,8 @@ const getTagColor = (tag: string) => {
 
 export const FlightDealsSection = () => {
   const [selectedOrigin, setSelectedOrigin] = useState("São Paulo");
-  const [selectedFlight, setSelectedFlight] = useState<FlightCompareData | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const { prices, isLoading, error, refetch } = useFlightPrices({ origin: selectedOrigin });
+  const navigate = useNavigate();
 
   const handleDealClick = (deal: { 
     route: string; 
@@ -69,15 +68,21 @@ export const FlightDealsSection = () => {
     const originCode = originCities.find(c => c.value === selectedOrigin)?.code || 'SAO';
     const destinationCity = deal.route.split(' → ')[1] || deal.destination;
     
-    setSelectedFlight({
-      origin: selectedOrigin,
-      originIata: originCode,
-      destination: destinationCity,
-      destinationIata: deal.destination,
-      price: deal.price,
-      departureAt: deal.departureAt,
+    // Formata a data para YYMMDD
+    const dateParam = deal.departureAt?.split('T')[0]?.replace(/-/g, '') || 
+      new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
+    
+    // Navega para página de detalhes da Sofia
+    navigate(`/passagens/${originCode}/${deal.destination}/${dateParam}`, {
+      state: {
+        origin: selectedOrigin,
+        originIata: originCode,
+        destination: destinationCity,
+        destinationIata: deal.destination,
+        price: deal.price,
+        departureAt: deal.departureAt,
+      }
     });
-    setIsModalOpen(true);
   };
 
   const handleViewAll = () => {
@@ -321,11 +326,6 @@ export const FlightDealsSection = () => {
         </motion.div>
       </div>
 
-      <FlightCompareModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        flight={selectedFlight}
-      />
     </section>
   );
 };
