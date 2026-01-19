@@ -81,7 +81,7 @@ export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
       return companions.filter(c => c.id === "couple");
     }
     if (hasFamilyStyle) {
-      return companions.filter(c => c.id === "family" || c.id === "friends");
+      return companions.filter(c => c.id === "family");
     }
     if (hasSoloStyle) {
       return companions.filter(c => c.id === "solo");
@@ -97,8 +97,11 @@ export function TravelWithStep({ answers, onUpdate }: TravelWithStepProps) {
     if (hasSoloStyle) {
       return { style: "solo", companion: "Viagem Sozinho(a)" };
     }
+    if (hasFamilyStyle) {
+      return { style: "em família", companion: "Viagem em Família" };
+    }
     return null;
-  }, [hasRomanticStyle, hasSoloStyle]);
+  }, [hasRomanticStyle, hasSoloStyle, hasFamilyStyle]);
 
   const showChildrenQuestion = answers.travelWith === "friends" || answers.travelWith === "family";
 
