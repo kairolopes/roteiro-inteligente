@@ -106,12 +106,66 @@ const FLIGHT_OPERATORS: FlightOperator[] = [
 ];
 
 const AIRLINE_LOGOS: Record<string, { bg: string; text: string; abbr: string }> = {
-  'GOL': { bg: 'bg-orange-500', text: 'text-white', abbr: 'GL' },
+  // Brasileiras
+  'GOL': { bg: 'bg-orange-500', text: 'text-white', abbr: 'G3' },
   'LATAM': { bg: 'bg-red-600', text: 'text-white', abbr: 'LA' },
   'Azul': { bg: 'bg-blue-600', text: 'text-white', abbr: 'AD' },
+  'Passaredo': { bg: 'bg-green-500', text: 'text-white', abbr: '2Z' },
+  // Latinas
+  'Aerolíneas Argentinas': { bg: 'bg-sky-500', text: 'text-white', abbr: 'AR' },
+  'Avianca': { bg: 'bg-red-600', text: 'text-white', abbr: 'AV' },
+  'Copa Airlines': { bg: 'bg-blue-700', text: 'text-white', abbr: 'CM' },
+  'Aeromexico': { bg: 'bg-blue-800', text: 'text-white', abbr: 'AM' },
+  'Aeromexico Connect': { bg: 'bg-blue-700', text: 'text-white', abbr: 'DM' },
+  'JetSMART': { bg: 'bg-orange-600', text: 'text-white', abbr: 'JA' },
+  'Sky Airline': { bg: 'bg-green-600', text: 'text-white', abbr: 'H2' },
+  'Viva Air': { bg: 'bg-yellow-500', text: 'text-black', abbr: 'VH' },
+  'Wingo': { bg: 'bg-green-500', text: 'text-white', abbr: 'W4' },
+  // Europeias
   'TAP Portugal': { bg: 'bg-green-600', text: 'text-white', abbr: 'TP' },
   'Air France': { bg: 'bg-blue-800', text: 'text-white', abbr: 'AF' },
-  'Aerolíneas Argentinas': { bg: 'bg-sky-500', text: 'text-white', abbr: 'AR' },
+  'British Airways': { bg: 'bg-blue-900', text: 'text-white', abbr: 'BA' },
+  'Iberia': { bg: 'bg-red-600', text: 'text-white', abbr: 'IB' },
+  'KLM': { bg: 'bg-blue-500', text: 'text-white', abbr: 'KL' },
+  'Lufthansa': { bg: 'bg-yellow-500', text: 'text-blue-900', abbr: 'LH' },
+  'ITA Airways': { bg: 'bg-green-600', text: 'text-white', abbr: 'AZ' },
+  'Swiss': { bg: 'bg-red-600', text: 'text-white', abbr: 'LX' },
+  // Norte-americanas
+  'American Airlines': { bg: 'bg-blue-600', text: 'text-white', abbr: 'AA' },
+  'United Airlines': { bg: 'bg-blue-700', text: 'text-white', abbr: 'UA' },
+  'Delta': { bg: 'bg-blue-900', text: 'text-white', abbr: 'DL' },
+  'JetBlue': { bg: 'bg-blue-500', text: 'text-white', abbr: 'B6' },
+  'Spirit Airlines': { bg: 'bg-yellow-400', text: 'text-black', abbr: 'NK' },
+  'Air Canada': { bg: 'bg-red-600', text: 'text-white', abbr: 'AC' },
+  // Outras internacionais
+  'Emirates': { bg: 'bg-red-700', text: 'text-white', abbr: 'EK' },
+  'Qatar Airways': { bg: 'bg-purple-800', text: 'text-white', abbr: 'QR' },
+  'Turkish Airlines': { bg: 'bg-red-600', text: 'text-white', abbr: 'TK' },
+  'Ethiopian Airlines': { bg: 'bg-green-700', text: 'text-white', abbr: 'ET' },
+  'Singapore Airlines': { bg: 'bg-yellow-600', text: 'text-blue-900', abbr: 'SQ' },
+  // Charters
+  'Voo Charter': { bg: 'bg-gray-500', text: 'text-white', abbr: 'CH' },
+};
+
+// Fallback para companhias não mapeadas
+const getAirlineData = (airlineName: string) => {
+  if (AIRLINE_LOGOS[airlineName]) {
+    return AIRLINE_LOGOS[airlineName];
+  }
+  
+  // Gerar cor baseada no nome para consistência
+  const colors = [
+    { bg: 'bg-slate-600', text: 'text-white' },
+    { bg: 'bg-zinc-600', text: 'text-white' },
+    { bg: 'bg-neutral-600', text: 'text-white' },
+    { bg: 'bg-stone-600', text: 'text-white' },
+  ];
+  const colorIndex = airlineName.charCodeAt(0) % colors.length;
+  
+  return {
+    ...colors[colorIndex],
+    abbr: airlineName.substring(0, 2).toUpperCase(),
+  };
 };
 
 // City name mapping
@@ -289,7 +343,7 @@ export default function FlightDetails() {
   };
 
   const airlineData = flightFromState 
-    ? AIRLINE_LOGOS[flightFromState.airline] || { bg: 'bg-gray-600', text: 'text-white', abbr: flightFromState.airline.substring(0, 2).toUpperCase() }
+    ? getAirlineData(flightFromState.airline)
     : { bg: 'bg-primary', text: 'text-white', abbr: 'VL' };
 
   return (
@@ -519,11 +573,7 @@ export default function FlightDetails() {
               
               <div className="space-y-2">
                 {otherFlights.slice(0, 5).filter(f => f.price !== flightFromState?.price).map((flight, index) => {
-                  const flightAirlineData = AIRLINE_LOGOS[flight.airline] || { 
-                    bg: 'bg-gray-600', 
-                    text: 'text-white', 
-                    abbr: flight.airline.substring(0, 2).toUpperCase() 
-                  };
+                  const flightAirlineData = getAirlineData(flight.airline);
                   
                   return (
                     <div
