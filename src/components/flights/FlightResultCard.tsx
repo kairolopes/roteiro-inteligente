@@ -3,8 +3,7 @@ import { Plane, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FlightPrice } from "@/hooks/useFlightPrices";
-import { getSkyscannerLink, BookingContext } from "@/lib/affiliateLinks";
-import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
+import { useNavigate } from "react-router-dom";
 
 interface FlightResultCardProps {
   flight: FlightPrice;
@@ -41,6 +40,8 @@ export function FlightResultCard({
   origin,
   originIata 
 }: FlightResultCardProps) {
+  const navigate = useNavigate();
+  
   const formatTime = (dateString: string) => {
     if (!dateString) return '--:--';
     try {
@@ -72,23 +73,14 @@ export function FlightResultCard({
   };
 
   const handleViewMore = () => {
-    const context: BookingContext = {
-      city: flight.destinationName || flight.destination,
-      originIata: originIata,
-      destinationIata: flight.destination,
-      activityDate: flight.departureAt?.split('T')[0],
-    };
-
-    trackAffiliateClick({
-      partnerId: "skyscanner",
-      partnerName: "Skyscanner Brasil",
-      category: "flights",
-      component: "FlightResultCard",
-      destination: flight.destination,
-      origin: originIata,
+    // Build URL: /passagens/{origem}/{destino}/{AAMMDD}
+    const dateForUrl = flight.departureAt 
+      ? `${flight.departureAt.slice(2, 4)}${flight.departureAt.slice(5, 7)}${flight.departureAt.slice(8, 10)}`
+      : '260101';
+    
+    navigate(`/passagens/${originIata.toLowerCase()}/${flight.destination.toLowerCase()}/${dateForUrl}`, {
+      state: { flight, originIata }
     });
-
-    window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
   };
 
   return (
