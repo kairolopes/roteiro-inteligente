@@ -133,8 +133,15 @@ serve(async (req) => {
       }
 
       const prices: PriceResult[] = data.data.map((flight: any) => {
-          // Skyscanner Brasil - sempre em português e R$ BRL
-          const skyscannerLink = `https://www.skyscanner.com.br/transporte/passagens-aereas/${originCode.toLowerCase()}/${destInfo.code.toLowerCase()}/`;
+          // Extrair data de partida no formato AAMMDD para Skyscanner
+          const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : '';
+          const dateParts = departDate.split('-');
+          const skyscannerDate = dateParts.length === 3 
+            ? `${dateParts[0].slice(2)}${dateParts[1]}${dateParts[2]}` 
+            : '';
+          
+          // Skyscanner Brasil com data específica - sempre em português e R$ BRL
+          const skyscannerLink = `https://www.skyscanner.com.br/transporte/passagens-aereas/${originCode.toLowerCase()}/${destInfo.code.toLowerCase()}/${skyscannerDate}/`;
           
           return {
             origin: originCode,
@@ -172,8 +179,15 @@ serve(async (req) => {
           const flight = data.data[0];
           const destName = Object.values(destinationToIATA).find(d => d.code === destCode)?.name || destCode;
           
-          // Skyscanner Brasil - sempre em português e R$ BRL
-          const skyscannerLink = `https://www.skyscanner.com.br/transporte/passagens-aereas/${originCode.toLowerCase()}/${destCode.toLowerCase()}/`;
+          // Extrair data de partida no formato AAMMDD para Skyscanner
+          const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : '';
+          const dateParts = departDate.split('-');
+          const skyscannerDate = dateParts.length === 3 
+            ? `${dateParts[0].slice(2)}${dateParts[1]}${dateParts[2]}` 
+            : '';
+          
+          // Skyscanner Brasil com data específica - sempre em português e R$ BRL
+          const skyscannerLink = `https://www.skyscanner.com.br/transporte/passagens-aereas/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${skyscannerDate}/`;
           
           return {
             origin: originCode,
