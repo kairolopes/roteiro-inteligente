@@ -5,14 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface FlightSearchParams {
-  origin?: string;
-  destination?: string;
-  departDate?: string;
-  returnDate?: string;
-  currency?: string;
-}
-
 interface PriceResult {
   origin: string;
   destination: string;
@@ -24,6 +16,14 @@ interface PriceResult {
   transfers: number;
   flightNumber: string;
   link: string;
+}
+
+interface CalendarPrice {
+  date: string;
+  price: number;
+  airline: string;
+  transfers: number;
+  flightNumber: string;
 }
 
 // IATA codes mapping for Brazilian cities
@@ -39,6 +39,9 @@ const cityToIATA: Record<string, string> = {
   "curitiba": "CWB",
   "recife": "REC",
   "porto alegre": "POA",
+  "florianópolis": "FLN",
+  "florianopolis": "FLN",
+  "campinas": "VCP",
 };
 
 // Destination IATA codes
@@ -87,8 +90,30 @@ const airlineNames: Record<string, string> = {
   "AZ": "ITA Airways",
 };
 
+// Get IATA code from city name or return as-is if already IATA
+function getIATACode(input: string): string {
+  const lower = input.toLowerCase().trim();
+  // Check if it's already a 3-letter IATA code
+  if (/^[A-Z]{3}$/i.test(input.trim())) {
+    return input.trim().toUpperCase();
+  }
+  return cityToIATA[lower] || destinationToIATA[lower]?.code || input.toUpperCase().slice(0, 3);
+}
+
+function getDestinationName(code: string): string {
+  const entry = Object.values(destinationToIATA).find(d => d.code === code);
+  return entry?.name || code;
+}
+
+function buildSkyscannerLink(originCode: string, destCode: string, departDate: string): string {
+  const dateParts = departDate.split('-');
+  const skyscannerDate = dateParts.length === 3 
+    ? `${dateParts[0].slice(2)}${dateParts[1]}${dateParts[2]}` 
+    : '';
+  return `https://www.skyscanner.com.br/transporte/passagens-aereas/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${skyscannerDate}/`;
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -105,16 +130,192 @@ serve(async (req) => {
     }
 
     const url = new URL(req.url);
+    const action = url.searchParams.get('action') || 'popular';
     const origin = url.searchParams.get('origin')?.toLowerCase() || 'são paulo';
     const destination = url.searchParams.get('destination')?.toLowerCase();
     const currency = url.searchParams.get('currency') || 'BRL';
+    const date = url.searchParams.get('date'); // YYYY-MM-DD for specific date search
+    const month = url.searchParams.get('month'); // YYYY-MM for calendar
     
-    // Get IATA codes
-    const originCode = cityToIATA[origin] || 'SAO';
+    const originCode = getIATACode(origin);
     
-    console.log(`Fetching flight prices from ${originCode} (${origin})`);
+    console.log(`Action: ${action}, Origin: ${originCode} (${origin}), Destination: ${destination || 'all'}`);
 
-    // If specific destination requested
+    // ====== CALENDAR ACTION - Get daily prices for a month ======
+    if (action === 'calendar' && destination) {
+      const destCode = getIATACode(destination);
+      const targetMonth = month || new Date().toISOString().slice(0, 7); // Default to current month
+      
+      console.log(`Fetching calendar prices: ${originCode} -> ${destCode} for ${targetMonth}`);
+      
+      // Use prices/calendar endpoint - returns daily prices
+      const apiUrl = `https://api.travelpayouts.com/v1/prices/calendar?origin=${originCode}&destination=${destCode}&currency=${currency}&token=${TRAVELPAYOUTS_TOKEN}`;
+      
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      
+      if (!data.success || !data.data) {
+        // Fallback: try prices_for_dates with depart_date range
+        const startDate = `${targetMonth}-01`;
+        const endDate = `${targetMonth}-28`;
+        
+        const fallbackUrl = `https://api.travelpayouts.com/aviasales/v3/prices_for_dates?origin=${originCode}&destination=${destCode}&departure_at=${startDate}&return_at=&currency=${currency}&sorting=price&limit=30&token=${TRAVELPAYOUTS_TOKEN}`;
+        
+        const fallbackResponse = await fetch(fallbackUrl);
+        const fallbackData = await fallbackResponse.json();
+        
+        if (fallbackData.success && fallbackData.data) {
+          const calendar: Record<string, CalendarPrice> = {};
+          
+          for (const flight of fallbackData.data) {
+            const flightDate = flight.departure_at?.split('T')[0];
+            if (flightDate && flightDate.startsWith(targetMonth)) {
+              if (!calendar[flightDate] || flight.price < calendar[flightDate].price) {
+                calendar[flightDate] = {
+                  date: flightDate,
+                  price: flight.price,
+                  airline: airlineNames[flight.airline] || flight.airline,
+                  transfers: flight.transfers,
+                  flightNumber: flight.flight_number,
+                };
+              }
+            }
+          }
+          
+          return new Response(
+            JSON.stringify({ 
+              calendar, 
+              origin: originCode,
+              destination: destCode,
+              destinationName: getDestinationName(destCode),
+              month: targetMonth,
+              source: 'travelpayouts-fallback' 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ calendar: {}, month: targetMonth, source: 'empty' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Process calendar data - filter to requested month
+      const calendar: Record<string, CalendarPrice> = {};
+      
+      for (const [dateKey, flightData] of Object.entries(data.data)) {
+        if (dateKey.startsWith(targetMonth)) {
+          const flight = flightData as any;
+          calendar[dateKey] = {
+            date: dateKey,
+            price: flight.price,
+            airline: airlineNames[flight.airline] || flight.airline,
+            transfers: flight.transfers || 0,
+            flightNumber: flight.flight_number || '',
+          };
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          calendar, 
+          origin: originCode,
+          destination: destCode,
+          destinationName: getDestinationName(destCode),
+          month: targetMonth,
+          source: 'travelpayouts' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ====== SEARCH ACTION - Get flights for specific date ======
+    if (action === 'search' && destination && date) {
+      const destCode = getIATACode(destination);
+      
+      console.log(`Searching flights: ${originCode} -> ${destCode} on ${date}`);
+      
+      // Get multiple flights for the date
+      const apiUrl = `https://api.travelpayouts.com/aviasales/v3/prices_for_dates?origin=${originCode}&destination=${destCode}&departure_at=${date}&currency=${currency}&sorting=price&direct=false&limit=20&token=${TRAVELPAYOUTS_TOKEN}`;
+      
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      
+      if (!data.success || !data.data) {
+        return new Response(
+          JSON.stringify({ flights: [], date, source: 'empty' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const flights: PriceResult[] = data.data.map((flight: any) => {
+        const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : date;
+        
+        return {
+          origin: originCode,
+          destination: destCode,
+          destinationName: getDestinationName(destCode),
+          price: flight.price,
+          airline: airlineNames[flight.airline] || flight.airline,
+          departureAt: flight.departure_at,
+          returnAt: flight.return_at,
+          transfers: flight.transfers,
+          flightNumber: flight.flight_number,
+          link: buildSkyscannerLink(originCode, destCode, departDate),
+        };
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          flights, 
+          origin: originCode,
+          destination: destCode,
+          destinationName: getDestinationName(destCode),
+          date,
+          source: 'travelpayouts' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ====== MONTHLY ACTION - Get best prices per month ======
+    if (action === 'monthly' && destination) {
+      const destCode = getIATACode(destination);
+      
+      console.log(`Fetching monthly prices: ${originCode} -> ${destCode}`);
+      
+      const apiUrl = `https://api.travelpayouts.com/v1/prices/monthly?origin=${originCode}&destination=${destCode}&currency=${currency}&token=${TRAVELPAYOUTS_TOKEN}`;
+      
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      
+      if (!data.success || !data.data) {
+        return new Response(
+          JSON.stringify({ monthly: [], source: 'empty' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const monthly = Object.entries(data.data).map(([monthKey, monthData]: [string, any]) => ({
+        month: monthKey,
+        price: monthData.price,
+        airline: airlineNames[monthData.airline] || monthData.airline,
+      })).sort((a, b) => a.month.localeCompare(b.month));
+
+      return new Response(
+        JSON.stringify({ 
+          monthly, 
+          origin: originCode,
+          destination: destCode,
+          destinationName: getDestinationName(destCode),
+          source: 'travelpayouts' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ====== DEFAULT: Popular destinations ======
     if (destination && destinationToIATA[destination]) {
       const destInfo = destinationToIATA[destination];
       const apiUrl = `https://api.travelpayouts.com/aviasales/v3/prices_for_dates?origin=${originCode}&destination=${destInfo.code}&currency=${currency}&sorting=price&direct=false&limit=5&token=${TRAVELPAYOUTS_TOKEN}`;
@@ -125,7 +326,6 @@ serve(async (req) => {
       const data = await response.json();
       
       if (!data.success || !data.data) {
-        console.log('No data for specific route, returning empty');
         return new Response(
           JSON.stringify({ prices: [], source: 'travelpayouts' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -133,28 +333,20 @@ serve(async (req) => {
       }
 
       const prices: PriceResult[] = data.data.map((flight: any) => {
-          // Extrair data de partida no formato AAMMDD para Skyscanner
-          const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : '';
-          const dateParts = departDate.split('-');
-          const skyscannerDate = dateParts.length === 3 
-            ? `${dateParts[0].slice(2)}${dateParts[1]}${dateParts[2]}` 
-            : '';
-          
-          // Skyscanner Brasil com data específica - sempre em português e R$ BRL
-          const skyscannerLink = `https://www.skyscanner.com.br/transporte/passagens-aereas/${originCode.toLowerCase()}/${destInfo.code.toLowerCase()}/${skyscannerDate}/`;
-          
-          return {
-            origin: originCode,
-            destination: destInfo.code,
-            destinationName: destInfo.name,
-            price: flight.price,
-            airline: airlineNames[flight.airline] || flight.airline,
-            departureAt: flight.departure_at,
-            returnAt: flight.return_at,
-            transfers: flight.transfers,
-            flightNumber: flight.flight_number,
-            link: skyscannerLink,
-          };
+        const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : '';
+        
+        return {
+          origin: originCode,
+          destination: destInfo.code,
+          destinationName: destInfo.name,
+          price: flight.price,
+          airline: airlineNames[flight.airline] || flight.airline,
+          departureAt: flight.departure_at,
+          returnAt: flight.return_at,
+          transfers: flight.transfers,
+          flightNumber: flight.flight_number,
+          link: buildSkyscannerLink(originCode, destInfo.code, departDate),
+        };
       });
 
       return new Response(
@@ -165,9 +357,7 @@ serve(async (req) => {
 
     // Get popular destinations prices
     const popularDestinations = ['LIS', 'PAR', 'MIA', 'ROM', 'LON', 'MAD', 'NYC', 'AMS', 'CUN', 'BUE'];
-    const allPrices: PriceResult[] = [];
-
-    // Fetch prices for each destination in parallel
+    
     const fetchPromises = popularDestinations.map(async (destCode) => {
       try {
         const apiUrl = `https://api.travelpayouts.com/aviasales/v3/prices_for_dates?origin=${originCode}&destination=${destCode}&currency=${currency}&sorting=price&direct=false&limit=1&token=${TRAVELPAYOUTS_TOKEN}`;
@@ -177,17 +367,8 @@ serve(async (req) => {
         
         if (data.success && data.data && data.data.length > 0) {
           const flight = data.data[0];
-          const destName = Object.values(destinationToIATA).find(d => d.code === destCode)?.name || destCode;
-          
-          // Extrair data de partida no formato AAMMDD para Skyscanner
+          const destName = getDestinationName(destCode);
           const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : '';
-          const dateParts = departDate.split('-');
-          const skyscannerDate = dateParts.length === 3 
-            ? `${dateParts[0].slice(2)}${dateParts[1]}${dateParts[2]}` 
-            : '';
-          
-          // Skyscanner Brasil com data específica - sempre em português e R$ BRL
-          const skyscannerLink = `https://www.skyscanner.com.br/transporte/passagens-aereas/${originCode.toLowerCase()}/${destCode.toLowerCase()}/${skyscannerDate}/`;
           
           return {
             origin: originCode,
@@ -199,7 +380,7 @@ serve(async (req) => {
             returnAt: flight.return_at,
             transfers: flight.transfers,
             flightNumber: flight.flight_number,
-            link: skyscannerLink,
+            link: buildSkyscannerLink(originCode, destCode, departDate),
           };
         }
         return null;
@@ -211,8 +392,6 @@ serve(async (req) => {
 
     const results = await Promise.all(fetchPromises);
     const validPrices = results.filter((p): p is PriceResult => p !== null);
-
-    // Sort by price
     validPrices.sort((a, b) => a.price - b.price);
 
     console.log(`Found ${validPrices.length} price results`);
