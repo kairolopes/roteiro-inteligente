@@ -5,7 +5,7 @@ export interface QuizAnswers {
   budget: string;
   duration: string;
   startDate: Date | null;
-  destinations: string[];
+  destination: string;
   interests: string[];
   travelWith: string;
   hasChildren: boolean;
@@ -21,7 +21,7 @@ export const defaultQuizAnswers: QuizAnswers = {
   budget: "",
   duration: "",
   startDate: null,
-  destinations: [],
+  destination: "",
   interests: [],
   travelWith: "",
   hasChildren: false,

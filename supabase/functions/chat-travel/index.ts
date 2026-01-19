@@ -53,7 +53,7 @@ serve(async (req) => {
     if (quizAnswers) {
       const parts: string[] = [];
       
-      if (quizAnswers.destinations?.length > 0) {
+      if (quizAnswers.destination) {
         const destLabels: Record<string, string> = {
           // Américas
           brazil: "Brasil", argentina: "Argentina", peru: "Peru",
@@ -71,16 +71,14 @@ serve(async (req) => {
           // Especial
           surprise: "Destino surpresa"
         };
-        parts.push(`Destinos de interesse: ${quizAnswers.destinations.map((d: string) => destLabels[d] || d).join(", ")}`);
+        parts.push(`Destino: ${destLabels[quizAnswers.destination] || quizAnswers.destination}`);
       }
 
-      if (quizAnswers.travelStyle?.length > 0) {
+      if (quizAnswers.travelStyle) {
         const styleLabels: Record<string, string> = {
-          romantic: "romântica", adventure: "aventura", cultural: "cultural",
-          gastronomy: "gastronômica", family: "família", party: "festas",
-          photography: "fotogênica", relaxing: "relaxante"
+          romantic: "romântica", family: "em família", solo: "solo", backpacker: "mochilão"
         };
-        parts.push(`Estilo de viagem: ${quizAnswers.travelStyle.map((s: string) => styleLabels[s] || s).join(", ")}`);
+        parts.push(`Estilo de viagem: ${styleLabels[quizAnswers.travelStyle] || quizAnswers.travelStyle}`);
       }
 
       if (quizAnswers.accommodation) {

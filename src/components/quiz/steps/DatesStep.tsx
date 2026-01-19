@@ -67,7 +67,7 @@ export function DatesStep({ answers, onUpdate }: DatesStepProps) {
             Quando você quer <span className="text-primary">viajar</span>?
           </h2>
           <p className="text-muted-foreground text-sm">
-            Data aproximada de partida (opcional)
+            Selecione a data aproximada de partida
           </p>
         </div>
 

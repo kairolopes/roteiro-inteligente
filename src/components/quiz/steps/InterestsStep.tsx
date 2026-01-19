@@ -1,29 +1,10 @@
-import { useEffect, useMemo } from "react";
+
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { QuizAnswers } from "@/types/quiz";
 
-// Mapeamento de estilo de viagem para interesses relacionados
-const styleToInterests: Record<string, string[]> = {
-  cultural: ["art", "history", "architecture"],
-  gastronomy: ["food", "wine", "coffee"],
-  adventure: ["mountains", "nature", "sports"],
-  relaxing: ["wellness", "beaches"],
-  party: ["nightlife", "music"],
-  photography: ["photography", "nature"],
-  romantic: [],
-  family: [],
-  solo: [],
-};
-
-const styleLabels: Record<string, string> = {
-  cultural: "Cultural",
-  gastronomy: "Gastronômica",
-  adventure: "Aventura",
-  relaxing: "Relaxante",
-  party: "Festas",
-  photography: "Fotografia",
-};
+// Estilos não precisam mais de mapeamento - foram simplificados para contexto apenas
+// (romantic, family, solo, backpacker)
 
 const interests = [
   { id: "art", emoji: "🎨", label: "Arte & Museus" },
@@ -50,19 +31,6 @@ interface InterestsStepProps {
 }
 
 export function InterestsStep({ answers, onUpdate }: InterestsStepProps) {
-  // Pré-selecionar interesses baseado no estilo de viagem
-  const preSelectedInterests = useMemo(() => {
-    return styleToInterests[answers.travelStyle] || [];
-  }, [answers.travelStyle]);
-
-  const styleName = styleLabels[answers.travelStyle] || "";
-
-  useEffect(() => {
-    if (preSelectedInterests.length > 0 && answers.interests.length === 0) {
-      onUpdate("interests", preSelectedInterests);
-    }
-  }, [preSelectedInterests]);
-
   const toggleInterest = (id: string) => {
     const current = answers.interests;
     if (current.includes(id)) {
@@ -86,11 +54,6 @@ export function InterestsStep({ answers, onUpdate }: InterestsStepProps) {
         <p className="text-muted-foreground">
           Selecione seus principais interesses para personalizarmos seu roteiro.
         </p>
-        {preSelectedInterests.length > 0 && styleName && (
-          <p className="text-sm text-primary mt-2">
-            Já selecionamos alguns interesses com base no estilo "{styleName}". Você pode ajustar!
-          </p>
-        )}
       </div>
 
       <div className="flex flex-wrap justify-center gap-3">

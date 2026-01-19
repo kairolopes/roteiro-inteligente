@@ -163,13 +163,16 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
       budget: "econômico", moderate: "moderado", luxury: "luxo"
     };
 
-    const destinations = quizAnswers.destinations?.map((d: string) => destLabels[d] || d).join(", ") || "Europa";
-    const style = quizAnswers.travelStyle?.map((s: string) => styleLabels[s] || s).join(", ") || "cultural";
+    const destination = quizAnswers.destination ? (destLabels[quizAnswers.destination] || quizAnswers.destination) : "Europa";
+    const styleLabels: Record<string, string> = {
+      romantic: "romântica", family: "em família", solo: "solo", backpacker: "mochilão"
+    };
+    const style = quizAnswers.travelStyle ? (styleLabels[quizAnswers.travelStyle] || quizAnswers.travelStyle) : "cultural";
     const budget = budgetLabels[quizAnswers.budget] || "moderado";
 
     const userPrompt = `Crie um roteiro de viagem com EXATAMENTE ${numDays} dias para:
 
-DESTINOS: ${destinations}
+DESTINO: ${destination}
 ESTILO: ${style}
 ORÇAMENTO: ${budget}
 VIAJANDO: ${quizAnswers.travelWith || "sozinho"}

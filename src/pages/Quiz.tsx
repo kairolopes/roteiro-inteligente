@@ -55,9 +55,9 @@ const Quiz = () => {
       case 2: // Budget
         return answers.budget !== "" && answers.pace !== "";
       case 3: // Dates
-        return answers.duration !== "";
+        return answers.duration !== "" && answers.startDate !== null;
       case 4: // Destinations
-        return answers.destinations.length > 0;
+        return answers.destination !== "";
       case 5: // Interests
         return answers.interests.length > 0;
       case 6: // Travel with
