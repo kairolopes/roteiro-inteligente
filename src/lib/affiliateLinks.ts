@@ -178,18 +178,7 @@ export function getKayakBrasilLink(context: BookingContext): string {
   return `https://www.kayak.com.br/flights/${origin}-${dest}/${datePath}?sort=price_a`;
 }
 
-/**
- * Decolar - Maior agência da América Latina
- */
-export function getDecolarLink(context: BookingContext): string {
-  const origin = context.originIata || 'SAO';
-  const dest = context.destinationIata || 'MIA';
-  let url = `https://www.decolar.com/shop/flights/results/oneway/${origin}/${dest}`;
-  if (context.activityDate) {
-    url += `/${context.activityDate}/1/0/0/NA/NA/NA/NA`;
-  }
-  return url;
-}
+// Decolar removida - deep links não funcionam mais
 
 /**
  * Google Flights - Calendário de preços
