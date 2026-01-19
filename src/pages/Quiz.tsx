@@ -49,7 +49,7 @@ const Quiz = () => {
   const canProceed = () => {
     switch (currentStep) {
       case 0: // Travel style
-        return answers.travelStyle.length > 0;
+        return answers.travelStyle !== "";
       case 1: // Accommodation
         return answers.accommodation !== "";
       case 2: // Budget

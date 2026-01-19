@@ -27,5 +27,5 @@ export const defaultQuizAnswers: QuizAnswers = {
   hasChildren: false,
   hasPet: "none",
   dietary: [],
-  mobility: "",
+  mobility: "none",
 };
