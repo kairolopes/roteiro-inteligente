@@ -1,13 +1,14 @@
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { MapPin, Calendar, Wallet, Users, Heart, Sparkles, ArrowRight } from "lucide-react";
+import { MapPin, Calendar, Wallet, Users, Heart, Sparkles, ArrowRight, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QuizAnswers } from "@/types/quiz";
 
 interface QuizSummaryProps {
   answers: QuizAnswers;
   onCreateItinerary: () => void;
+  onEditStep?: (stepIndex: number) => void;
 }
 
 const labels: Record<string, Record<string, string>> = {
@@ -39,14 +40,26 @@ const labels: Record<string, Record<string, string>> = {
     flexible: "Flexível",
   },
   destinations: {
+    brazil: "Brasil 🇧🇷",
+    argentina: "Argentina 🇦🇷",
+    peru: "Peru 🇵🇪",
+    usa: "Estados Unidos 🇺🇸",
+    mexico: "México 🇲🇽",
+    canada: "Canadá 🇨🇦",
     italy: "Itália 🇮🇹",
     france: "França 🇫🇷",
     spain: "Espanha 🇪🇸",
     portugal: "Portugal 🇵🇹",
     greece: "Grécia 🇬🇷",
-    netherlands: "Holanda 🇳🇱",
     germany: "Alemanha 🇩🇪",
-    switzerland: "Suíça 🇨🇭",
+    japan: "Japão 🇯🇵",
+    thailand: "Tailândia 🇹🇭",
+    indonesia: "Indonésia 🇮🇩",
+    australia: "Austrália 🇦🇺",
+    uae: "Emirados Árabes 🇦🇪",
+    egypt: "Egito 🇪🇬",
+    morocco: "Marrocos 🇲🇦",
+    southafrica: "África do Sul 🇿🇦",
     surprise: "Surpresa ✨",
   },
   travelWith: {
@@ -63,7 +76,50 @@ const labels: Record<string, Record<string, string>> = {
   },
 };
 
-export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
+const interestLabels: Record<string, string> = {
+  art: "Arte & Museus",
+  history: "História",
+  architecture: "Arquitetura",
+  food: "Gastronomia",
+  wine: "Vinhos",
+  coffee: "Cafés",
+  beaches: "Praias",
+  mountains: "Montanhas",
+  nature: "Natureza",
+  shopping: "Compras",
+  nightlife: "Vida Noturna",
+  music: "Música & Shows",
+  sports: "Esportes",
+  photography: "Fotografia",
+  wellness: "Bem-estar & Spa",
+  local: "Vida Local",
+};
+
+// Step indices mapping
+const STEP_INDICES = {
+  style: 0,
+  accommodation: 1,
+  budget: 2,
+  dates: 3,
+  destinations: 4,
+  interests: 5,
+  companion: 6,
+};
+
+export function QuizSummary({ answers, onCreateItinerary, onEditStep }: QuizSummaryProps) {
+  const EditButton = ({ stepIndex }: { stepIndex: number }) => {
+    if (!onEditStep) return null;
+    return (
+      <button
+        onClick={() => onEditStep(stepIndex)}
+        className="ml-auto p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+        aria-label="Editar"
+      >
+        <Pencil className="w-4 h-4" />
+      </button>
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -94,12 +150,13 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <MapPin className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold mb-1">Destino</h4>
             <p className="text-muted-foreground">
               {labels.destinations[answers.destination] || answers.destination || "Não selecionado"}
             </p>
           </div>
+          <EditButton stepIndex={STEP_INDICES.destinations} />
         </div>
 
         {/* Dates */}
@@ -107,7 +164,7 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Calendar className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold mb-1">Período</h4>
             <p className="text-muted-foreground">
               {labels.duration[answers.duration] || "Não definido"}
@@ -116,20 +173,22 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
               )}
             </p>
           </div>
+          <EditButton stepIndex={STEP_INDICES.dates} />
         </div>
 
-        {/* Budget */}
+        {/* Budget & Accommodation */}
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Wallet className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold mb-1">Orçamento & Hospedagem</h4>
             <p className="text-muted-foreground">
               {labels.budget[answers.budget] || "Não definido"}
               {answers.accommodation && <> • {labels.accommodation[answers.accommodation]}</>}
             </p>
           </div>
+          <EditButton stepIndex={STEP_INDICES.budget} />
         </div>
 
         {/* Travel with */}
@@ -137,7 +196,7 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Users className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold mb-1">Companhia</h4>
             <p className="text-muted-foreground">
               {labels.travelWith[answers.travelWith] || "Não definido"}
@@ -145,6 +204,7 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
               {answers.hasPet !== "none" && labels.hasPet[answers.hasPet] && ` • ${labels.hasPet[answers.hasPet]}`}
             </p>
           </div>
+          <EditButton stepIndex={STEP_INDICES.companion} />
         </div>
 
         {/* Style & Interests */}
@@ -152,17 +212,19 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Heart className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h4 className="font-semibold mb-1">Estilo de Viagem</h4>
             <p className="text-muted-foreground">
               {labels.travelStyle[answers.travelStyle] || "Não selecionado"}
             </p>
             {answers.interests.length > 0 && (
-              <p className="text-sm text-muted-foreground mt-1">
-                +{answers.interests.length} interesse{answers.interests.length !== 1 ? "s" : ""} selecionado{answers.interests.length !== 1 ? "s" : ""}
+              <p className="text-sm text-muted-foreground/80 mt-1">
+                {answers.interests.slice(0, 4).map(i => interestLabels[i] || i).join(", ")}
+                {answers.interests.length > 4 && ` +${answers.interests.length - 4}`}
               </p>
             )}
           </div>
+          <EditButton stepIndex={STEP_INDICES.style} />
         </div>
       </div>
 
