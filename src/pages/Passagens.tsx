@@ -12,7 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { getWayAwayLink, getAviasalesLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
+import { FlightCompareButtons } from "@/components/flights/FlightCompareButtons";
 import {
   Select,
   SelectContent,
@@ -112,15 +113,20 @@ const Passagens = () => {
     return filtered;
   }, [searchOrigin, searchDestination, priceRange, selectedAirlines, selectedStops, sortBy]);
 
-  const handleDealClick = (deal: typeof allFlightDeals[0]) => {
-    const link = getWayAwayLink({ city: deal.to, activityName: "flight deal" });
-    window.open(link, "_blank");
+  const handleDealClick = (deal: typeof allFlightDeals[0], provider: "aviasales" | "skyscanner") => {
+    const context = { city: deal.to, departureCity: deal.from };
+    const link = provider === "aviasales" ? getAviasalesLink(context) : getSkyscannerLink(context);
+    window.open(link, "_blank", "noopener,noreferrer");
   };
 
-  const handleSearch = () => {
-    const destination = searchDestination || "europe";
-    const link = getWayAwayLink({ city: destination, activityName: "search" });
-    window.open(link, "_blank");
+  const handleAviasalesSearch = () => {
+    const context = { city: searchDestination || "europe", departureCity: searchOrigin || undefined };
+    window.open(getAviasalesLink(context), "_blank", "noopener,noreferrer");
+  };
+
+  const handleSkyscannerSearch = () => {
+    const context = { city: searchDestination || "europe", departureCity: searchOrigin || undefined };
+    window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
   };
 
   const toggleAirline = (airline: string) => {
@@ -287,10 +293,16 @@ const Passagens = () => {
                   onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }}
                 />
               </div>
-              <Button onClick={handleSearch} size="lg" className="h-12 gap-2">
-                <Search className="w-5 h-5" />
-                Buscar
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleAviasalesSearch} size="lg" className="h-12 gap-2 flex-1 bg-orange-500 hover:bg-orange-600">
+                  <Plane className="w-4 h-4" />
+                  Aviasales
+                </Button>
+                <Button onClick={handleSkyscannerSearch} size="lg" className="h-12 gap-2 flex-1 bg-cyan-500 hover:bg-cyan-600">
+                  <Plane className="w-4 h-4" />
+                  Skyscanner
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -399,8 +411,7 @@ const Passagens = () => {
                         exit={{ opacity: 0, scale: 0.9 }}
                         transition={{ delay: index * 0.03 }}
                         whileHover={{ y: -4 }}
-                        onClick={() => handleDealClick(deal)}
-                        className="group cursor-pointer bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
+                        className="group bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
                       >
                         {/* Image */}
                         <div className="relative h-32 sm:h-36 overflow-hidden">
@@ -450,7 +461,25 @@ const Passagens = () => {
                             <span>{deal.stops}</span>
                           </div>
                           
-                          <p className="text-xs text-muted-foreground mt-2">{deal.dates}</p>
+                          <p className="text-xs text-muted-foreground mt-2 mb-3">{deal.dates}</p>
+
+                          {/* Compare Buttons */}
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 text-xs bg-orange-500 hover:bg-orange-600 text-white"
+                              onClick={() => handleDealClick(deal, "aviasales")}
+                            >
+                              Aviasales
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 text-xs bg-cyan-500 hover:bg-cyan-600 text-white"
+                              onClick={() => handleDealClick(deal, "skyscanner")}
+                            >
+                              Skyscanner
+                            </Button>
+                          </div>
                         </div>
                       </motion.div>
                     ))}
@@ -466,17 +495,27 @@ const Passagens = () => {
                   viewport={{ once: true }}
                   className="mt-10 text-center"
                 >
-                  <Button
-                    size="lg"
-                    onClick={handleSearch}
-                    className="gap-2"
-                  >
-                    <Search className="w-4 h-4" />
-                    Ver Mais Ofertas no WayAway
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      size="lg"
+                      onClick={handleAviasalesSearch}
+                      className="gap-2 bg-orange-500 hover:bg-orange-600"
+                    >
+                      <Plane className="w-4 h-4" />
+                      Ver Mais no Aviasales
+                    </Button>
+                    <Button
+                      size="lg"
+                      onClick={handleSkyscannerSearch}
+                      className="gap-2 bg-cyan-500 hover:bg-cyan-600"
+                    >
+                      <Plane className="w-4 h-4" />
+                      Ver Mais no Skyscanner
+                    </Button>
+                  </div>
                   <p className="mt-3 text-sm text-muted-foreground flex items-center justify-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-500" />
-                    Ganhe cashback em todas as reservas
+                    Compare preços em múltiplos sites
                   </p>
                 </motion.div>
               )}
