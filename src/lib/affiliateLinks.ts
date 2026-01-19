@@ -200,25 +200,23 @@ export function get123MilhasLink(context: BookingContext): string {
 
 /**
  * Google Flights - Calendário de preços
- * Formato: ?q=Flights to {dest} from {origin} on {date}
+ * Formato testado: /search?hl=pt-BR&gl=br&curr=BRL&q=voos de {origin} para {dest}
  */
 export function getGoogleFlightsLink(context: BookingContext): string {
-  const origin = context.originIata || 'SAO';
-  const dest = context.destinationIata || 'MIA';
+  const origin = context.originIata || 'GRU';
+  const dest = context.destinationIata || 'CDG';
   
-  let query = `Flights to ${dest} from ${origin}`;
-  
-  if (context.activityDate) {
-    query += ` on ${context.activityDate}`;
-  }
+  // Formato em português que funciona sem bloqueio
+  const query = `voos de ${origin} para ${dest}`;
   
   const params = new URLSearchParams({
-    q: query,
+    hl: 'pt-BR',
+    gl: 'br',
     curr: 'BRL',
-    hl: 'pt-BR'
+    q: query
   });
   
-  return `https://www.google.com/travel/flights?${params.toString()}`;
+  return `https://www.google.com/travel/flights/search?${params.toString()}`;
 }
 
 /**
