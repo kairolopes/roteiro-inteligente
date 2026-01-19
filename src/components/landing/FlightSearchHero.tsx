@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import { Plane, MapPin, Calendar, Search, Sparkles, TrendingDown } from "lucide-react";
+import { Plane, MapPin, Calendar, Sparkles, TrendingDown, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
-import { getAviasalesLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
 import { cn } from "@/lib/utils";
 
 // Brazilian cities with IATA codes
@@ -171,20 +171,24 @@ export const FlightSearchHero = () => {
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
 
-  const handleSearch = () => {
-    const link = getAviasalesLink({ 
-      city: destination || "europe",
-      activityName: "flight search"
-    });
-    window.open(link, "_blank");
+  const getSearchContext = () => ({
+    city: destination || "europe",
+    departureCity: origin || undefined,
+    checkIn: date || undefined,
+  });
+
+  const handleAviasalesSearch = () => {
+    window.open(getAviasalesLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
-  const handleFlightClick = (to: string) => {
-    const link = getAviasalesLink({ 
-      city: to,
-      activityName: "flight deal"
-    });
-    window.open(link, "_blank");
+  const handleSkyscannerSearch = () => {
+    window.open(getSkyscannerLink(getSearchContext()), "_blank", "noopener,noreferrer");
+  };
+
+  const handleFlightClick = (to: string, provider: "aviasales" | "skyscanner") => {
+    const context = { city: to };
+    const link = provider === "aviasales" ? getAviasalesLink(context) : getSkyscannerLink(context);
+    window.open(link, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -276,20 +280,32 @@ export const FlightSearchHero = () => {
                   )}
                 />
               </div>
-              <Button 
-                onClick={handleSearch}
-                size="lg" 
-                className="h-12 gap-2 text-base"
-              >
-                <Search className="w-5 h-5" />
-                Buscar Voos
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleAviasalesSearch}
+                  size="lg" 
+                  className="h-12 gap-2 text-base flex-1 bg-orange-500 hover:bg-orange-600"
+                >
+                  <Plane className="w-5 h-5" />
+                  Aviasales
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+                <Button 
+                  onClick={handleSkyscannerSearch}
+                  size="lg" 
+                  className="h-12 gap-2 text-base flex-1 bg-cyan-500 hover:bg-cyan-600"
+                >
+                  <Plane className="w-5 h-5" />
+                  Skyscanner
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Partner badge */}
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span>Comparamos preços de centenas de companhias aéreas</span>
+              <span>Compare preços em Aviasales e Skyscanner</span>
             </div>
           </motion.div>
 
@@ -304,11 +320,9 @@ export const FlightSearchHero = () => {
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {popularFlights.map((flight, index) => (
-                <motion.button
+                <motion.div
                   key={index}
-                  onClick={() => handleFlightClick(flight.to)}
                   whileHover={{ scale: 1.03, y: -4 }}
-                  whileTap={{ scale: 0.98 }}
                   className="relative group bg-card border border-border rounded-xl overflow-hidden text-left transition-shadow hover:shadow-lg"
                 >
                   <div className="aspect-[4/3] relative">
@@ -324,9 +338,23 @@ export const FlightSearchHero = () => {
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                     <p className="text-xs opacity-80">{flight.from} → {flight.to}</p>
-                    <p className="text-lg font-bold">{flight.price}</p>
+                    <p className="text-lg font-bold mb-2">{flight.price}</p>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleFlightClick(flight.to, "aviasales")}
+                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs py-1 px-2 rounded transition-colors"
+                      >
+                        Aviasales
+                      </button>
+                      <button
+                        onClick={() => handleFlightClick(flight.to, "skyscanner")}
+                        className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs py-1 px-2 rounded transition-colors"
+                      >
+                        Skyscanner
+                      </button>
+                    </div>
                   </div>
-                </motion.button>
+                </motion.div>
               ))}
             </div>
           </motion.div>
