@@ -132,18 +132,21 @@ serve(async (req) => {
         );
       }
 
-      const prices: PriceResult[] = data.data.map((flight: any) => ({
-        origin: originCode,
-        destination: destInfo.code,
-        destinationName: destInfo.name,
-        price: flight.price,
-        airline: airlineNames[flight.airline] || flight.airline,
-        departureAt: flight.departure_at,
-        returnAt: flight.return_at,
-        transfers: flight.transfers,
-        flightNumber: flight.flight_number,
-          link: `https://www.aviasales.com${flight.link}?marker=696718&locale=pt&currency=brl`,
-      }));
+      const prices: PriceResult[] = data.data.map((flight: any) => {
+        const linkSeparator = flight.link.includes('?') ? '&' : '?';
+        return {
+          origin: originCode,
+          destination: destInfo.code,
+          destinationName: destInfo.name,
+          price: flight.price,
+          airline: airlineNames[flight.airline] || flight.airline,
+          departureAt: flight.departure_at,
+          returnAt: flight.return_at,
+          transfers: flight.transfers,
+          flightNumber: flight.flight_number,
+          link: `https://www.aviasales.com${flight.link}${linkSeparator}marker=696718&locale=pt&currency=brl`,
+        };
+      });
 
       return new Response(
         JSON.stringify({ prices, source: 'travelpayouts' }),
@@ -167,6 +170,7 @@ serve(async (req) => {
           const flight = data.data[0];
           const destName = Object.values(destinationToIATA).find(d => d.code === destCode)?.name || destCode;
           
+          const linkSeparator = flight.link.includes('?') ? '&' : '?';
           return {
             origin: originCode,
             destination: destCode,
@@ -177,7 +181,7 @@ serve(async (req) => {
             returnAt: flight.return_at,
             transfers: flight.transfers,
             flightNumber: flight.flight_number,
-            link: `https://www.aviasales.com${flight.link}?marker=696718&locale=pt&currency=brl`,
+            link: `https://www.aviasales.com${flight.link}${linkSeparator}marker=696718&locale=pt&currency=brl`,
           };
         }
         return null;
