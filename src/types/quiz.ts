@@ -1,5 +1,5 @@
 export interface QuizAnswers {
-  travelStyle: string[];
+  travelStyle: string;
   accommodation: string;
   pace: string;
   budget: string;
@@ -15,7 +15,7 @@ export interface QuizAnswers {
 }
 
 export const defaultQuizAnswers: QuizAnswers = {
-  travelStyle: [],
+  travelStyle: "",
   accommodation: "",
   pace: "",
   budget: "",

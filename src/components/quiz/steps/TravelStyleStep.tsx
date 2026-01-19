@@ -60,13 +60,8 @@ interface TravelStyleStepProps {
 }
 
 export function TravelStyleStep({ answers, onUpdate }: TravelStyleStepProps) {
-  const toggleStyle = (id: string) => {
-    const current = answers.travelStyle;
-    if (current.includes(id)) {
-      onUpdate("travelStyle", current.filter((s) => s !== id));
-    } else {
-      onUpdate("travelStyle", [...current, id]);
-    }
+  const selectStyle = (id: string) => {
+    onUpdate("travelStyle", id);
   };
 
   return (
@@ -81,7 +76,7 @@ export function TravelStyleStep({ answers, onUpdate }: TravelStyleStepProps) {
           Qual é o seu <span className="text-primary">estilo de viagem</span>?
         </h2>
         <p className="text-muted-foreground">
-          Selecione quantos quiser – sua viagem pode ter múltiplos estilos!
+          Escolha o estilo que melhor define sua viagem
         </p>
       </div>
 
@@ -92,8 +87,8 @@ export function TravelStyleStep({ answers, onUpdate }: TravelStyleStepProps) {
             icon={style.icon}
             title={style.title}
             description={style.description}
-            selected={answers.travelStyle.includes(style.id)}
-            onClick={() => toggleStyle(style.id)}
+            selected={answers.travelStyle === style.id}
+            onClick={() => selectStyle(style.id)}
           />
         ))}
       </div>
