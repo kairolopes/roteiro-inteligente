@@ -93,21 +93,21 @@ export function getHotellookLink(context: BookingContext): string {
  * Main flight aggregator
  */
 export function getAviasalesLink(context: BookingContext): string {
-  // Priorizar código IATA se disponível
-  const destination = context.destinationIata || context.city || 'anywhere';
-  const cleanDestination = destination.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, '-');
+  // Usar formato de busca direto do Aviasales
+  const destination = context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'NYC';
+  const origin = context.originIata || 'SAO';
   
-  // Usar domínio brasileiro para garantir idioma PT e moeda BRL
-  const baseUrl = 'https://www.passagensaereas.com.br';
-  const params = new URLSearchParams({
-    marker: PARTNER_IDS.aviasales,
-  });
+  // Formato: /flights/ORIGEM+DATA+DESTINO+TIPO (1=só ida)
+  let routeCode = `${origin}${destination}1`;
   
-  if (context.activityDate) params.set("depart_date", context.activityDate);
+  if (context.activityDate) {
+    // Data no formato YYYY-MM-DD -> DDMM
+    const day = context.activityDate.slice(8, 10);
+    const month = context.activityDate.slice(5, 7);
+    routeCode = `${origin}${day}${month}${destination}1`;
+  }
   
-  return `${baseUrl}/search/${cleanDestination}?${params.toString()}`;
+  return `https://www.aviasales.com/flights/${routeCode}?marker=${PARTNER_IDS.aviasales}`;
 }
 
 /**
@@ -116,19 +116,14 @@ export function getAviasalesLink(context: BookingContext): string {
  * Best for cashback program
  */
 export function getWayAwayLink(context: BookingContext): string {
-  // Priorizar código IATA se disponível
-  const destination = context.destinationIata || context.city || 'anywhere';
-  const cleanDestination = destination.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, '-');
+  // WayAway usa mesmo formato de busca do Aviasales
+  const destination = context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'NYC';
+  const origin = context.originIata || 'SAO';
   
-  // Usar domínio brasileiro para garantir idioma PT e moeda BRL
-  const baseUrl = 'https://www.passagensaereas.com.br';
-  const params = new URLSearchParams({
-    marker: PARTNER_IDS.wayaway,
-  });
+  // Formato: /flights/ORIGEM+DESTINO+TIPO
+  const routeCode = `${origin}${destination}1`;
   
-  return `${baseUrl}/search/${cleanDestination}?${params.toString()}`;
+  return `https://www.aviasales.com/flights/${routeCode}?marker=${PARTNER_IDS.wayaway}`;
 }
 
 /**
