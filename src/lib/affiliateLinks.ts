@@ -134,8 +134,17 @@ export function getSkyscannerLink(context: BookingContext): string {
   const origin = (context.originIata || 'SAO').toLowerCase();
   const destination = (context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'anywhere').toLowerCase();
   
+  // Se tiver data, incluir no formato AAMMDD
+  let datePath = '';
+  if (context.activityDate) {
+    const year = context.activityDate.slice(2, 4);
+    const month = context.activityDate.slice(5, 7);
+    const day = context.activityDate.slice(8, 10);
+    datePath = `${year}${month}${day}/`;
+  }
+  
   // Domínio brasileiro - sempre em PT-BR com R$ BRL
-  return `https://www.skyscanner.com.br/transporte/passagens-aereas/${origin}/${destination}/`;
+  return `https://www.skyscanner.com.br/transporte/passagens-aereas/${origin}/${destination}/${datePath}`;
 }
 
 /**

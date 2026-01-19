@@ -196,6 +196,7 @@ export const FlightSearchHero = () => {
           ? `R$ ${apiPrice.price.toLocaleString('pt-BR')}`
           : `R$ ${flight.fallbackPrice.toLocaleString('pt-BR')}`,
         apiLink: apiPrice?.link,
+        departureAt: apiPrice?.departureAt, // Data de partida da API
         isRealPrice: !!apiPrice,
       };
     });
@@ -240,10 +241,18 @@ export const FlightSearchHero = () => {
       destination: flight.to,
     });
     
-    const context = { city: flight.to, destinationIata: flight.apiIata, originIata: 'SAO' };
+    // Extrair data no formato YYYY-MM-DD para o contexto
+    const departureDate = flight.departureAt?.split('T')[0];
+    
+    const context = { 
+      city: flight.to, 
+      destinationIata: flight.apiIata, 
+      originIata: 'SAO',
+      activityDate: departureDate // Incluir data específica
+    };
     
     if (provider === "skyscanner") {
-      // Skyscanner Brasil - sempre em português
+      // Skyscanner Brasil - sempre em português com data específica
       window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
     } else {
       // Aviasales como secundário

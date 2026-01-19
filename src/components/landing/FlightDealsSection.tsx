@@ -4,7 +4,7 @@ import { Plane, Clock, TrendingDown, ExternalLink, Sparkles, RefreshCw, MapPin, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAviasalesLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
 import { useFlightPrices, destinationImages, formatFlightDate } from "@/hooks/useFlightPrices";
 import {
   Select,
@@ -57,8 +57,22 @@ export const FlightDealsSection = () => {
   const [selectedOrigin, setSelectedOrigin] = useState("São Paulo");
   const { prices, isLoading, error, refetch } = useFlightPrices({ origin: selectedOrigin });
 
-  const handleDealClick = (link: string) => {
-    window.open(link, "_blank");
+  const handleDealClick = (deal: { link: string; destination: string; departureAt?: string; route?: string }) => {
+    if (deal.link) {
+      window.open(deal.link, "_blank");
+    } else {
+      // Gerar link Skyscanner com data específica
+      const originCode = originCities.find(c => c.value === selectedOrigin)?.code || 'SAO';
+      const departureDate = deal.departureAt?.split('T')[0];
+      const destinationCity = deal.route?.split(' → ')[1] || deal.destination;
+      const context = {
+        city: destinationCity,
+        originIata: originCode,
+        destinationIata: deal.destination,
+        activityDate: departureDate,
+      };
+      window.open(getSkyscannerLink(context), "_blank");
+    }
   };
 
   const handleViewAll = () => {
@@ -69,6 +83,9 @@ export const FlightDealsSection = () => {
   const handleOriginChange = (value: string) => {
     setSelectedOrigin(value);
   };
+
+  // Get selected origin IATA code
+  const selectedOriginCode = originCities.find(c => c.value === selectedOrigin)?.code || 'SAO';
 
   // Transform API prices to display format or use fallback
   const deals = prices.length > 0 
@@ -84,6 +101,7 @@ export const FlightDealsSection = () => {
         tag: getTagForPrice(price.price, price.transfers),
         image: destinationImages[price.destination] || "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600",
         destination: price.destination,
+        departureAt: price.departureAt, // Incluir data de partida
         link: price.link,
       }))
     : fallbackDeals.map(deal => ({
@@ -214,7 +232,7 @@ export const FlightDealsSection = () => {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -4 }}
-                onClick={() => handleDealClick(deal.link || getAviasalesLink({ city: deal.destination, activityName: "deal" }))}
+                onClick={() => handleDealClick(deal)}
                 className="group cursor-pointer bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
               >
                 {/* Image */}
