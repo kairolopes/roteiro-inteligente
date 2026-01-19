@@ -1,3 +1,4 @@
+// Flight Details Page - Updated v2
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
