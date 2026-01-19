@@ -11,7 +11,6 @@ import { FlightPrice, useFlightPrices } from "@/hooks/useFlightPrices";
 import { 
   BookingContext, 
   getSkyscannerLink, 
-  getDecolarLink, 
   getGoogleFlightsLink, 
   getKayakBrasilLink, 
   getMomondoLink,
@@ -42,16 +41,6 @@ const FLIGHT_OPERATORS: FlightOperator[] = [
     color: 'bg-cyan-500',
     getLink: getSkyscannerLink,
     priceVariation: 0,
-    hasAffiliate: false,
-  },
-  {
-    id: 'decolar',
-    name: 'Decolar.com',
-    description: 'Maior agência de viagens da América Latina',
-    logo: '🟣',
-    color: 'bg-purple-600',
-    getLink: getDecolarLink,
-    priceVariation: 0.02,
     hasAffiliate: false,
   },
   {

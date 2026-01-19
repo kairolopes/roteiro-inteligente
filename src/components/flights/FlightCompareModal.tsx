@@ -4,7 +4,6 @@ import { Plane, ExternalLink, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { 
   getSkyscannerLink, 
-  getDecolarLink, 
   getGoogleFlightsLink, 
   getKayakBrasilLink, 
   getMomondoLink,
@@ -37,11 +36,11 @@ const comparisonSites = [
     getLink: getSkyscannerLink,
   },
   {
-    id: "decolar",
-    name: "Decolar",
-    description: "Maior agência da América Latina",
-    color: "bg-purple-500 hover:bg-purple-600",
-    getLink: getDecolarLink,
+    id: "aviasales",
+    name: "Aviasales",
+    description: "Cashback garantido",
+    color: "bg-sky-500 hover:bg-sky-600",
+    getLink: getAviasalesLink,
   },
   {
     id: "google_flights",
