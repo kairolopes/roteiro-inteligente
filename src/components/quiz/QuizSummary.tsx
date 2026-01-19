@@ -159,7 +159,7 @@ export function QuizSummary({ answers, onCreateItinerary }: QuizSummaryProps) {
           <div>
             <h4 className="font-semibold mb-1">Estilo de Viagem</h4>
             <p className="text-muted-foreground">
-              {answers.travelStyle.map((s) => labels.travelStyle[s]).join(", ") || "Não selecionado"}
+              {labels.travelStyle[answers.travelStyle] || "Não selecionado"}
             </p>
             {answers.interests.length > 0 && (
               <p className="text-sm text-muted-foreground mt-1">
