@@ -57,10 +57,10 @@ const internationalCities = [
 const allCities = [...brazilianCities, ...internationalCities];
 
 const popularFlights = [
-  { from: "São Paulo", to: "Lisboa", price: "R$ 2.890", discount: "-35%", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400" },
-  { from: "Rio de Janeiro", to: "Paris", price: "R$ 3.450", discount: "-28%", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400" },
-  { from: "São Paulo", to: "Miami", price: "R$ 2.190", discount: "-42%", image: "https://images.unsplash.com/photo-1514214246283-d427a95c5d2f?w=400" },
-  { from: "Brasília", to: "Roma", price: "R$ 3.290", discount: "-30%", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400" },
+  { from: "São Paulo", to: "Lisboa", iata: "LIS", price: "R$ 2.890", discount: "-35%", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400" },
+  { from: "Rio de Janeiro", to: "Paris", iata: "CDG", price: "R$ 3.450", discount: "-28%", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400" },
+  { from: "São Paulo", to: "Miami", iata: "MIA", price: "R$ 2.190", discount: "-42%", image: "https://images.unsplash.com/photo-1514214246283-d427a95c5d2f?w=400" },
+  { from: "Brasília", to: "Roma", iata: "FCO", price: "R$ 3.290", discount: "-30%", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400" },
 ];
 
 interface CityAutocompleteProps {
@@ -202,7 +202,7 @@ export const FlightSearchHero = () => {
     window.open(getWayAwayLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
-  const handleFlightClick = (to: string, provider: "aviasales" | "wayaway") => {
+  const handleFlightClick = (to: string, iata: string, provider: "aviasales" | "wayaway") => {
     trackAffiliateClick({
       partnerId: provider,
       partnerName: provider === "aviasales" ? "Aviasales" : "WayAway",
@@ -210,7 +210,7 @@ export const FlightSearchHero = () => {
       component: "FlightSearchHero-PopularFlights",
       destination: to,
     });
-    const context = { city: to };
+    const context = { city: to, destinationIata: iata };
     const link = provider === "aviasales" ? getAviasalesLink(context) : getWayAwayLink(context);
     window.open(link, "_blank", "noopener,noreferrer");
   };
@@ -365,13 +365,13 @@ export const FlightSearchHero = () => {
                     <p className="text-lg font-bold mb-2">{flight.price}</p>
                     <div className="flex gap-1">
                       <button
-                        onClick={() => handleFlightClick(flight.to, "aviasales")}
+                        onClick={() => handleFlightClick(flight.to, flight.iata, "aviasales")}
                         className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs py-1 px-2 rounded transition-colors"
                       >
                         Aviasales
                       </button>
                       <button
-                        onClick={() => handleFlightClick(flight.to, "wayaway")}
+                        onClick={() => handleFlightClick(flight.to, flight.iata, "wayaway")}
                         className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs py-1 px-2 rounded transition-colors"
                       >
                         Cashback
