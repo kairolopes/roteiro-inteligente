@@ -15,4 +15,8 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    // Injetar versão baseada no timestamp do build
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(`1.0.${Date.now()}`)
+  }
 }));
