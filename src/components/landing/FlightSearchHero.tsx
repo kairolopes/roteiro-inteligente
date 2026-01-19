@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { Plane, MapPin, Calendar, Sparkles, TrendingDown, ExternalLink, Loader2 } from "lucide-react";
+import { Plane, MapPin, Calendar, TrendingDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { getAviasalesLink, getWayAwayLink, getSkyscannerLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { useFlightPrices, FlightPrice } from "@/hooks/useFlightPrices";
 import { cn } from "@/lib/utils";
+import { FlightCompareModal, FlightCompareData } from "@/components/flights/FlightCompareModal";
 
 // Brazilian cities with IATA codes
 const brazilianCities = [
@@ -179,6 +180,8 @@ export const FlightSearchHero = () => {
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
+  const [selectedFlight, setSelectedFlight] = useState<FlightCompareData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch real prices from API
   const { prices, isLoading } = useFlightPrices({ origin: 'São Paulo' });
@@ -208,7 +211,7 @@ export const FlightSearchHero = () => {
     checkIn: date || undefined,
   });
 
-  const handleAviasalesSearch = () => {
+  const handleSearch = () => {
     trackAffiliateClick({
       partnerId: "aviasales",
       partnerName: "Aviasales",
@@ -220,45 +223,16 @@ export const FlightSearchHero = () => {
     window.open(getAviasalesLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
-  const handleWayAwaySearch = () => {
-    trackAffiliateClick({
-      partnerId: "wayaway",
-      partnerName: "WayAway",
-      category: "flights",
-      component: "FlightSearchHero",
-      destination: destination || "europe",
-      origin: origin || undefined,
-    });
-    window.open(getWayAwayLink(getSearchContext()), "_blank", "noopener,noreferrer");
-  };
-
-  const handleFlightClick = (flight: typeof popularFlightsWithPrices[0], provider: "skyscanner" | "aviasales") => {
-    trackAffiliateClick({
-      partnerId: provider,
-      partnerName: provider === "skyscanner" ? "Skyscanner" : "Aviasales",
-      category: "flights",
-      component: "FlightSearchHero-PopularFlights",
-      destination: flight.to,
-    });
-    
-    // Extrair data no formato YYYY-MM-DD para o contexto
-    const departureDate = flight.departureAt?.split('T')[0];
-    
-    const context = { 
-      city: flight.to, 
-      destinationIata: flight.apiIata, 
+  const handleFlightClick = (flight: typeof popularFlightsWithPrices[0]) => {
+    setSelectedFlight({
+      origin: flight.from,
       originIata: 'SAO',
-      activityDate: departureDate // Incluir data específica
-    };
-    
-    if (provider === "skyscanner") {
-      // Skyscanner Brasil - sempre em português com data específica
-      window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
-    } else {
-      // Aviasales como secundário
-      const link = flight.apiLink || getAviasalesLink(context);
-      window.open(link, "_blank", "noopener,noreferrer");
-    }
+      destination: flight.to,
+      destinationIata: flight.apiIata,
+      price: flight.price,
+      departureAt: flight.departureAt,
+    });
+    setIsModalOpen(true);
   };
 
   return (
@@ -350,32 +324,14 @@ export const FlightSearchHero = () => {
                   )}
                 />
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleAviasalesSearch}
-                  size="lg" 
-                  className="h-12 gap-2 text-base flex-1 bg-orange-500 hover:bg-orange-600"
-                >
-                  <Plane className="w-5 h-5" />
-                  Aviasales
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-                <Button 
-                  onClick={handleWayAwaySearch}
-                  size="lg" 
-                  className="h-12 gap-2 text-base flex-1 bg-amber-500 hover:bg-amber-600"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Cashback
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Partner badge */}
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>Compare preços + ganhe até 10% de cashback no WayAway</span>
+              <Button 
+                onClick={handleSearch}
+                size="lg" 
+                className="h-12 gap-2 text-base bg-primary hover:bg-primary/90"
+              >
+                <Plane className="w-5 h-5" />
+                Buscar Voos
+              </Button>
             </div>
           </motion.div>
 
@@ -412,23 +368,13 @@ export const FlightSearchHero = () => {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 p-3 text-white cursor-pointer"
+                    onClick={() => handleFlightClick(flight)}
+                  >
                     <p className="text-xs opacity-80">{flight.from} → {flight.to}</p>
-                    <p className="text-lg font-bold mb-2">{flight.priceFormatted}</p>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleFlightClick(flight, "skyscanner")}
-                        className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs py-1 px-2 rounded transition-colors"
-                      >
-                        Skyscanner
-                      </button>
-                      <button
-                        onClick={() => handleFlightClick(flight, "aviasales")}
-                        className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs py-1 px-2 rounded transition-colors"
-                      >
-                        Aviasales
-                      </button>
-                    </div>
+                    <p className="text-lg font-bold">{flight.priceFormatted}</p>
+                    <p className="text-xs opacity-70 mt-1">Clique para comparar</p>
                   </div>
                 </motion.div>
               ))}
@@ -436,6 +382,12 @@ export const FlightSearchHero = () => {
           </motion.div>
         </div>
       </div>
+
+      <FlightCompareModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        flight={selectedFlight}
+      />
     </section>
   );
 };

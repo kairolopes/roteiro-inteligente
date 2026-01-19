@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plane, Clock, TrendingDown, ExternalLink, Sparkles, RefreshCw, MapPin, ChevronDown } from "lucide-react";
+import { Plane, Clock, TrendingDown, ExternalLink, RefreshCw, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAviasalesLink, getSkyscannerLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink } from "@/lib/affiliateLinks";
 import { useFlightPrices, destinationImages, formatFlightDate } from "@/hooks/useFlightPrices";
+import { FlightCompareModal, FlightCompareData } from "@/components/flights/FlightCompareModal";
 import {
   Select,
   SelectContent,
@@ -55,24 +56,28 @@ const getTagColor = (tag: string) => {
 
 export const FlightDealsSection = () => {
   const [selectedOrigin, setSelectedOrigin] = useState("São Paulo");
+  const [selectedFlight, setSelectedFlight] = useState<FlightCompareData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { prices, isLoading, error, refetch } = useFlightPrices({ origin: selectedOrigin });
 
-  const handleDealClick = (deal: { link: string; destination: string; departureAt?: string; route?: string }) => {
-    if (deal.link) {
-      window.open(deal.link, "_blank");
-    } else {
-      // Gerar link Skyscanner com data específica
-      const originCode = originCities.find(c => c.value === selectedOrigin)?.code || 'SAO';
-      const departureDate = deal.departureAt?.split('T')[0];
-      const destinationCity = deal.route?.split(' → ')[1] || deal.destination;
-      const context = {
-        city: destinationCity,
-        originIata: originCode,
-        destinationIata: deal.destination,
-        activityDate: departureDate,
-      };
-      window.open(getSkyscannerLink(context), "_blank");
-    }
+  const handleDealClick = (deal: { 
+    route: string; 
+    destination: string; 
+    departureAt?: string; 
+    price: number;
+  }) => {
+    const originCode = originCities.find(c => c.value === selectedOrigin)?.code || 'SAO';
+    const destinationCity = deal.route.split(' → ')[1] || deal.destination;
+    
+    setSelectedFlight({
+      origin: selectedOrigin,
+      originIata: originCode,
+      destination: destinationCity,
+      destinationIata: deal.destination,
+      price: deal.price,
+      departureAt: deal.departureAt,
+    });
+    setIsModalOpen(true);
   };
 
   const handleViewAll = () => {
@@ -313,13 +318,14 @@ export const FlightDealsSection = () => {
             Ver Todas as Ofertas
             <ExternalLink className="w-4 h-4" />
           </Button>
-          
-          <p className="mt-4 text-sm text-muted-foreground flex items-center justify-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            Ganhe cashback em todas as reservas com WayAway Plus
-          </p>
         </motion.div>
       </div>
+
+      <FlightCompareModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        flight={selectedFlight}
+      />
     </section>
   );
 };
