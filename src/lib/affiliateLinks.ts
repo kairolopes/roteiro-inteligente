@@ -180,32 +180,22 @@ export function getKayakBrasilLink(context: BookingContext): string {
 
 /**
  * Decolar - Maior agência da América Latina
- * Formato: /passagens-aereas/aeroporto/{origem}/{destino}/
+ * Deep links retornam erro 404, redireciona para homepage de passagens
  */
 export function getDecolarLink(context: BookingContext): string {
-  const origin = (context.originIata || 'GRU').toLowerCase();
-  const dest = (context.destinationIata || 'LIS').toLowerCase();
-  return `https://www.decolar.com/passagens-aereas/aeroporto/${origin}/${dest}/`;
+  // Deep links da Decolar retornam erro 404
+  // Testado: /passagens-aereas/aeroporto/gru/lis/ = "Recalculando! GPS perdido"
+  return 'https://www.decolar.com/passagens-aereas/';
 }
 
 /**
  * 123Milhas - Comparador brasileiro popular
- * Formato: /busca?de={IATA}&para={IATA}&ida={DD/MM/YY}
+ * Deep links instáveis, redireciona para homepage de passagens
  */
 export function get123MilhasLink(context: BookingContext): string {
-  const origin = context.originIata || 'GRU';
-  const dest = context.destinationIata || 'LIS';
-  
-  let url = `https://www.123milhas.com/busca?de=${origin}&para=${dest}`;
-  
-  if (context.activityDate) {
-    const day = context.activityDate.slice(8, 10);
-    const month = context.activityDate.slice(5, 7);
-    const year = context.activityDate.slice(2, 4);
-    url += `&ida=${day}/${month}/${year}`;
-  }
-  
-  return url;
+  // Deep links do 123Milhas não carregam resultados corretamente
+  // Testado: /busca?de=GRU&para=LIS&ida=24/03/26 = página vazia
+  return 'https://www.123milhas.com/passagens-aereas';
 }
 
 /**
