@@ -190,12 +190,39 @@ export function getDecolarLink(context: BookingContext): string {
 
 /**
  * 123Milhas - Comparador brasileiro popular
- * Deep links instáveis, redireciona para homepage de passagens
+ * Formato: /v2/busca?de={origin}&para={dest}&ida={DD-MM-YYYY}&adultos=1&criancas=0&bebes=0&classe=economica
  */
 export function get123MilhasLink(context: BookingContext): string {
-  // Deep links do 123Milhas não carregam resultados corretamente
-  // Testado: /busca?de=GRU&para=LIS&ida=24/03/26 = página vazia
-  return 'https://www.123milhas.com/passagens-aereas';
+  const origin = context.originIata || 'GRU';
+  const dest = context.destinationIata || 'CDG';
+  
+  const baseUrl = 'https://www.123milhas.com/v2/busca';
+  
+  const params = new URLSearchParams({
+    de: origin,
+    para: dest,
+    adultos: '1',
+    criancas: '0',
+    bebes: '0',
+    classe: 'economica'
+  });
+  
+  // Formatar data como DD-MM-YYYY (formato aceito pelo 123Milhas)
+  if (context.activityDate) {
+    try {
+      const date = new Date(context.activityDate);
+      if (!isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        params.set('ida', `${day}-${month}-${year}`);
+      }
+    } catch {
+      // Se falhar parsing, não inclui data
+    }
+  }
+  
+  return `${baseUrl}?${params.toString()}`;
 }
 
 /**
