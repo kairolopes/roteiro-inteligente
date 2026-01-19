@@ -68,9 +68,10 @@ export const FlightDealsSection = () => {
     const originCode = originCities.find(c => c.value === selectedOrigin)?.code || 'SAO';
     const destinationCity = deal.route.split(' → ')[1] || deal.destination;
     
-    // Formata a data para YYMMDD
-    const dateParam = deal.departureAt?.split('T')[0]?.replace(/-/g, '') || 
-      new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
+    // Formata a data para YYMMDD (6 dígitos)
+    const dateParam = deal.departureAt 
+      ? `${deal.departureAt.slice(2, 4)}${deal.departureAt.slice(5, 7)}${deal.departureAt.slice(8, 10)}`
+      : new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(2, 10).replace(/-/g, '');
     
     // Navega para página de detalhes da Sofia
     navigate(`/passagens/${originCode}/${deal.destination}/${dateParam}`, {

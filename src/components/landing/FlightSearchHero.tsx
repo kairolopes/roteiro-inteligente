@@ -224,9 +224,10 @@ export const FlightSearchHero = () => {
   const navigate = useNavigate();
 
   const handleFlightClick = (flight: typeof popularFlightsWithPrices[0]) => {
-    // Formata a data para YYMMDD
-    const dateParam = flight.departureAt?.split('T')[0]?.replace(/-/g, '') || 
-      new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0].replace(/-/g, '');
+    // Formata a data para YYMMDD (6 dígitos)
+    const dateParam = flight.departureAt 
+      ? `${flight.departureAt.slice(2, 4)}${flight.departureAt.slice(5, 7)}${flight.departureAt.slice(8, 10)}`
+      : new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(2, 10).replace(/-/g, '');
     
     // Navega para página de detalhes da Sofia
     navigate(`/passagens/SAO/${flight.apiIata}/${dateParam}`, {

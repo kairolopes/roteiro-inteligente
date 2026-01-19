@@ -220,9 +220,20 @@ export default function FlightDetails() {
   const formattedDate = useMemo(() => {
     if (!data) return 'Data não especificada';
     try {
-      const year = `20${data.slice(0, 2)}`;
-      const month = data.slice(2, 4);
-      const day = data.slice(4, 6);
+      let year, month, day;
+      
+      if (data.length === 8) {
+        // Formato YYYYMMDD (8 dígitos)
+        year = data.slice(0, 4);
+        month = data.slice(4, 6);
+        day = data.slice(6, 8);
+      } else {
+        // Formato YYMMDD (6 dígitos)
+        year = `20${data.slice(0, 2)}`;
+        month = data.slice(2, 4);
+        day = data.slice(4, 6);
+      }
+      
       const dateObj = new Date(`${year}-${month}-${day}`);
       return format(dateObj, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
     } catch {
@@ -242,10 +253,17 @@ export default function FlightDetails() {
   
   const isoDate = useMemo(() => {
     if (!data) return undefined;
-    const year = `20${data.slice(0, 2)}`;
-    const month = data.slice(2, 4);
-    const day = data.slice(4, 6);
-    return `${year}-${month}-${day}`;
+    
+    if (data.length === 8) {
+      // Formato YYYYMMDD (8 dígitos)
+      return `${data.slice(0, 4)}-${data.slice(4, 6)}-${data.slice(6, 8)}`;
+    } else {
+      // Formato YYMMDD (6 dígitos)
+      const year = `20${data.slice(0, 2)}`;
+      const month = data.slice(2, 4);
+      const day = data.slice(4, 6);
+      return `${year}-${month}-${day}`;
+    }
   }, [data]);
   
   const originName = CITY_NAMES[originIata] || originIata;
