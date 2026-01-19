@@ -18,13 +18,20 @@ interface Message {
   content: string;
 }
 
-// Use Netlify Functions if available, otherwise fallback to Supabase Edge Functions
+// Use Netlify Functions only when deployed to Netlify, otherwise use Supabase Edge Functions
 const getChatUrl = () => {
-  // Check if we're in Netlify environment
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  
+  // Use Netlify Functions only for Netlify deployments or custom production domain
+  const isNetlify = hostname.includes('.netlify.app') || 
+                    hostname.includes('viagecomsofia.com') ||
+                    hostname.includes('viagecomsofia.com.br');
+  
+  if (isNetlify) {
     return `${getNetlifyFunctionsUrl()}/chat-travel`;
   }
-  // Fallback to Supabase for development or Lovable preview
+  
+  // Default to Supabase Edge Functions (Lovable preview, localhost, etc.)
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`;
 };
 
