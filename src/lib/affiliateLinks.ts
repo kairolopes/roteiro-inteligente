@@ -14,8 +14,10 @@ const PARTNER_IDS = {
   wayaway: TRAVELPAYOUTS_MARKER, // Using same marker, update if you get specific trs ID
   getyourguide: TRAVELPAYOUTS_MARKER, // Update with your GYG Partner ID when received
   
+  // Approved partners
+  skyscanner: "2734876", // Skyscanner Partners - APPROVED ✅
+  
   // Pending approval - add IDs when approved
-  skyscanner: "", // Add Skyscanner associateId when approved
   kayak: "", // Add KAYAK partner ID when approved
   booking: "", // Add Booking.com aid when approved via Travelpayouts
 };
@@ -232,8 +234,8 @@ export const AFFILIATE_CONFIG = {
       icon: "search",
       color: "cyan",
       getLink: getSkyscannerLink,
-      available: false, // Enable when Skyscanner Partners approved
-      requiresId: true,
+      available: true, // APPROVED ✅
+      requiresId: false,
     },
     {
       id: "kayak",
