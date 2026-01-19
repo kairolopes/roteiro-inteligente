@@ -180,32 +180,55 @@ export function getKayakBrasilLink(context: BookingContext): string {
 
 /**
  * Decolar - Maior agência da América Latina
- * Deep links não funcionam mais, redireciona para homepage de passagens
+ * Formato: /passagens-aereas/aeroporto/{origem}/{destino}/
  */
 export function getDecolarLink(context: BookingContext): string {
-  return 'https://www.decolar.com/passagens-aereas/';
+  const origin = (context.originIata || 'GRU').toLowerCase();
+  const dest = (context.destinationIata || 'LIS').toLowerCase();
+  return `https://www.decolar.com/passagens-aereas/aeroporto/${origin}/${dest}/`;
 }
 
 /**
  * 123Milhas - Comparador brasileiro popular
- * Parcelamento em até 12x sem juros
+ * Formato: /busca?de={IATA}&para={IATA}&ida={DD/MM/YY}
  */
 export function get123MilhasLink(context: BookingContext): string {
-  return 'https://123milhas.com/passagens-aereas';
+  const origin = context.originIata || 'GRU';
+  const dest = context.destinationIata || 'LIS';
+  
+  let url = `https://www.123milhas.com/busca?de=${origin}&para=${dest}`;
+  
+  if (context.activityDate) {
+    const day = context.activityDate.slice(8, 10);
+    const month = context.activityDate.slice(5, 7);
+    const year = context.activityDate.slice(2, 4);
+    url += `&ida=${day}/${month}/${year}`;
+  }
+  
+  return url;
 }
 
 /**
  * Google Flights - Calendário de preços
+ * Formato: ?q=Flights to {dest} from {origin} on {date}
  */
 export function getGoogleFlightsLink(context: BookingContext): string {
   const origin = context.originIata || 'SAO';
   const dest = context.destinationIata || 'MIA';
-  let url = `https://www.google.com/travel/flights?q=voos+de+${origin}+para+${dest}`;
+  
+  let query = `Flights to ${dest} from ${origin}`;
+  
   if (context.activityDate) {
-    url += `+${context.activityDate}`;
+    query += ` on ${context.activityDate}`;
   }
-  url += '&curr=BRL&hl=pt-BR';
-  return url;
+  
+  const params = new URLSearchParams({
+    q: query,
+    curr: 'BRL',
+    hl: 'pt-BR'
+  });
+  
+  return `https://www.google.com/travel/flights?${params.toString()}`;
 }
 
 /**
