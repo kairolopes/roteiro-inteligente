@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { Plane, MapPin, Calendar, Sparkles, TrendingDown, ExternalLink } from "lucide-react";
+import { Plane, MapPin, Calendar, Sparkles, TrendingDown, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { getAviasalesLink, getWayAwayLink } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
+import { useFlightPrices, FlightPrice } from "@/hooks/useFlightPrices";
 import { cn } from "@/lib/utils";
 
 // Brazilian cities with IATA codes
@@ -56,11 +57,18 @@ const internationalCities = [
 
 const allCities = [...brazilianCities, ...internationalCities];
 
-const popularFlights = [
-  { from: "São Paulo", to: "Lisboa", iata: "LIS", price: "R$ 2.890", discount: "-35%", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400" },
-  { from: "Rio de Janeiro", to: "Paris", iata: "CDG", price: "R$ 3.450", discount: "-28%", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400" },
-  { from: "São Paulo", to: "Miami", iata: "MIA", price: "R$ 2.190", discount: "-42%", image: "https://images.unsplash.com/photo-1514214246283-d427a95c5d2f?w=400" },
-  { from: "Brasília", to: "Roma", iata: "FCO", price: "R$ 3.290", discount: "-30%", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400" },
+// Mapeamento de códigos IATA alternativos (API usa códigos de área)
+const iataAliases: Record<string, string> = {
+  'CDG': 'PAR', // Charles de Gaulle -> Paris área
+  'FCO': 'ROM', // Fiumicino -> Roma área
+};
+
+// Static fallback data for popular flights
+const staticPopularFlights = [
+  { from: "São Paulo", to: "Lisboa", iata: "LIS", apiIata: "LIS", fallbackPrice: 2890, discount: "-35%", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400" },
+  { from: "São Paulo", to: "Paris", iata: "CDG", apiIata: "PAR", fallbackPrice: 3450, discount: "-28%", image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400" },
+  { from: "São Paulo", to: "Miami", iata: "MIA", apiIata: "MIA", fallbackPrice: 2190, discount: "-42%", image: "https://images.unsplash.com/photo-1514214246283-d427a95c5d2f?w=400" },
+  { from: "São Paulo", to: "Roma", iata: "FCO", apiIata: "ROM", fallbackPrice: 3290, discount: "-30%", image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400" },
 ];
 
 interface CityAutocompleteProps {
@@ -172,6 +180,27 @@ export const FlightSearchHero = () => {
   const [destination, setDestination] = useState("");
   const [date, setDate] = useState("");
 
+  // Fetch real prices from API
+  const { prices, isLoading } = useFlightPrices({ origin: 'São Paulo' });
+
+  // Combine API prices with static data
+  const popularFlightsWithPrices = useMemo(() => {
+    return staticPopularFlights.map(flight => {
+      // Find matching price from API (using apiIata for matching)
+      const apiPrice = prices.find(p => p.destination === flight.apiIata);
+      
+      return {
+        ...flight,
+        price: apiPrice ? apiPrice.price : flight.fallbackPrice,
+        priceFormatted: apiPrice 
+          ? `R$ ${apiPrice.price.toLocaleString('pt-BR')}`
+          : `R$ ${flight.fallbackPrice.toLocaleString('pt-BR')}`,
+        apiLink: apiPrice?.link,
+        isRealPrice: !!apiPrice,
+      };
+    });
+  }, [prices]);
+
   const getSearchContext = () => ({
     city: destination || "europe",
     departureCity: origin || undefined,
@@ -202,17 +231,23 @@ export const FlightSearchHero = () => {
     window.open(getWayAwayLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
-  const handleFlightClick = (to: string, iata: string, provider: "aviasales" | "wayaway") => {
+  const handleFlightClick = (flight: typeof popularFlightsWithPrices[0], provider: "aviasales" | "wayaway") => {
     trackAffiliateClick({
       partnerId: provider,
       partnerName: provider === "aviasales" ? "Aviasales" : "WayAway",
       category: "flights",
       component: "FlightSearchHero-PopularFlights",
-      destination: to,
+      destination: flight.to,
     });
-    const context = { city: to, destinationIata: iata };
-    const link = provider === "aviasales" ? getAviasalesLink(context) : getWayAwayLink(context);
-    window.open(link, "_blank", "noopener,noreferrer");
+    
+    // Use direct API link if available (already has correct locale/currency)
+    if (provider === "aviasales" && flight.apiLink) {
+      window.open(flight.apiLink, "_blank", "noopener,noreferrer");
+    } else {
+      const context = { city: flight.to, destinationIata: flight.apiIata };
+      const link = provider === "aviasales" ? getAviasalesLink(context) : getWayAwayLink(context);
+      window.open(link, "_blank", "noopener,noreferrer");
+    }
   };
 
   return (
@@ -339,11 +374,12 @@ export const FlightSearchHero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            <h3 className="text-lg font-semibold mb-4 text-muted-foreground">
+            <h3 className="text-lg font-semibold mb-4 text-muted-foreground flex items-center gap-2">
               🔥 Ofertas Populares
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {popularFlights.map((flight, index) => (
+              {popularFlightsWithPrices.map((flight, index) => (
                 <motion.div
                   key={index}
                   whileHover={{ scale: 1.03, y: -4 }}
@@ -358,20 +394,25 @@ export const FlightSearchHero = () => {
                     <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-full">
                       {flight.discount}
                     </div>
+                    {flight.isRealPrice && (
+                      <div className="absolute top-2 left-2 bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        Preço Real
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                     <p className="text-xs opacity-80">{flight.from} → {flight.to}</p>
-                    <p className="text-lg font-bold mb-2">{flight.price}</p>
+                    <p className="text-lg font-bold mb-2">{flight.priceFormatted}</p>
                     <div className="flex gap-1">
                       <button
-                        onClick={() => handleFlightClick(flight.to, flight.iata, "aviasales")}
+                        onClick={() => handleFlightClick(flight, "aviasales")}
                         className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs py-1 px-2 rounded transition-colors"
                       >
                         Aviasales
                       </button>
                       <button
-                        onClick={() => handleFlightClick(flight.to, flight.iata, "wayaway")}
+                        onClick={() => handleFlightClick(flight, "wayaway")}
                         className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs py-1 px-2 rounded transition-colors"
                       >
                         Cashback
