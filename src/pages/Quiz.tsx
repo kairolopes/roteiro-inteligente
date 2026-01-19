@@ -153,6 +153,7 @@ const Quiz = () => {
                 <QuizSummary
                   answers={answers}
                   onCreateItinerary={handleCreateItinerary}
+                  onEditStep={(stepIndex) => setCurrentStep(stepIndex)}
                 />
               ) : (
                 CurrentStepComponent && (
