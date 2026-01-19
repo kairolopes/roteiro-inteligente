@@ -148,9 +148,7 @@ export function getSkyscannerLink(context: BookingContext): string {
 }
 
 /**
- * KAYAK - PENDING ⏳
- * CPC model via Travelpayouts or direct
- * Popular in Brazil
+ * KAYAK Brasil - Link direto para busca
  */
 export function getKayakLink(context: BookingContext): string {
   const destination = context.city || 'anywhere';
@@ -165,6 +163,59 @@ export function getKayakLink(context: BookingContext): string {
   }
   
   return `https://www.kayak.com.br/flights/-${encodeURIComponent(destination)}?${params.toString()}`;
+}
+
+/**
+ * Kayak Brasil - Formato específico para comparador
+ */
+export function getKayakBrasilLink(context: BookingContext): string {
+  const origin = context.originIata || 'SAO';
+  const dest = context.destinationIata || 'MIA';
+  let datePath = '';
+  if (context.activityDate) {
+    datePath = context.activityDate;
+  }
+  return `https://www.kayak.com.br/flights/${origin}-${dest}/${datePath}?sort=price_a`;
+}
+
+/**
+ * Decolar - Maior agência da América Latina
+ */
+export function getDecolarLink(context: BookingContext): string {
+  const origin = context.originIata || 'SAO';
+  const dest = context.destinationIata || 'MIA';
+  let url = `https://www.decolar.com/shop/flights/results/oneway/${origin}/${dest}`;
+  if (context.activityDate) {
+    url += `/${context.activityDate}/1/0/0/NA/NA/NA/NA`;
+  }
+  return url;
+}
+
+/**
+ * Google Flights - Calendário de preços
+ */
+export function getGoogleFlightsLink(context: BookingContext): string {
+  const origin = context.originIata || 'SAO';
+  const dest = context.destinationIata || 'MIA';
+  let url = `https://www.google.com/travel/flights?q=voos+de+${origin}+para+${dest}`;
+  if (context.activityDate) {
+    url += `+${context.activityDate}`;
+  }
+  url += '&curr=BRL&hl=pt-BR';
+  return url;
+}
+
+/**
+ * Momondo Brasil - Comparador global
+ */
+export function getMomondoLink(context: BookingContext): string {
+  const origin = context.originIata || 'SAO';
+  const dest = context.destinationIata || 'MIA';
+  let datePath = '';
+  if (context.activityDate) {
+    datePath = context.activityDate;
+  }
+  return `https://www.momondo.com.br/flight-search/${origin}-${dest}/${datePath}?sort=price_a`;
 }
 
 // ============================================
