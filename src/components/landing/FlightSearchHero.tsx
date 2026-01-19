@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Plane, MapPin, Calendar, Sparkles, TrendingDown, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { getAviasalesLink, getWayAwayLink } from "@/lib/affiliateLinks";
+import { getAviasalesLink, getWayAwayLink, getSkyscannerLink } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { useFlightPrices, FlightPrice } from "@/hooks/useFlightPrices";
 import { cn } from "@/lib/utils";
@@ -231,21 +231,23 @@ export const FlightSearchHero = () => {
     window.open(getWayAwayLink(getSearchContext()), "_blank", "noopener,noreferrer");
   };
 
-  const handleFlightClick = (flight: typeof popularFlightsWithPrices[0], provider: "aviasales" | "wayaway") => {
+  const handleFlightClick = (flight: typeof popularFlightsWithPrices[0], provider: "skyscanner" | "aviasales") => {
     trackAffiliateClick({
       partnerId: provider,
-      partnerName: provider === "aviasales" ? "Aviasales" : "WayAway",
+      partnerName: provider === "skyscanner" ? "Skyscanner" : "Aviasales",
       category: "flights",
       component: "FlightSearchHero-PopularFlights",
       destination: flight.to,
     });
     
-    // Use direct API link if available (already has correct locale/currency)
-    if (provider === "aviasales" && flight.apiLink) {
-      window.open(flight.apiLink, "_blank", "noopener,noreferrer");
+    const context = { city: flight.to, destinationIata: flight.apiIata, originIata: 'SAO' };
+    
+    if (provider === "skyscanner") {
+      // Skyscanner Brasil - sempre em português
+      window.open(getSkyscannerLink(context), "_blank", "noopener,noreferrer");
     } else {
-      const context = { city: flight.to, destinationIata: flight.apiIata };
-      const link = provider === "aviasales" ? getAviasalesLink(context) : getWayAwayLink(context);
+      // Aviasales como secundário
+      const link = flight.apiLink || getAviasalesLink(context);
       window.open(link, "_blank", "noopener,noreferrer");
     }
   };
@@ -406,16 +408,16 @@ export const FlightSearchHero = () => {
                     <p className="text-lg font-bold mb-2">{flight.priceFormatted}</p>
                     <div className="flex gap-1">
                       <button
+                        onClick={() => handleFlightClick(flight, "skyscanner")}
+                        className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white text-xs py-1 px-2 rounded transition-colors"
+                      >
+                        Skyscanner
+                      </button>
+                      <button
                         onClick={() => handleFlightClick(flight, "aviasales")}
                         className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs py-1 px-2 rounded transition-colors"
                       >
                         Aviasales
-                      </button>
-                      <button
-                        onClick={() => handleFlightClick(flight, "wayaway")}
-                        className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs py-1 px-2 rounded transition-colors"
-                      >
-                        Cashback
                       </button>
                     </div>
                   </div>

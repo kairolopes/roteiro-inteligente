@@ -127,28 +127,15 @@ export function getWayAwayLink(context: BookingContext): string {
 }
 
 /**
- * Skyscanner - PENDING ⏳
- * Apply at: partners.skyscanner.net or FlexOffers
- * Popular in Brazil - recognized brand
+ * Skyscanner Brasil - Interface 100% em português com R$ BRL
+ * Não requer afiliado - link direto funciona perfeitamente
  */
 export function getSkyscannerLink(context: BookingContext): string {
-  if (!PARTNER_IDS.skyscanner) {
-    // Fallback to non-affiliate link
-    const destination = context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'anywhere';
-    return `https://www.skyscanner.com.br/transport/flights/bra/${destination.toLowerCase()}/`;
-  }
+  const origin = (context.originIata || 'SAO').toLowerCase();
+  const destination = (context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'anywhere').toLowerCase();
   
-  const params = new URLSearchParams({
-    associateId: PARTNER_IDS.skyscanner,
-    locale: "pt-BR",
-    market: "BR",
-    currency: "BRL",
-  });
-  
-  if (context.activityDate) params.set("outboundDate", context.activityDate);
-  
-  const destination = context.destinationIata || context.city?.substring(0, 3).toUpperCase() || 'anywhere';
-  return `https://www.skyscanner.com.br/transport/flights/bra/${destination.toLowerCase()}/?${params.toString()}`;
+  // Domínio brasileiro - sempre em PT-BR com R$ BRL
+  return `https://www.skyscanner.com.br/transporte/passagens-aereas/${origin}/${destination}/`;
 }
 
 /**
