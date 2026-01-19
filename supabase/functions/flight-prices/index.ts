@@ -133,7 +133,13 @@ serve(async (req) => {
       }
 
       const prices: PriceResult[] = data.data.map((flight: any) => {
-          const linkSeparator = flight.link.includes('?') ? '&' : '?';
+          // Formato de link direto: /flights/ORIGEM+DATA+DESTINO+RETORNO
+          // Ex: SAO2304LIS1 = SAO, 23/04, LIS, só ida
+          const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : '';
+          const day = departDate.slice(8, 10);
+          const month = departDate.slice(5, 7);
+          const routeCode = `${originCode}${day}${month}${destInfo.code}1`;
+          
           return {
             origin: originCode,
             destination: destInfo.code,
@@ -144,7 +150,7 @@ serve(async (req) => {
             returnAt: flight.return_at,
             transfers: flight.transfers,
             flightNumber: flight.flight_number,
-            link: `https://www.passagensaereas.com.br${flight.link}${linkSeparator}marker=696718`,
+            link: `https://www.aviasales.com/flights/${routeCode}?marker=696718`,
           };
       });
 
@@ -170,7 +176,12 @@ serve(async (req) => {
           const flight = data.data[0];
           const destName = Object.values(destinationToIATA).find(d => d.code === destCode)?.name || destCode;
           
-          const linkSeparator = flight.link.includes('?') ? '&' : '?';
+          // Formato de link direto: /flights/ORIGEM+DATA+DESTINO+RETORNO
+          const departDate = flight.departure_at ? flight.departure_at.split('T')[0] : '';
+          const day = departDate.slice(8, 10);
+          const month = departDate.slice(5, 7);
+          const routeCode = `${originCode}${day}${month}${destCode}1`;
+          
           return {
             origin: originCode,
             destination: destCode,
@@ -181,7 +192,7 @@ serve(async (req) => {
             returnAt: flight.return_at,
             transfers: flight.transfers,
             flightNumber: flight.flight_number,
-            link: `https://www.passagensaereas.com.br${flight.link}${linkSeparator}marker=696718`,
+            link: `https://www.aviasales.com/flights/${routeCode}?marker=696718`,
           };
         }
         return null;
