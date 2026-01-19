@@ -1,11 +1,12 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plane, Loader2, Users, Briefcase, ExternalLink, Check } from "lucide-react";
+import { ArrowLeft, Plane, Loader2, Users, Briefcase, ExternalLink, Check, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { TripPackageUpsell } from "@/components/flights/TripPackageUpsell";
 import { FlightPrice, useFlightPrices } from "@/hooks/useFlightPrices";
 import { 
   BookingContext, 
@@ -106,12 +107,10 @@ const FLIGHT_OPERATORS: FlightOperator[] = [
 ];
 
 const AIRLINE_LOGOS: Record<string, { bg: string; text: string; abbr: string }> = {
-  // Brasileiras
   'GOL': { bg: 'bg-orange-500', text: 'text-white', abbr: 'G3' },
   'LATAM': { bg: 'bg-red-600', text: 'text-white', abbr: 'LA' },
   'Azul': { bg: 'bg-blue-600', text: 'text-white', abbr: 'AD' },
   'Passaredo': { bg: 'bg-green-500', text: 'text-white', abbr: '2Z' },
-  // Latinas
   'Aerolíneas Argentinas': { bg: 'bg-sky-500', text: 'text-white', abbr: 'AR' },
   'Avianca': { bg: 'bg-red-600', text: 'text-white', abbr: 'AV' },
   'Copa Airlines': { bg: 'bg-blue-700', text: 'text-white', abbr: 'CM' },
@@ -121,7 +120,6 @@ const AIRLINE_LOGOS: Record<string, { bg: string; text: string; abbr: string }> 
   'Sky Airline': { bg: 'bg-green-600', text: 'text-white', abbr: 'H2' },
   'Viva Air': { bg: 'bg-yellow-500', text: 'text-black', abbr: 'VH' },
   'Wingo': { bg: 'bg-green-500', text: 'text-white', abbr: 'W4' },
-  // Europeias
   'TAP Portugal': { bg: 'bg-green-600', text: 'text-white', abbr: 'TP' },
   'Air France': { bg: 'bg-blue-800', text: 'text-white', abbr: 'AF' },
   'British Airways': { bg: 'bg-blue-900', text: 'text-white', abbr: 'BA' },
@@ -130,30 +128,24 @@ const AIRLINE_LOGOS: Record<string, { bg: string; text: string; abbr: string }> 
   'Lufthansa': { bg: 'bg-yellow-500', text: 'text-blue-900', abbr: 'LH' },
   'ITA Airways': { bg: 'bg-green-600', text: 'text-white', abbr: 'AZ' },
   'Swiss': { bg: 'bg-red-600', text: 'text-white', abbr: 'LX' },
-  // Norte-americanas
   'American Airlines': { bg: 'bg-blue-600', text: 'text-white', abbr: 'AA' },
   'United Airlines': { bg: 'bg-blue-700', text: 'text-white', abbr: 'UA' },
   'Delta': { bg: 'bg-blue-900', text: 'text-white', abbr: 'DL' },
   'JetBlue': { bg: 'bg-blue-500', text: 'text-white', abbr: 'B6' },
   'Spirit Airlines': { bg: 'bg-yellow-400', text: 'text-black', abbr: 'NK' },
   'Air Canada': { bg: 'bg-red-600', text: 'text-white', abbr: 'AC' },
-  // Outras internacionais
   'Emirates': { bg: 'bg-red-700', text: 'text-white', abbr: 'EK' },
   'Qatar Airways': { bg: 'bg-purple-800', text: 'text-white', abbr: 'QR' },
   'Turkish Airlines': { bg: 'bg-red-600', text: 'text-white', abbr: 'TK' },
   'Ethiopian Airlines': { bg: 'bg-green-700', text: 'text-white', abbr: 'ET' },
   'Singapore Airlines': { bg: 'bg-yellow-600', text: 'text-blue-900', abbr: 'SQ' },
-  // Charters
   'Voo Charter': { bg: 'bg-gray-500', text: 'text-white', abbr: 'CH' },
 };
 
-// Fallback para companhias não mapeadas
 const getAirlineData = (airlineName: string) => {
   if (AIRLINE_LOGOS[airlineName]) {
     return AIRLINE_LOGOS[airlineName];
   }
-  
-  // Gerar cor baseada no nome para consistência
   const colors = [
     { bg: 'bg-slate-600', text: 'text-white' },
     { bg: 'bg-zinc-600', text: 'text-white' },
@@ -161,14 +153,12 @@ const getAirlineData = (airlineName: string) => {
     { bg: 'bg-stone-600', text: 'text-white' },
   ];
   const colorIndex = airlineName.charCodeAt(0) % colors.length;
-  
   return {
     ...colors[colorIndex],
     abbr: airlineName.substring(0, 2).toUpperCase(),
   };
 };
 
-// City name mapping
 const CITY_NAMES: Record<string, string> = {
   'SAO': 'São Paulo',
   'GRU': 'São Paulo (Guarulhos)',
@@ -195,6 +185,11 @@ const CITY_NAMES: Record<string, string> = {
   'ORL': 'Orlando',
   'MCO': 'Orlando',
   'LAX': 'Los Angeles',
+  'CUN': 'Cancún',
+  'BCN': 'Barcelona',
+  'ROM': 'Roma',
+  'AMS': 'Amsterdam',
+  'DXB': 'Dubai',
 };
 
 export default function FlightDetails() {
@@ -208,7 +203,12 @@ export default function FlightDetails() {
   
   // Get flight data from navigation state
   const flightFromState = location.state?.flight as FlightPrice | undefined;
+  const returnFlightFromState = location.state?.returnFlight as FlightPrice | undefined;
   const originIata = location.state?.originIata || origem?.toUpperCase() || 'SAO';
+  const tripType = location.state?.tripType || 'oneway';
+  const returnDateStr = location.state?.returnDate;
+  
+  const isRoundTrip = tripType === 'roundtrip' && returnFlightFromState;
   
   // Fetch other flights for this route
   const { prices: otherFlights, isLoading } = useFlightPrices({
@@ -229,6 +229,16 @@ export default function FlightDetails() {
       return 'Data inválida';
     }
   }, [data]);
+
+  const formattedReturnDate = useMemo(() => {
+    if (!returnDateStr) return '';
+    try {
+      const dateObj = new Date(returnDateStr);
+      return format(dateObj, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
+    } catch {
+      return '';
+    }
+  }, [returnDateStr]);
   
   const isoDate = useMemo(() => {
     if (!data) return undefined;
@@ -279,16 +289,18 @@ export default function FlightDetails() {
   }, [searchProgress, visibleOperators]);
   
   // Calculate prices with variations
-  const basePrice = flightFromState?.price || 500;
+  const outboundPrice = flightFromState?.price || 500;
+  const returnPrice = returnFlightFromState?.price || 0;
+  const totalBasePrice = outboundPrice + returnPrice;
   
   const operatorsWithPrices = useMemo(() => {
     return FLIGHT_OPERATORS.map(op => ({
       ...op,
-      calculatedPrice: Math.round(basePrice * (1 + op.priceVariation)),
+      calculatedPrice: Math.round(totalBasePrice * (1 + op.priceVariation)),
     })).sort((a, b) => a.calculatedPrice - b.calculatedPrice);
-  }, [basePrice]);
+  }, [totalBasePrice]);
   
-  const bestPrice = operatorsWithPrices[0]?.calculatedPrice || basePrice;
+  const bestPrice = operatorsWithPrices[0]?.calculatedPrice || totalBasePrice;
   
   const handleSelectOperator = (operator: FlightOperator & { calculatedPrice: number }) => {
     const context: BookingContext = {
@@ -342,8 +354,12 @@ export default function FlightDetails() {
     return `${hours}h${mins > 0 ? mins.toString().padStart(2, '0') : ''}`;
   };
 
-  const airlineData = flightFromState 
+  const outboundAirlineData = flightFromState 
     ? getAirlineData(flightFromState.airline)
+    : { bg: 'bg-primary', text: 'text-white', abbr: 'VL' };
+
+  const returnAirlineData = returnFlightFromState
+    ? getAirlineData(returnFlightFromState.airline)
     : { bg: 'bg-primary', text: 'text-white', abbr: 'VL' };
 
   return (
@@ -372,7 +388,11 @@ export default function FlightDetails() {
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-3">
                   <div className="text-2xl font-bold">{originIata}</div>
-                  <Plane className="h-5 w-5 text-primary" />
+                  {isRoundTrip ? (
+                    <ArrowLeftRight className="h-5 w-5 text-primary" />
+                  ) : (
+                    <Plane className="h-5 w-5 text-primary" />
+                  )}
                   <div className="text-2xl font-bold">{destino?.toUpperCase()}</div>
                 </div>
               </div>
@@ -385,10 +405,20 @@ export default function FlightDetails() {
                   <Briefcase className="h-3 w-3" />
                   Econômica
                 </Badge>
+                {isRoundTrip && (
+                  <Badge className="bg-primary/10 text-primary border-primary/20 gap-1">
+                    <ArrowLeftRight className="h-3 w-3" />
+                    Ida e volta
+                  </Badge>
+                )}
               </div>
             </div>
             <div className="mt-3 text-muted-foreground">
-              {formattedDate} • Só ida
+              {formattedDate}
+              {isRoundTrip && formattedReturnDate && (
+                <> — {formattedReturnDate}</>
+              )}
+              {!isRoundTrip && ' • Só ida'}
             </div>
           </motion.div>
           
@@ -417,7 +447,7 @@ export default function FlightDetails() {
             </motion.div>
           )}
           
-          {/* Selected flight card */}
+          {/* Selected flight card(s) */}
           {flightFromState && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -426,59 +456,142 @@ export default function FlightDetails() {
               className="mb-8"
             >
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg font-semibold">✨ Voo selecionado</span>
+                <span className="text-lg font-semibold">✨ {isRoundTrip ? 'Voos selecionados' : 'Voo selecionado'}</span>
               </div>
               
-              <div className="bg-card border-2 border-primary/30 rounded-xl p-5">
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="flex items-center gap-3 min-w-[140px]">
-                    <div className={`w-10 h-10 rounded-lg ${airlineData.bg} ${airlineData.text} flex items-center justify-center font-bold text-sm`}>
-                      {airlineData.abbr}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{flightFromState.airline}</p>
-                      {flightFromState.flightNumber && (
-                        <p className="text-xs text-muted-foreground">{flightFromState.flightNumber}</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="text-center">
-                      <p className="text-xl font-bold">{formatTime(flightFromState.departureAt)}</p>
-                      <p className="text-xs text-muted-foreground">{originIata}</p>
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col items-center px-2">
-                      <span className="text-xs text-muted-foreground mb-1">{getDuration(flightFromState.transfers)}</span>
-                      <div className="flex items-center gap-1 w-full">
-                        <div className="h-0.5 bg-border flex-1 rounded" />
-                        <Plane className="h-4 w-4 text-primary" />
-                        <div className="h-0.5 bg-border flex-1 rounded" />
+              <div className="bg-card border-2 border-primary/30 rounded-xl overflow-hidden">
+                {/* Outbound flight */}
+                <div className="p-5">
+                  {isRoundTrip && (
+                    <Badge variant="outline" className="mb-3 gap-1">
+                      <Plane className="h-3 w-3" />
+                      IDA
+                    </Badge>
+                  )}
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    <div className="flex items-center gap-3 min-w-[140px]">
+                      <div className={`w-10 h-10 rounded-lg ${outboundAirlineData.bg} ${outboundAirlineData.text} flex items-center justify-center font-bold text-sm`}>
+                        {outboundAirlineData.abbr}
                       </div>
-                      <Badge 
-                        variant={flightFromState.transfers === 0 ? "default" : "outline"} 
-                        className={`mt-1 text-xs ${flightFromState.transfers === 0 ? 'bg-green-500/10 text-green-600 border-green-500/20' : ''}`}
-                      >
-                        {getStopsText(flightFromState.transfers)}
-                      </Badge>
+                      <div>
+                        <p className="font-medium text-sm">{flightFromState.airline}</p>
+                        {flightFromState.flightNumber && (
+                          <p className="text-xs text-muted-foreground">{flightFromState.flightNumber}</p>
+                        )}
+                      </div>
                     </div>
                     
-                    <div className="text-center">
-                      <p className="text-xl font-bold">
-                        {flightFromState.returnAt ? formatTime(flightFromState.returnAt) : '—'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{destino?.toUpperCase()}</p>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="text-center">
+                        <p className="text-xl font-bold">{formatTime(flightFromState.departureAt)}</p>
+                        <p className="text-xs text-muted-foreground">{originIata}</p>
+                      </div>
+                      
+                      <div className="flex-1 flex flex-col items-center px-2">
+                        <span className="text-xs text-muted-foreground mb-1">{getDuration(flightFromState.transfers)}</span>
+                        <div className="flex items-center gap-1 w-full">
+                          <div className="h-0.5 bg-border flex-1 rounded" />
+                          <Plane className="h-4 w-4 text-primary" />
+                          <div className="h-0.5 bg-border flex-1 rounded" />
+                        </div>
+                        <Badge 
+                          variant={flightFromState.transfers === 0 ? "default" : "outline"} 
+                          className={`mt-1 text-xs ${flightFromState.transfers === 0 ? 'bg-green-500/10 text-green-600 border-green-500/20' : ''}`}
+                        >
+                          {getStopsText(flightFromState.transfers)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-xl font-bold">
+                          {flightFromState.returnAt ? formatTime(flightFromState.returnAt) : '—'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{destino?.toUpperCase()}</p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="text-right min-w-[120px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-4">
-                    <p className="text-xs text-muted-foreground">Preço encontrado</p>
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {flightFromState.price.toLocaleString('pt-BR')}
-                    </p>
+                    
+                    <div className="text-right min-w-[120px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-4">
+                      <p className="text-xs text-muted-foreground">Preço ida</p>
+                      <p className="text-xl font-bold text-primary">
+                        R$ {flightFromState.price.toLocaleString('pt-BR')}
+                      </p>
+                    </div>
                   </div>
                 </div>
+                
+                {/* Return flight */}
+                {isRoundTrip && returnFlightFromState && (
+                  <>
+                    <div className="border-t border-dashed border-border" />
+                    <div className="p-5">
+                      <Badge variant="outline" className="mb-3 gap-1">
+                        <Plane className="h-3 w-3 rotate-180" />
+                        VOLTA
+                      </Badge>
+                      <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div className="flex items-center gap-3 min-w-[140px]">
+                          <div className={`w-10 h-10 rounded-lg ${returnAirlineData.bg} ${returnAirlineData.text} flex items-center justify-center font-bold text-sm`}>
+                            {returnAirlineData.abbr}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{returnFlightFromState.airline}</p>
+                            {returnFlightFromState.flightNumber && (
+                              <p className="text-xs text-muted-foreground">{returnFlightFromState.flightNumber}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="text-center">
+                            <p className="text-xl font-bold">{formatTime(returnFlightFromState.departureAt)}</p>
+                            <p className="text-xs text-muted-foreground">{destino?.toUpperCase()}</p>
+                          </div>
+                          
+                          <div className="flex-1 flex flex-col items-center px-2">
+                            <span className="text-xs text-muted-foreground mb-1">{getDuration(returnFlightFromState.transfers)}</span>
+                            <div className="flex items-center gap-1 w-full">
+                              <div className="h-0.5 bg-border flex-1 rounded" />
+                              <Plane className="h-4 w-4 text-primary rotate-180" />
+                              <div className="h-0.5 bg-border flex-1 rounded" />
+                            </div>
+                            <Badge 
+                              variant={returnFlightFromState.transfers === 0 ? "default" : "outline"} 
+                              className={`mt-1 text-xs ${returnFlightFromState.transfers === 0 ? 'bg-green-500/10 text-green-600 border-green-500/20' : ''}`}
+                            >
+                              {getStopsText(returnFlightFromState.transfers)}
+                            </Badge>
+                          </div>
+                          
+                          <div className="text-center">
+                            <p className="text-xl font-bold">
+                              {returnFlightFromState.returnAt ? formatTime(returnFlightFromState.returnAt) : '—'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{originIata}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right min-w-[120px] border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-4">
+                          <p className="text-xs text-muted-foreground">Preço volta</p>
+                          <p className="text-xl font-bold text-primary">
+                            R$ {returnFlightFromState.price.toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {/* Total */}
+                {isRoundTrip && (
+                  <div className="bg-primary/5 border-t border-primary/20 px-5 py-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Total ida + volta</span>
+                      <span className="text-2xl font-bold text-primary">
+                        R$ {totalBasePrice.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -560,12 +673,21 @@ export default function FlightDetails() {
             )}
           </div>
           
+          {/* Cross-sell */}
+          <TripPackageUpsell
+            destination={destino?.toUpperCase() || ''}
+            destinationName={destinationName}
+            checkIn={isoDate}
+            checkOut={returnDateStr}
+          />
+          
           {/* Other flights on this date */}
-          {otherFlights.length > 0 && !isLoading && (
+          {otherFlights.length > 0 && !isLoading && !isRoundTrip && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
+              className="mt-8"
             >
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg font-semibold">📅 Outros voos nesta rota</span>
