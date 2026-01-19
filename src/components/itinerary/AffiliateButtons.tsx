@@ -18,6 +18,7 @@ import {
   DayContext,
   AffiliateCompany 
 } from "@/lib/affiliateLinks";
+import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { cn } from "@/lib/utils";
 
 interface AffiliateButtonsProps {
@@ -156,7 +157,20 @@ const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsP
 
   const context = buildContext();
 
-  const renderCompanyButton = (company: AffiliateCompany, isPrimary: boolean = false) => {
+  const handleCompanyClick = (company: AffiliateCompany, categoryKey: string) => {
+    // Determine category type
+    const categoryType = categoryKey === "hotels" ? "hotels" : categoryKey === "flights" ? "flights" : "tours";
+    
+    trackAffiliateClick({
+      partnerId: company.id,
+      partnerName: company.name,
+      category: categoryType,
+      component: "AffiliateButtons-Itinerary",
+      destination: context.city,
+    });
+  };
+
+  const renderCompanyButton = (company: AffiliateCompany, categoryKey: string, isPrimary: boolean = false) => {
     const Icon = iconMap[company.icon] || Ticket;
     const colors = colorClasses[company.color] || colorClasses.blue;
     const link = company.getLink(context);
@@ -167,6 +181,7 @@ const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsP
         href={link}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => handleCompanyClick(company, categoryKey)}
         className={cn(
           "flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg transition-colors text-xs lg:text-sm font-medium",
           colors.bg,
@@ -191,7 +206,7 @@ const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsP
       // Single company - show direct button
       return (
         <div key={key}>
-          {renderCompanyButton(primaryCompany, true)}
+          {renderCompanyButton(primaryCompany, key)}
         </div>
       );
     }
@@ -223,7 +238,7 @@ const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsP
               exit={{ opacity: 0, height: 0 }}
               className="space-y-1 pl-2"
             >
-              {companies.map(company => renderCompanyButton(company))}
+              {companies.map(company => renderCompanyButton(company, key))}
             </motion.div>
           )}
         </AnimatePresence>
