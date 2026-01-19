@@ -99,15 +99,15 @@ export function getAviasalesLink(context: BookingContext): string {
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-');
   
+  // Usar domínio brasileiro para garantir idioma PT e moeda BRL
+  const baseUrl = 'https://www.passagensaereas.com.br';
   const params = new URLSearchParams({
     marker: PARTNER_IDS.aviasales,
-    locale: "pt",
-    currency: "brl",
   });
   
   if (context.activityDate) params.set("depart_date", context.activityDate);
   
-  return `https://www.aviasales.com/search/${cleanDestination}?${params.toString()}`;
+  return `${baseUrl}/search/${cleanDestination}?${params.toString()}`;
 }
 
 /**
@@ -122,13 +122,13 @@ export function getWayAwayLink(context: BookingContext): string {
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-');
   
+  // Usar domínio brasileiro para garantir idioma PT e moeda BRL
+  const baseUrl = 'https://www.passagensaereas.com.br';
   const params = new URLSearchParams({
     marker: PARTNER_IDS.wayaway,
-    locale: "pt",
-    currency: "brl",
   });
   
-  return `https://www.aviasales.com/search/${cleanDestination}?${params.toString()}`;
+  return `${baseUrl}/search/${cleanDestination}?${params.toString()}`;
 }
 
 /**
