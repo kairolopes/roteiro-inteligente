@@ -42,13 +42,15 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  maxRetries = 3
+  maxRetries = 5
 ): Promise<Response> {
+  const waitTimes = [5000, 10000, 20000, 30000, 60000]; // 5s, 10s, 20s, 30s, 60s
+  
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(url, options);
     
     if (response.status === 429) {
-      const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+      const waitTime = waitTimes[attempt] || 60000;
       console.log(`Rate limit hit, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
       await delay(waitTime);
       continue;
@@ -176,7 +178,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.0-flash",
+          model: "gemini-3-flash",
           messages: [
             { role: "system", content: systemPrompt },
             ...messages,
