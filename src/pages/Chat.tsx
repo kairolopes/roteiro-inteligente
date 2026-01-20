@@ -46,6 +46,7 @@ const Chat = () => {
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswers | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -181,6 +182,7 @@ const Chat = () => {
     };
 
     try {
+      setRateLimitError(false);
       await streamChat(
         newMessages,
         answers !== undefined ? answers : quizAnswers,
@@ -196,10 +198,20 @@ const Chat = () => {
     } catch (error) {
       console.error("Chat error:", error);
       setIsLoading(false);
+      
+      const errorMessage = error instanceof Error ? error.message : "Erro ao enviar mensagem";
+      const isRateLimit = errorMessage.includes("requisições") || errorMessage.includes("429") || errorMessage.includes("rate");
+      
+      if (isRateLimit) {
+        setRateLimitError(true);
+      }
+      
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao enviar mensagem",
+        title: isRateLimit ? "Muitas requisições" : "Erro",
+        description: isRateLimit 
+          ? "O servidor está ocupado. Aguarde alguns segundos e tente novamente."
+          : errorMessage,
       });
     }
   };
@@ -292,7 +304,7 @@ ${chatHistory}
       {/* Messages */}
       <main className="flex-1 pt-24 pb-32 overflow-y-auto">
         <div className="container mx-auto px-4 lg:px-8 max-w-3xl">
-          {messages.length === 0 ? (
+          {messages.length === 0 && !rateLimitError ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -313,6 +325,48 @@ ${chatHistory}
                   Fazer o Quiz de Preferências
                 </Button>
               )}
+              {quizAnswers && isLoading && (
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Conectando com a Sofia...</span>
+                </div>
+              )}
+            </motion.div>
+          ) : rateLimitError && messages.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center min-h-[50vh] text-center"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-6">
+                <Sparkles className="w-8 h-8 text-destructive" />
+              </div>
+              <h2 className="text-2xl font-bold mb-3">
+                Servidor ocupado 😅
+              </h2>
+              <p className="text-muted-foreground max-w-md mb-6">
+                Estamos com muitas requisições no momento. 
+                Aguarde alguns segundos e tente novamente.
+              </p>
+              <Button 
+                onClick={() => {
+                  setRateLimitError(false);
+                  if (quizAnswers) {
+                    sendInitialMessage(quizAnswers);
+                  }
+                }} 
+                className="gradient-primary text-primary-foreground"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Tentando...
+                  </>
+                ) : (
+                  "Tentar Novamente"
+                )}
+              </Button>
             </motion.div>
           ) : (
             <div className="space-y-6 py-4">
