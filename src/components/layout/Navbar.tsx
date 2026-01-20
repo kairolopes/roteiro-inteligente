@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Plane, MapPin, MessageCircle } from "lucide-react";
+import { Menu, X, Plane, MapPin, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import UserMenu from "@/components/auth/UserMenu";
 
 const navLinks = [
-  { name: "Passagens", href: "/passagens", icon: Plane },
+  { name: "Como Funciona", href: "#como-funciona", icon: Sparkles },
   { name: "Destinos", href: "#destinos", icon: MapPin },
-  { name: "Planejar Viagem", href: "/quiz", icon: MessageCircle },
+  { name: "Passagens", href: "/passagens", icon: Plane },
 ];
 
 export function Navbar() {
