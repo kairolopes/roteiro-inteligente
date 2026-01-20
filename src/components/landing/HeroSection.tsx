@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, MapPin } from "lucide-react";
+import { ArrowRight, Sparkles, MapPin, Plane } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const stats = [
@@ -52,9 +52,9 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight mb-4 lg:mb-6"
           >
-            Planeje sua viagem dos{" "}
-            <span className="text-gradient">sonhos</span> com{" "}
-            <span className="text-primary">IA</span>
+            Conheça a{" "}
+            <span className="text-gradient">Sofia</span>, sua{" "}
+            <span className="text-primary">assistente de viagem</span>
           </motion.h1>
 
           {/* Subheadline */}
@@ -64,7 +64,8 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-base lg:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 lg:mb-10 px-4"
           >
-            Roteiros personalizados, comparação de voos e hotéis, e dicas exclusivas.
+            Roteiros personalizados criados com inteligência artificial em minutos. 
+            Diga adeus ao trabalho de planejar, deixe a Sofia cuidar de tudo.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -80,16 +81,20 @@ export function HeroSection() {
               className="gradient-primary text-primary-foreground glow text-base lg:text-lg px-6 lg:px-8 py-5 lg:py-6 h-auto hover:opacity-90 transition-opacity group touch-active w-full sm:w-auto"
             >
               <Link to="/quiz">
-                Começar a Planejar
+                Planejar Minha Viagem
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
             <Button
+              asChild
               size="lg"
               variant="outline"
               className="text-base lg:text-lg px-6 lg:px-8 py-5 lg:py-6 h-auto border-border hover:bg-secondary touch-active w-full sm:w-auto"
             >
-              Ver Destinos
+              <Link to="/passagens" className="flex items-center gap-2">
+                <Plane className="w-5 h-5" />
+                Buscar Passagens
+              </Link>
             </Button>
           </motion.div>
 
