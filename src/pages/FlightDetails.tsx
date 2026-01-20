@@ -1,14 +1,15 @@
-// Flight Details Page - Updated v2
+// Flight Details Page - Updated v3 with Real Scraped Prices
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plane, Loader2, Users, Briefcase, ExternalLink, ArrowLeftRight, Info } from "lucide-react";
+import { ArrowLeft, Plane, Loader2, Users, Briefcase, ExternalLink, ArrowLeftRight, Info, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { TripPackageUpsell } from "@/components/flights/TripPackageUpsell";
 import { FlightPrice, useFlightPrices } from "@/hooks/useFlightPrices";
+import { useScrapedPrices, ScrapedPrice } from "@/hooks/useScrapedPrices";
 import { 
   BookingContext, 
   getSkyscannerLink, 
@@ -228,6 +229,16 @@ export default function FlightDetails() {
     origin: CITY_NAMES[originIata] || 'São Paulo',
     destination: destino?.toUpperCase(),
   });
+  
+  // Fetch real scraped prices from multiple sites
+  const { prices: scrapedPrices, isLoading: isScrapingPrices, search: searchScrapedPrices } = useScrapedPrices();
+  
+  // Initiate scraped prices search when page loads
+  useEffect(() => {
+    if (originIata && destino && data) {
+      searchScrapedPrices(originIata, destino.toUpperCase(), data);
+    }
+  }, [originIata, destino, data, searchScrapedPrices]);
   
   // Convert URL date format (AAMMDD) to Date
   const formattedDate = useMemo(() => {
@@ -619,89 +630,195 @@ export default function FlightDetails() {
             </motion.div>
           )}
           
-          {/* Operators list */}
+          {/* Real Scraped Prices */}
           <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-lg font-semibold">📊 Compare preços em diferentes sites</span>
-            </div>
-            
-            {/* Disclaimer com preço base */}
-            <div className="flex items-start gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-xl mb-4">
-              <Info className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">
-                  Encontramos voos a partir de{' '}
-                  <span className="text-green-600 font-bold">R$ {totalBasePrice.toLocaleString('pt-BR')}</span>
-                  {flightFromState?.airline && (
-                    <span className="text-muted-foreground"> ({flightFromState.airline})</span>
-                  )}
-                  {' '}via <span className="font-semibold">Aviasales</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Clique no Aviasales para ver esse preço. Compare nos outros sites para garantir o melhor negócio.
-                </p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-semibold">🔍 Preços encontrados em tempo real</span>
+                {isScrapingPrices && (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                )}
               </div>
+              {!isScrapingPrices && scrapedPrices.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted-foreground"
+                  onClick={() => searchScrapedPrices(originIata, destino?.toUpperCase() || '', data || '')}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Atualizar
+                </Button>
+              )}
             </div>
             
-            <div className="space-y-3">
-              {FLIGHT_OPERATORS.slice(0, visibleOperators).map((operator, index) => {
-                const isPriceSource = operator.id === 'aviasales'; // Aviasales é a fonte do preço
-                const isRecommended = isPriceSource;
-                
-                return (
-                  <motion.div
-                    key={operator.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`bg-card border rounded-xl p-4 transition-all hover:shadow-md ${
-                      isPriceSource ? 'border-green-500/50 ring-2 ring-green-500/20 bg-green-500/5' : 'border-border'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className={`w-12 h-12 rounded-xl ${operator.color} flex items-center justify-center text-2xl`}>
-                          {operator.logo}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold">{operator.name}</p>
-                            {isPriceSource && (
-                              <Badge className="bg-green-500 text-white text-xs">
-                                ✓ Preço encontrado
-                              </Badge>
-                            )}
-                            {operator.hasAffiliate && !isPriceSource && (
-                              <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600">
-                                Cashback
-                              </Badge>
-                            )}
+            {isScrapingPrices && (
+              <div className="bg-card border border-border rounded-xl p-6 mb-4">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">
+                    Buscando preços em Skyscanner, 123Milhas, Kayak, Google Flights, Decolar e Momondo...
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {!isScrapingPrices && scrapedPrices.length > 0 && (
+              <div className="space-y-3">
+                {/* Prices found */}
+                {scrapedPrices.filter(p => p.price !== null).map((price, index) => {
+                  const isLowest = index === 0;
+                  
+                  return (
+                    <motion.div
+                      key={price.site}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className={`bg-card border rounded-xl p-4 transition-all hover:shadow-md ${
+                        isLowest ? 'border-green-500/50 ring-2 ring-green-500/20 bg-green-500/5' : 'border-border'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div 
+                            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+                            style={{ backgroundColor: price.color }}
+                          >
+                            {price.name.substring(0, 2).toUpperCase()}
                           </div>
-                          <p className="text-sm text-muted-foreground truncate">{operator.description}</p>
-                          <p className="text-xs text-primary font-medium mt-1">{operator.highlight}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold">{price.name}</p>
+                              {isLowest && (
+                                <Badge className="bg-green-500 text-white text-xs">
+                                  ✓ Menor preço
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Preço atualizado agora
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 justify-between sm:justify-end">
+                          <span className={`text-xl font-bold ${isLowest ? 'text-green-600' : 'text-foreground'}`}>
+                            R$ {price.price?.toLocaleString('pt-BR')}
+                          </span>
+                          <Button 
+                            onClick={() => {
+                              trackAffiliateClick({
+                                partnerId: price.site,
+                                partnerName: price.name,
+                                category: "flights",
+                                component: "FlightDetails-Scraped",
+                                destination: destino?.toUpperCase(),
+                                origin: originIata,
+                              });
+                              window.open(price.url, "_blank", "noopener,noreferrer");
+                            }}
+                            className={`gap-2 min-w-[140px] ${isLowest ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                            variant={isLowest ? "default" : "outline"}
+                          >
+                            Comprar
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-4 justify-between sm:justify-end">
-                        {isPriceSource && (
-                          <span className="text-lg font-bold text-green-600 hidden sm:block">
-                            R$ {totalBasePrice.toLocaleString('pt-BR')}
-                          </span>
-                        )}
+                    </motion.div>
+                  );
+                })}
+                
+                {/* Sites that couldn't be scraped */}
+                {scrapedPrices.filter(p => p.price === null).length > 0 && (
+                  <div className="mt-4 p-4 bg-muted/50 border border-border rounded-xl">
+                    <div className="flex items-start gap-2 mb-3">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <p className="text-sm text-muted-foreground">
+                        Alguns sites bloquearam a busca automática. Clique para verificar manualmente:
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {scrapedPrices.filter(p => p.price === null).map(price => (
+                        <Button
+                          key={price.site}
+                          variant="outline"
+                          size="sm"
+                          className="gap-1"
+                          onClick={() => {
+                            trackAffiliateClick({
+                              partnerId: price.site,
+                              partnerName: price.name,
+                              category: "flights",
+                              component: "FlightDetails-Manual",
+                              destination: destino?.toUpperCase(),
+                              origin: originIata,
+                            });
+                            window.open(price.url, "_blank", "noopener,noreferrer");
+                          }}
+                        >
+                          {price.name}
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Fallback: show original operators if scraping fails completely */}
+            {!isScrapingPrices && scrapedPrices.filter(p => p.price !== null).length === 0 && (
+              <>
+                {/* Disclaimer com preço base */}
+                <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-4">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      Não foi possível buscar preços automaticamente. Compare manualmente nos sites abaixo.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Preço de referência: <span className="font-semibold">R$ {totalBasePrice.toLocaleString('pt-BR')}</span> via Aviasales
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {FLIGHT_OPERATORS.slice(0, visibleOperators).map((operator, index) => (
+                    <motion.div
+                      key={operator.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="bg-card border border-border rounded-xl p-4 transition-all hover:shadow-md"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className={`w-12 h-12 rounded-xl ${operator.color} flex items-center justify-center text-2xl`}>
+                            {operator.logo}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold">{operator.name}</p>
+                            <p className="text-sm text-muted-foreground truncate">{operator.description}</p>
+                            <p className="text-xs text-primary font-medium mt-1">{operator.highlight}</p>
+                          </div>
+                        </div>
+                        
                         <Button 
                           onClick={() => handleSelectOperator(operator)}
-                          className={`gap-2 min-w-[140px] ${isPriceSource ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                          variant={isRecommended ? "default" : "outline"}
+                          className="gap-2 min-w-[140px]"
+                          variant="outline"
                         >
-                          {isPriceSource ? `Ver R$ ${totalBasePrice.toLocaleString('pt-BR')}` : 'Comparar preço'}
+                          Ver preços
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           
           {/* Cross-sell */}
