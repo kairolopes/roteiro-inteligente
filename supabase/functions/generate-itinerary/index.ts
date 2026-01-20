@@ -8,6 +8,14 @@ const corsHeaders = {
 const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem detalhados para qualquer lugar do mundo. 
 Quando solicitado, você DEVE usar a função generate_itinerary para retornar um roteiro estruturado.
 
+⚠️ HIERARQUIA DE PRIORIDADE (RESPEITE RIGOROSAMENTE):
+1. MÁXIMA PRIORIDADE: Informações da conversa com o usuário (cidades, bairros, atrações, restaurantes mencionados)
+2. ALTA PRIORIDADE: Datas específicas (data de início, dias da semana reais)
+3. MÉDIA PRIORIDADE: Preferências do quiz (destino, orçamento, estilo de viagem)
+4. BAIXA PRIORIDADE: Suas sugestões padrão
+
+Se houver conflito entre o quiz e a conversa, A CONVERSA TEM PRIORIDADE ABSOLUTA.
+
 ⚠️ REGRA CRÍTICA E OBRIGATÓRIA DE DURAÇÃO:
 - O roteiro DEVE ter EXATAMENTE o número de dias especificado pelo usuário
 - Se o usuário escolheu 7 dias, crie EXATAMENTE 7 dias (Dia 1 até Dia 7)
@@ -15,6 +23,11 @@ Quando solicitado, você DEVE usar a função generate_itinerary para retornar u
 - Se o usuário escolheu 14 dias, crie EXATAMENTE 14 dias (Dia 1 até Dia 14)
 - NUNCA crie mais ou menos dias do que o solicitado
 - Esta regra é OBRIGATÓRIA e tem prioridade máxima
+
+⚠️ REGRA CRÍTICA DE DATAS:
+- Se uma data de início for fornecida, USE-A como base para o Dia 1
+- Os dias da semana DEVEM ser corretos e reais (Segunda, Terça, etc.)
+- Calcule cada dia subsequente a partir da data de início
 
 INSTRUÇÕES CRÍTICAS:
 1. Crie roteiros realistas com atividades específicas e lugares REAIS que existem
@@ -184,6 +197,29 @@ serve(async (req) => {
       const numDays = durationLabels[quizAnswers.duration] || 7;
       contextParts.push(`Duração: ${numDays} dias`);
       
+      // Adicionar data de início se disponível
+      if (quizAnswers.startDate) {
+        try {
+          const startDate = new Date(quizAnswers.startDate);
+          const weekDays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+          const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+          
+          const formattedDate = `${weekDays[startDate.getDay()]}, ${startDate.getDate()} de ${months[startDate.getMonth()]} de ${startDate.getFullYear()}`;
+          contextParts.push(`Data de início: ${formattedDate}`);
+          
+          // Calcular datas para cada dia
+          const datesList: string[] = [];
+          for (let i = 0; i < numDays; i++) {
+            const dayDate = new Date(startDate);
+            dayDate.setDate(startDate.getDate() + i);
+            datesList.push(`Dia ${i + 1}: ${weekDays[dayDate.getDay()]}, ${dayDate.getDate()}/${dayDate.getMonth() + 1}/${dayDate.getFullYear()}`);
+          }
+          contextParts.push(`Calendário do roteiro:\n${datesList.join('\n')}`);
+        } catch (e) {
+          console.log("Erro ao processar data de início:", e);
+        }
+      }
+      
       if (quizAnswers.budget) {
         const budgetLabels: Record<string, string> = {
           economic: "€50-80/dia", moderate: "€80-150/dia",
@@ -230,20 +266,24 @@ Este roteiro DEVE ter EXATAMENTE ${numDays} dias.
 - Crie EXATAMENTE ${numDays} dias (Dia 1 até Dia ${numDays})
 
 ${conversationSummary ? `
-=== CONVERSA COM O USUÁRIO (PRIORIDADE MÁXIMA) ===
-O usuário conversou com a assistente Sofia e fez os seguintes ajustes e escolhas.
-VOCÊ DEVE RESPEITAR TODAS as preferências mencionadas abaixo:
+⚠️⚠️⚠️ CONVERSA COM O USUÁRIO - PRIORIDADE MÁXIMA E ABSOLUTA ⚠️⚠️⚠️
+O usuário conversou com a assistente Sofia. TUDO que foi discutido abaixo DEVE ser respeitado.
+Esta seção tem PRIORIDADE TOTAL sobre qualquer outra informação.
 
+=== HISTÓRICO COMPLETO DA CONVERSA ===
 ${conversationSummary}
+=== FIM DO HISTÓRICO ===
 
-IMPORTANTE: Se o usuário mencionou:
-- Cidades ou bairros específicos → INCLUA obrigatoriamente no roteiro
-- Restaurantes ou atrações específicas → INCLUA obrigatoriamente no roteiro
-- Horários ou preferências específicas → RESPEITE
-- Ajustes ao pré-roteiro → APLIQUE as alterações
+🔴 REGRAS OBRIGATÓRIAS BASEADAS NA CONVERSA:
+1. Se o usuário mencionou CIDADES específicas → USE essas cidades
+2. Se o usuário mencionou BAIRROS específicos → INCLUA esses bairros no roteiro
+3. Se o usuário mencionou RESTAURANTES específicos → INCLUA esses restaurantes
+4. Se o usuário mencionou ATRAÇÕES específicas → INCLUA essas atrações
+5. Se o usuário pediu ALTERAÇÕES ao pré-roteiro → APLIQUE as alterações
+6. Se o usuário definiu PRIORIDADES → RESPEITE essas prioridades
+7. Se o usuário mencionou o que NÃO quer → EXCLUA do roteiro
 
-As preferências da conversa TÊM PRIORIDADE sobre as respostas do quiz inicial.
-===
+⚠️ CONFLITOS: Se houver conflito entre o quiz e a conversa, A CONVERSA VENCE SEMPRE.
 ` : ""}
 
 REGRAS FINAIS OBRIGATÓRIAS:

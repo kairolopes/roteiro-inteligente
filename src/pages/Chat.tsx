@@ -250,11 +250,31 @@ const Chat = () => {
                 <Button
                   size="sm"
                   onClick={() => {
-                    // Salvar conversa completa para a geração do roteiro
+                    // Salvar conversa completa estruturada para a geração do roteiro
                     const chatHistory = messages.map(m => 
-                      `${m.role === 'user' ? 'Usuário' : 'Sofia'}: ${m.content}`
+                      `${m.role === 'user' ? 'USUÁRIO' : 'SOFIA'}: ${m.content}`
                     ).join('\n\n---\n\n');
-                    sessionStorage.setItem("chatSummary", chatHistory);
+                    
+                    // Extrair preferências explícitas do usuário
+                    const userMessages = messages.filter(m => m.role === 'user').map(m => m.content);
+                    const userPreferences = userMessages.join(' | ');
+                    
+                    const structuredSummary = `
+=== PREFERÊNCIAS EXPRESSAS PELO USUÁRIO ===
+${userPreferences}
+
+=== HISTÓRICO COMPLETO DA CONVERSA ===
+${chatHistory}
+
+=== INSTRUÇÕES PARA GERAÇÃO ===
+1. TODAS as preferências expressas pelo usuário acima DEVEM ser respeitadas
+2. Se o usuário mencionou cidades, bairros ou atrações específicas, INCLUA-OS no roteiro
+3. Se o usuário pediu alterações ao pré-roteiro sugerido, APLIQUE essas alterações
+4. A data de início foi definida no quiz - os dias da semana devem ser REAIS
+5. Priorize SEMPRE o que o usuário pediu sobre sugestões genéricas
+`;
+                    
+                    sessionStorage.setItem("chatSummary", structuredSummary);
                     sessionStorage.removeItem("generatedItinerary");
                     navigate("/itinerary");
                   }}
@@ -338,11 +358,31 @@ const Chat = () => {
                         >
                           <Button
                             onClick={() => {
-                              // Salvar conversa completa para a geração do roteiro
+                              // Salvar conversa completa estruturada para a geração do roteiro
                               const chatHistory = messages.map(m => 
-                                `${m.role === 'user' ? 'Usuário' : 'Sofia'}: ${m.content}`
+                                `${m.role === 'user' ? 'USUÁRIO' : 'SOFIA'}: ${m.content}`
                               ).join('\n\n---\n\n');
-                              sessionStorage.setItem("chatSummary", chatHistory);
+                              
+                              // Extrair preferências explícitas do usuário
+                              const userMessages = messages.filter(m => m.role === 'user').map(m => m.content);
+                              const userPreferences = userMessages.join(' | ');
+                              
+                              const structuredSummary = `
+=== PREFERÊNCIAS EXPRESSAS PELO USUÁRIO ===
+${userPreferences}
+
+=== HISTÓRICO COMPLETO DA CONVERSA ===
+${chatHistory}
+
+=== INSTRUÇÕES PARA GERAÇÃO ===
+1. TODAS as preferências expressas pelo usuário acima DEVEM ser respeitadas
+2. Se o usuário mencionou cidades, bairros ou atrações específicas, INCLUA-OS no roteiro
+3. Se o usuário pediu alterações ao pré-roteiro sugerido, APLIQUE essas alterações
+4. A data de início foi definida no quiz - os dias da semana devem ser REAIS
+5. Priorize SEMPRE o que o usuário pediu sobre sugestões genéricas
+`;
+                              
+                              sessionStorage.setItem("chatSummary", structuredSummary);
                               sessionStorage.removeItem("generatedItinerary");
                               navigate("/itinerary");
                             }}
