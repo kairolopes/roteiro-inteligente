@@ -64,6 +64,8 @@ export const FlightDealsSection = () => {
     destination: string; 
     departureAt?: string; 
     price: number;
+    airline?: string;
+    stops?: string;
   }) => {
     const originCode = originCities.find(c => c.value === selectedOrigin)?.code || 'SAO';
     const destinationCity = deal.route.split(' → ')[1] || deal.destination;
@@ -73,15 +75,24 @@ export const FlightDealsSection = () => {
       ? `${deal.departureAt.slice(2, 4)}${deal.departureAt.slice(5, 7)}${deal.departureAt.slice(8, 10)}`
       : new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(2, 10).replace(/-/g, '');
     
-    // Navega para página de detalhes da Sofia
+    // Criar objeto flight compatível com FlightDetails
+    const flightData = {
+      origin: originCode,
+      destination: deal.destination,
+      destinationName: destinationCity,
+      price: deal.price,
+      airline: deal.airline || 'Múltiplas companhias',
+      departureAt: deal.departureAt || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+      transfers: deal.stops === 'Direto' ? 0 : parseInt(deal.stops || '1') || 1,
+      flightNumber: '',
+      link: '',
+    };
+    
+    // Navega para página de detalhes passando objeto flight
     navigate(`/passagens/${originCode}/${deal.destination}/${dateParam}`, {
       state: {
-        origin: selectedOrigin,
+        flight: flightData,
         originIata: originCode,
-        destination: destinationCity,
-        destinationIata: deal.destination,
-        price: deal.price,
-        departureAt: deal.departureAt,
       }
     });
   };
