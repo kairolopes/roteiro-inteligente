@@ -229,15 +229,24 @@ export const FlightSearchHero = () => {
       ? `${flight.departureAt.slice(2, 4)}${flight.departureAt.slice(5, 7)}${flight.departureAt.slice(8, 10)}`
       : new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(2, 10).replace(/-/g, '');
     
+    // Cria objeto flight compatível com FlightPrice
+    const flightData = {
+      origin: 'SAO',
+      destination: flight.apiIata,
+      destinationName: flight.to,
+      price: flight.price,
+      airline: 'Múltiplas companhias',
+      departureAt: flight.departureAt || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+      transfers: 1,
+      flightNumber: '',
+      link: '',
+    };
+    
     // Navega para página de detalhes da Sofia
     navigate(`/passagens/SAO/${flight.apiIata}/${dateParam}`, {
       state: {
-        origin: 'São Paulo',
+        flight: flightData,  // Passa o objeto flight completo
         originIata: 'SAO',
-        destination: flight.to,
-        destinationIata: flight.apiIata,
-        price: flight.price,
-        departureAt: flight.departureAt,
       }
     });
   };
