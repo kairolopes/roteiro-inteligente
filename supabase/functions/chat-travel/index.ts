@@ -59,7 +59,52 @@ async function fetchWithRetry(
     return response;
   }
   
-  // Após todas as tentativas, retorna resposta de rate limit
+  // Retorna null para indicar que todas as tentativas falharam
+  return null as unknown as Response;
+}
+
+// Função para fazer a chamada com fallback de modelo
+async function fetchWithFallback(
+  url: string,
+  baseOptions: RequestInit,
+  systemPrompt: string,
+  messages: Array<{ role: string; content: string }>,
+  apiKey: string
+): Promise<Response> {
+  const models = ["gemini-3-flash", "gemini-1.5-flash"];
+  
+  for (const model of models) {
+    console.log(`Trying model: ${model}`);
+    
+    const options: RequestInit = {
+      ...baseOptions,
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        stream: true,
+      }),
+    };
+    
+    const response = await fetchWithRetry(url, options);
+    
+    // Se response é null, todas as tentativas falharam - tentar próximo modelo
+    if (!response || response.status === 429) {
+      console.log(`Model ${model} failed after all retries, trying next model...`);
+      continue;
+    }
+    
+    // Se a resposta foi bem sucedida ou outro erro (não rate limit)
+    if (response.ok || response.status !== 429) {
+      console.log(`Model ${model} succeeded`);
+      return response;
+    }
+  }
+  
+  // Todos os modelos falharam
+  console.log("All models failed");
   return new Response(null, { status: 429 });
 }
 
@@ -169,7 +214,7 @@ serve(async (req) => {
 
     const systemPrompt = TRAVEL_SYSTEM_PROMPT + contextMessage;
 
-    const response = await fetchWithRetry(
+    const response = await fetchWithFallback(
       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
@@ -177,16 +222,10 @@ serve(async (req) => {
           Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "gemini-3-flash",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-          ],
-          stream: true,
-        }),
       },
-      3 // máximo de 3 tentativas
+      systemPrompt,
+      messages,
+      GOOGLE_GEMINI_API_KEY
     );
 
     if (!response.ok) {
