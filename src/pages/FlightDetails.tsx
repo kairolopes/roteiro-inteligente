@@ -537,6 +537,7 @@ export default function FlightDetails() {
                       <p className="text-xl font-bold text-primary">
                         R$ {flightFromState.price.toLocaleString('pt-BR')}
                       </p>
+                      <p className="text-xs text-muted-foreground mt-1">via Aviasales</p>
                     </div>
                   </div>
                 </div>
@@ -625,22 +626,27 @@ export default function FlightDetails() {
             </div>
             
             {/* Disclaimer com preço base */}
-            <div className="flex items-start gap-3 p-4 bg-muted/50 border border-border rounded-xl mb-4">
-              <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-xl mb-4">
+              <Info className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium">
                   Encontramos voos a partir de{' '}
-                  <span className="text-primary font-bold">R$ {totalBasePrice.toLocaleString('pt-BR')}</span>
+                  <span className="text-green-600 font-bold">R$ {totalBasePrice.toLocaleString('pt-BR')}</span>
+                  {flightFromState?.airline && (
+                    <span className="text-muted-foreground"> ({flightFromState.airline})</span>
+                  )}
+                  {' '}via <span className="font-semibold">Aviasales</span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Os preços variam entre os sites. Clique para ver o valor atualizado em tempo real em cada operadora.
+                  Clique no Aviasales para ver esse preço. Compare nos outros sites para garantir o melhor negócio.
                 </p>
               </div>
             </div>
             
             <div className="space-y-3">
               {FLIGHT_OPERATORS.slice(0, visibleOperators).map((operator, index) => {
-                const isRecommended = index === 0; // Primeiro é recomendado por ter cashback
+                const isPriceSource = operator.id === 'aviasales'; // Aviasales é a fonte do preço
+                const isRecommended = isPriceSource;
                 
                 return (
                   <motion.div
@@ -649,7 +655,7 @@ export default function FlightDetails() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className={`bg-card border rounded-xl p-4 transition-all hover:shadow-md ${
-                      isRecommended ? 'border-primary/50 ring-1 ring-primary/20' : 'border-border'
+                      isPriceSource ? 'border-green-500/50 ring-2 ring-green-500/20 bg-green-500/5' : 'border-border'
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -660,12 +666,12 @@ export default function FlightDetails() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold">{operator.name}</p>
-                            {isRecommended && (
-                              <Badge className="bg-primary text-primary-foreground text-xs">
-                                ⭐ Recomendado
+                            {isPriceSource && (
+                              <Badge className="bg-green-500 text-white text-xs">
+                                ✓ Preço encontrado
                               </Badge>
                             )}
-                            {operator.hasAffiliate && (
+                            {operator.hasAffiliate && !isPriceSource && (
                               <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-600">
                                 Cashback
                               </Badge>
@@ -677,12 +683,17 @@ export default function FlightDetails() {
                       </div>
                       
                       <div className="flex items-center gap-4 justify-between sm:justify-end">
+                        {isPriceSource && (
+                          <span className="text-lg font-bold text-green-600 hidden sm:block">
+                            R$ {totalBasePrice.toLocaleString('pt-BR')}
+                          </span>
+                        )}
                         <Button 
                           onClick={() => handleSelectOperator(operator)}
-                          className="gap-2 min-w-[140px]"
+                          className={`gap-2 min-w-[140px] ${isPriceSource ? 'bg-green-600 hover:bg-green-700' : ''}`}
                           variant={isRecommended ? "default" : "outline"}
                         >
-                          Ver preço atual
+                          {isPriceSource ? `Ver R$ ${totalBasePrice.toLocaleString('pt-BR')}` : 'Comparar preço'}
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       </div>
