@@ -327,6 +327,8 @@ const Itinerary = () => {
         itinerary={itinerary}
         onExportPDF={handleExportPDF}
         isExporting={isExporting}
+        startDate={startDate}
+        onStartDateChange={setStartDate}
       />
 
       <DaySelector
