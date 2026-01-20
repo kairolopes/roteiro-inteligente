@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Plane, ExternalLink, AlertTriangle } from "lucide-react";
+import { Plane, ExternalLink, Info } from "lucide-react";
 import { motion } from "framer-motion";
 import { 
   getSkyscannerLink, 
@@ -29,53 +29,54 @@ interface FlightCompareModalProps {
   flight: FlightCompareData | null;
 }
 
+// Sites ordenados por benefícios
 const comparisonSites = [
-  {
-    id: "skyscanner",
-    name: "Skyscanner Brasil",
-    description: "Interface 100% em português",
-    color: "bg-cyan-500 hover:bg-cyan-600",
-    getLink: getSkyscannerLink,
-  },
-  {
-    id: "decolar",
-    name: "Decolar",
-    description: "Maior agência da América Latina",
-    color: "bg-purple-500 hover:bg-purple-600",
-    getLink: getDecolarLink,
-  },
-  {
-    id: "123milhas",
-    name: "123Milhas",
-    description: "Parcele em até 12x",
-    color: "bg-green-500 hover:bg-green-600",
-    getLink: get123MilhasLink,
-  },
   {
     id: "aviasales",
     name: "Aviasales",
-    description: "Cashback garantido",
+    description: "💰 Cashback garantido",
     color: "bg-sky-500 hover:bg-sky-600",
     getLink: getAviasalesLink,
   },
   {
+    id: "skyscanner",
+    name: "Skyscanner Brasil",
+    description: "🇧🇷 Interface 100% em português",
+    color: "bg-cyan-500 hover:bg-cyan-600",
+    getLink: getSkyscannerLink,
+  },
+  {
+    id: "123milhas",
+    name: "123Milhas",
+    description: "💳 Parcele em até 12x",
+    color: "bg-green-500 hover:bg-green-600",
+    getLink: get123MilhasLink,
+  },
+  {
     id: "google_flights",
     name: "Google Flights",
-    description: "Veja calendário de preços",
+    description: "📊 Calendário de preços",
     color: "bg-blue-500 hover:bg-blue-600",
     getLink: getGoogleFlightsLink,
   },
   {
+    id: "decolar",
+    name: "Decolar",
+    description: "🏨 Maior agência da América Latina",
+    color: "bg-purple-500 hover:bg-purple-600",
+    getLink: getDecolarLink,
+  },
+  {
     id: "kayak",
     name: "Kayak Brasil",
-    description: "Buscador de passagens",
+    description: "🔍 Buscador de passagens",
     color: "bg-orange-500 hover:bg-orange-600",
     getLink: getKayakBrasilLink,
   },
   {
     id: "momondo",
     name: "Momondo",
-    description: "Compare preços globais",
+    description: "🌍 Compare preços globais",
     color: "bg-pink-500 hover:bg-pink-600",
     getLink: getMomondoLink,
   },
@@ -117,9 +118,12 @@ export const FlightCompareModal = ({ isOpen, onClose, flight }: FlightCompareMod
             <span className="text-lg font-medium text-muted-foreground">
               {flight.origin} → {flight.destination}
             </span>
-            <span className="text-3xl font-bold text-primary">
-              R$ {flight.price.toLocaleString('pt-BR')}
-            </span>
+            <div>
+              <span className="text-sm text-muted-foreground">a partir de </span>
+              <span className="text-3xl font-bold text-primary">
+                R$ {flight.price.toLocaleString('pt-BR')}
+              </span>
+            </div>
             <span className="text-sm text-muted-foreground">
               Preço encontrado pela Sofia
             </span>
@@ -153,11 +157,11 @@ export const FlightCompareModal = ({ isOpen, onClose, flight }: FlightCompareMod
           ))}
         </div>
 
-        <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-          <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <div className="mt-4 p-3 bg-muted/50 border border-border rounded-lg">
+          <div className="flex items-start gap-2 text-sm text-muted-foreground">
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-primary" />
             <p>
-              Preços podem variar entre sites. Compare antes de finalizar sua compra.
+              Os preços variam entre os sites. Clique em cada opção para ver o valor atualizado em tempo real.
             </p>
           </div>
         </div>

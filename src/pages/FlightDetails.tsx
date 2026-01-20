@@ -2,7 +2,7 @@
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plane, Loader2, Users, Briefcase, ExternalLink, Check, ArrowLeftRight } from "lucide-react";
+import { ArrowLeft, Plane, Loader2, Users, Briefcase, ExternalLink, ArrowLeftRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/Navbar";
@@ -28,93 +28,94 @@ interface FlightOperator {
   id: string;
   name: string;
   description: string;
+  highlight: string; // Benefício destacado
   logo: string;
   color: string;
   getLink: (context: BookingContext) => string;
-  priceVariation: number;
   hasAffiliate: boolean;
 }
 
+// Operadores ordenados por benefícios (não mais por preço simulado)
 const FLIGHT_OPERATORS: FlightOperator[] = [
+  {
+    id: 'aviasales',
+    name: 'Aviasales',
+    description: 'Buscador global com milhares de companhias',
+    highlight: '💰 Cashback garantido',
+    logo: '🔷',
+    color: 'bg-sky-500',
+    getLink: getAviasalesLink,
+    hasAffiliate: true,
+  },
+  {
+    id: 'wayaway',
+    name: 'WayAway',
+    description: 'App de viagens com recompensas',
+    highlight: '🎁 Até 10% de cashback',
+    logo: '💚',
+    color: 'bg-emerald-500',
+    getLink: getWayAwayLink,
+    hasAffiliate: true,
+  },
   {
     id: 'skyscanner',
     name: 'Skyscanner Brasil',
-    description: 'Interface 100% em português com preços em R$',
+    description: 'Compare milhares de ofertas instantaneamente',
+    highlight: '🇧🇷 100% em português',
     logo: '🔵',
     color: 'bg-cyan-500',
     getLink: getSkyscannerLink,
-    priceVariation: 0,
-    hasAffiliate: false,
-  },
-  {
-    id: 'decolar',
-    name: 'Decolar.com',
-    description: 'Maior agência de viagens da América Latina',
-    logo: '🟣',
-    color: 'bg-purple-600',
-    getLink: getDecolarLink,
-    priceVariation: 0.02,
     hasAffiliate: false,
   },
   {
     id: '123milhas',
     name: '123Milhas',
-    description: 'Parcelamento em até 12x sem juros',
+    description: 'Especialista em passagens no Brasil',
+    highlight: '💳 Parcele em até 12x',
     logo: '🟢',
     color: 'bg-green-500',
     getLink: get123MilhasLink,
-    priceVariation: 0.01,
     hasAffiliate: false,
-  },
-  {
-    id: 'aviasales',
-    name: 'Aviasales',
-    description: 'Melhor preço garantido + Cashback',
-    logo: '🔷',
-    color: 'bg-sky-500',
-    getLink: getAviasalesLink,
-    priceVariation: -0.02,
-    hasAffiliate: true,
   },
   {
     id: 'google_flights',
     name: 'Google Flights',
-    description: 'Acompanhe preços e veja calendário de tarifas',
+    description: 'Ferramenta oficial do Google',
+    highlight: '📊 Calendário de preços',
     logo: '🔴',
     color: 'bg-blue-500',
     getLink: getGoogleFlightsLink,
-    priceVariation: 0.01,
     hasAffiliate: false,
   },
   {
     id: 'kayak',
     name: 'Kayak Brasil',
-    description: 'Compare centenas de sites de viagem',
+    description: 'Meta-buscador de viagens',
+    highlight: '🔍 Filtros avançados',
     logo: '🟠',
     color: 'bg-orange-500',
     getLink: getKayakBrasilLink,
-    priceVariation: 0.015,
+    hasAffiliate: false,
+  },
+  {
+    id: 'decolar',
+    name: 'Decolar.com',
+    description: 'Maior agência da América Latina',
+    highlight: '🏨 Pacotes completos',
+    logo: '🟣',
+    color: 'bg-purple-600',
+    getLink: getDecolarLink,
     hasAffiliate: false,
   },
   {
     id: 'momondo',
     name: 'Momondo',
     description: 'Buscador global de passagens',
+    highlight: '🌍 Busca internacional',
     logo: '🩷',
     color: 'bg-pink-500',
     getLink: getMomondoLink,
-    priceVariation: 0.03,
     hasAffiliate: false,
-  },
-  {
-    id: 'wayaway',
-    name: 'WayAway',
-    description: 'Até 10% de cashback em passagens',
-    logo: '💚',
-    color: 'bg-emerald-500',
-    getLink: getWayAwayLink,
-    priceVariation: -0.01,
-    hasAffiliate: true,
   },
 ];
 
@@ -318,21 +319,12 @@ export default function FlightDetails() {
     }
   }, [searchProgress, visibleOperators]);
   
-  // Calculate prices with variations
+  // Preço base da API (sem variações fictícias)
   const outboundPrice = flightFromState?.price || 500;
   const returnPrice = returnFlightFromState?.price || 0;
   const totalBasePrice = outboundPrice + returnPrice;
   
-  const operatorsWithPrices = useMemo(() => {
-    return FLIGHT_OPERATORS.map(op => ({
-      ...op,
-      calculatedPrice: Math.round(totalBasePrice * (1 + op.priceVariation)),
-    })).sort((a, b) => a.calculatedPrice - b.calculatedPrice);
-  }, [totalBasePrice]);
-  
-  const bestPrice = operatorsWithPrices[0]?.calculatedPrice || totalBasePrice;
-  
-  const handleSelectOperator = (operator: FlightOperator & { calculatedPrice: number }) => {
+  const handleSelectOperator = (operator: FlightOperator) => {
     const context: BookingContext = {
       city: destinationName,
       originIata: originIata,
@@ -632,9 +624,23 @@ export default function FlightDetails() {
               <span className="text-lg font-semibold">📊 Compare preços em diferentes sites</span>
             </div>
             
+            {/* Disclaimer com preço base */}
+            <div className="flex items-start gap-3 p-4 bg-muted/50 border border-border rounded-xl mb-4">
+              <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">
+                  Encontramos voos a partir de{' '}
+                  <span className="text-primary font-bold">R$ {totalBasePrice.toLocaleString('pt-BR')}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Os preços variam entre os sites. Clique para ver o valor atualizado em tempo real em cada operadora.
+                </p>
+              </div>
+            </div>
+            
             <div className="space-y-3">
-              {operatorsWithPrices.slice(0, visibleOperators).map((operator, index) => {
-                const isBest = operator.calculatedPrice === bestPrice;
+              {FLIGHT_OPERATORS.slice(0, visibleOperators).map((operator, index) => {
+                const isRecommended = index === 0; // Primeiro é recomendado por ter cashback
                 
                 return (
                   <motion.div
@@ -643,7 +649,7 @@ export default function FlightDetails() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     className={`bg-card border rounded-xl p-4 transition-all hover:shadow-md ${
-                      isBest ? 'border-green-500/50 ring-1 ring-green-500/20' : 'border-border'
+                      isRecommended ? 'border-primary/50 ring-1 ring-primary/20' : 'border-border'
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -652,12 +658,11 @@ export default function FlightDetails() {
                           {operator.logo}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold">{operator.name}</p>
-                            {isBest && (
-                              <Badge className="bg-green-500 text-white text-xs gap-1">
-                                <Check className="h-3 w-3" />
-                                Melhor preço
+                            {isRecommended && (
+                              <Badge className="bg-primary text-primary-foreground text-xs">
+                                ⭐ Recomendado
                               </Badge>
                             )}
                             {operator.hasAffiliate && (
@@ -667,26 +672,17 @@ export default function FlightDetails() {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground truncate">{operator.description}</p>
+                          <p className="text-xs text-primary font-medium mt-1">{operator.highlight}</p>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-4 justify-between sm:justify-end">
-                        <div className="text-right">
-                          <p className={`text-xl font-bold ${isBest ? 'text-green-600' : 'text-foreground'}`}>
-                            R$ {operator.calculatedPrice.toLocaleString('pt-BR')}
-                          </p>
-                          {!isBest && operator.calculatedPrice > bestPrice && (
-                            <p className="text-xs text-muted-foreground">
-                              +R$ {(operator.calculatedPrice - bestPrice).toLocaleString('pt-BR')}
-                            </p>
-                          )}
-                        </div>
                         <Button 
                           onClick={() => handleSelectOperator(operator)}
-                          className="gap-2 min-w-[120px]"
-                          variant={isBest ? "default" : "outline"}
+                          className="gap-2 min-w-[140px]"
+                          variant={isRecommended ? "default" : "outline"}
                         >
-                          Selecionar
+                          Ver preço atual
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       </div>
@@ -695,12 +691,6 @@ export default function FlightDetails() {
                 );
               })}
             </div>
-            
-            {visibleOperators > 0 && (
-              <p className="text-xs text-muted-foreground mt-4">
-                ⚠️ Preços estimados. Valores podem variar no site da operadora.
-              </p>
-            )}
           </div>
           
           {/* Cross-sell */}
