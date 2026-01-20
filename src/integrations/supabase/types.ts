@@ -53,6 +53,60 @@ export type Database = {
         }
         Relationships: []
       }
+      flight_price_cache: {
+        Row: {
+          airline: string | null
+          airline_name: string | null
+          created_at: string | null
+          departure_at: string | null
+          destination_code: string
+          destination_name: string
+          flight_number: string | null
+          id: string
+          is_domestic: boolean | null
+          link: string | null
+          origin_code: string
+          price: number
+          return_at: string | null
+          transfers: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          airline?: string | null
+          airline_name?: string | null
+          created_at?: string | null
+          departure_at?: string | null
+          destination_code: string
+          destination_name: string
+          flight_number?: string | null
+          id?: string
+          is_domestic?: boolean | null
+          link?: string | null
+          origin_code: string
+          price: number
+          return_at?: string | null
+          transfers?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          airline?: string | null
+          airline_name?: string | null
+          created_at?: string | null
+          departure_at?: string | null
+          destination_code?: string
+          destination_name?: string
+          flight_number?: string | null
+          id?: string
+          is_domestic?: boolean | null
+          link?: string | null
+          origin_code?: string
+          price?: number
+          return_at?: string | null
+          transfers?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       places_cache: {
         Row: {
           address: string | null

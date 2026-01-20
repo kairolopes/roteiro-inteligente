@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface FlightPrice {
   origin: string;
@@ -11,16 +12,9 @@ export interface FlightPrice {
   transfers: number;
   flightNumber: string;
   link: string;
+  isDomestic?: boolean;
+  updatedAt?: string;
 }
-
-interface CacheEntry {
-  prices: FlightPrice[];
-  timestamp: number;
-}
-
-// Cache global para persistir entre re-renders e mudanças de componente
-const priceCache = new Map<string, CacheEntry>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 interface UseFlightPricesOptions {
   origin?: string;
@@ -34,6 +28,26 @@ interface UseFlightPricesResult {
   error: string | null;
   refetch: () => void;
   fromCache: boolean;
+  lastUpdated: Date | null;
+}
+
+// Map origin city names to IATA codes
+const originToIATA: Record<string, string> = {
+  'são paulo': 'SAO',
+  'sao paulo': 'SAO',
+  'rio de janeiro': 'RIO',
+  'brasília': 'BSB',
+  'brasilia': 'BSB',
+  'fortaleza': 'FOR',
+  'salvador': 'SSA',
+};
+
+function getOriginCode(origin: string): string {
+  const lower = origin.toLowerCase().trim();
+  if (/^[A-Z]{3}$/i.test(origin.trim())) {
+    return origin.trim().toUpperCase();
+  }
+  return originToIATA[lower] || 'SAO';
 }
 
 export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlightPricesResult {
@@ -41,33 +55,72 @@ export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlight
   const [prices, setPrices] = useState<FlightPrice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fromCache, setFromCache] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const getCacheKey = useCallback(() => {
-    return `${origin}|${destination || 'all'}`;
-  }, [origin, destination]);
-
-  const fetchPrices = useCallback(async (forceRefresh = false) => {
+  const fetchPrices = useCallback(async () => {
     if (!enabled) return;
-
-    const cacheKey = getCacheKey();
-    const cached = priceCache.get(cacheKey);
-    const now = Date.now();
-
-    // Usar cache se válido e não forçando refresh
-    if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_TTL) {
-      setPrices(cached.prices);
-      setFromCache(true);
-      setError(null);
-      return;
-    }
     
     setIsLoading(true);
     setError(null);
-    setFromCache(false);
 
     try {
-      const params = new URLSearchParams({ origin });
+      const originCode = getOriginCode(origin);
+      
+      let query = supabase
+        .from('flight_price_cache')
+        .select('*')
+        .eq('origin_code', originCode)
+        .order('price', { ascending: true });
+
+      if (destination) {
+        query = query.eq('destination_code', destination.toUpperCase());
+      }
+
+      const { data, error: dbError } = await query.limit(20);
+
+      if (dbError) {
+        throw new Error(dbError.message);
+      }
+
+      if (data && data.length > 0) {
+        const transformedPrices: FlightPrice[] = data.map((row) => ({
+          origin: row.origin_code,
+          destination: row.destination_code,
+          destinationName: row.destination_name,
+          price: row.price,
+          airline: row.airline_name || row.airline || 'Múltiplas',
+          departureAt: row.departure_at || '',
+          returnAt: row.return_at || '',
+          transfers: row.transfers || 0,
+          flightNumber: row.flight_number || '',
+          link: row.link || '',
+          isDomestic: row.is_domestic || false,
+          updatedAt: row.updated_at,
+        }));
+
+        setPrices(transformedPrices);
+        
+        // Set last updated from the most recent entry
+        if (data[0]?.updated_at) {
+          setLastUpdated(new Date(data[0].updated_at));
+        }
+      } else {
+        // No cached data, try fetching from API as fallback
+        await fetchFromAPI();
+      }
+    } catch (err) {
+      console.error('Error fetching flight prices from cache:', err);
+      // Try API fallback
+      await fetchFromAPI();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [enabled, origin, destination]);
+
+  const fetchFromAPI = async () => {
+    try {
+      const originCode = getOriginCode(origin);
+      const params = new URLSearchParams({ origin: originCode });
       if (destination) params.append('destination', destination);
 
       const response = await fetch(
@@ -92,30 +145,23 @@ export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlight
 
       const fetchedPrices = result.prices || [];
       setPrices(fetchedPrices);
-
-      // Salvar no cache
-      priceCache.set(cacheKey, {
-        prices: fetchedPrices,
-        timestamp: now,
-      });
+      setLastUpdated(new Date());
     } catch (err) {
-      console.error('Error fetching flight prices:', err);
+      console.error('Error fetching flight prices from API:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch prices');
       setPrices([]);
-    } finally {
-      setIsLoading(false);
     }
-  }, [enabled, getCacheKey, origin, destination]);
+  };
 
   useEffect(() => {
     fetchPrices();
   }, [fetchPrices]);
 
   const refetch = useCallback(() => {
-    fetchPrices(true);
+    fetchPrices();
   }, [fetchPrices]);
 
-  return { prices, isLoading, error, refetch, fromCache };
+  return { prices, isLoading, error, refetch, fromCache: true, lastUpdated };
 }
 
 // Destination images for UI
@@ -137,6 +183,15 @@ export const destinationImages: Record<string, string> = {
   'TYO': 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600',
   'CPT': 'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=600',
   'CTG': 'https://images.unsplash.com/photo-1583531172005-521bb8cd40b7?w=600',
+  // Domestic Brazil
+  'REC': 'https://images.unsplash.com/photo-1598981457915-aea220950616?w=600',
+  'NAT': 'https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=600',
+  'MCZ': 'https://images.unsplash.com/photo-1590523278191-995cbcda646b?w=600',
+  'FLN': 'https://images.unsplash.com/photo-1597466599360-3b9775841aec?w=600',
+  'POA': 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=600',
+  'CWB': 'https://images.unsplash.com/photo-1587974928442-77dc3e0dba72?w=600',
+  'BEL': 'https://images.unsplash.com/photo-1605723517503-3cadb5818a0c?w=600',
+  'MAO': 'https://images.unsplash.com/photo-1602271886630-cc1f8c58abf8?w=600',
 };
 
 // Format date for display
@@ -151,4 +206,21 @@ export function formatFlightDate(dateString: string): string {
   } catch {
     return dateString;
   }
+}
+
+// Get time ago string
+export function getTimeAgo(date: Date | null): string {
+  if (!date) return '';
+  
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return 'agora';
+  if (diffMins < 60) return `há ${diffMins} min`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `há ${diffHours}h`;
+  
+  return `há ${Math.floor(diffHours / 24)} dias`;
 }

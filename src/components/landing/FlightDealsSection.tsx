@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAviasalesLink } from "@/lib/affiliateLinks";
-import { useFlightPrices, destinationImages, formatFlightDate } from "@/hooks/useFlightPrices";
+import { useFlightPrices, destinationImages, formatFlightDate, getTimeAgo } from "@/hooks/useFlightPrices";
 import {
   Select,
   SelectContent,
@@ -54,9 +54,29 @@ const getTagColor = (tag: string) => {
   return colors[tag] || "bg-muted text-muted-foreground";
 };
 
+// Airline badge colors
+const getAirlineBadge = (airline: string) => {
+  const airlineColors: Record<string, { bg: string; text: string }> = {
+    "GOL": { bg: "bg-orange-500/10", text: "text-orange-600" },
+    "LATAM": { bg: "bg-red-500/10", text: "text-red-600" },
+    "Azul": { bg: "bg-blue-500/10", text: "text-blue-600" },
+    "TAP Portugal": { bg: "bg-green-500/10", text: "text-green-600" },
+    "American Airlines": { bg: "bg-blue-600/10", text: "text-blue-600" },
+    "Delta": { bg: "bg-blue-700/10", text: "text-blue-700" },
+    "United Airlines": { bg: "bg-indigo-500/10", text: "text-indigo-600" },
+    "Air France": { bg: "bg-blue-500/10", text: "text-blue-500" },
+    "British Airways": { bg: "bg-red-600/10", text: "text-red-600" },
+    "Iberia": { bg: "bg-red-500/10", text: "text-red-500" },
+    "KLM": { bg: "bg-cyan-500/10", text: "text-cyan-600" },
+    "Lufthansa": { bg: "bg-yellow-500/10", text: "text-yellow-600" },
+    "Emirates": { bg: "bg-red-500/10", text: "text-red-500" },
+  };
+  return airlineColors[airline] || { bg: "bg-muted", text: "text-muted-foreground" };
+};
+
 export const FlightDealsSection = () => {
   const [selectedOrigin, setSelectedOrigin] = useState("São Paulo");
-  const { prices, isLoading, error, refetch } = useFlightPrices({ origin: selectedOrigin });
+  const { prices, isLoading, error, refetch, lastUpdated } = useFlightPrices({ origin: selectedOrigin });
   const navigate = useNavigate();
 
   const handleDealClick = (deal: { 
@@ -175,13 +195,24 @@ export const FlightDealsSection = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="text-muted-foreground max-w-2xl mx-auto mb-6"
+            className="text-muted-foreground max-w-2xl mx-auto mb-4"
           >
             {isLive 
-              ? "Preços atualizados em tempo real direto das companhias aéreas."
+              ? "Preços atualizados a cada 30 minutos. GOL, LATAM, Azul e mais."
               : "Passagens com até 50% de desconto. Preços atualizados diariamente."
             }
           </motion.p>
+          
+          {lastUpdated && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs text-muted-foreground mb-6"
+            >
+              <Clock className="w-3 h-3 inline mr-1" />
+              Atualizado {getTimeAgo(lastUpdated)}
+            </motion.p>
+          )}
 
           {/* Origin City Selector */}
           <motion.div
@@ -289,7 +320,12 @@ export const FlightDealsSection = () => {
                 {/* Content */}
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-muted-foreground">{deal.airline}</p>
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs font-medium ${getAirlineBadge(deal.airline).bg} ${getAirlineBadge(deal.airline).text} border-0`}
+                    >
+                      {deal.airline}
+                    </Badge>
                     {isLive && (
                       <span className="text-xs text-green-600 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
