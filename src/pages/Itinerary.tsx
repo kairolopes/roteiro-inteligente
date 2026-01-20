@@ -45,6 +45,7 @@ const Itinerary = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isPartialItinerary, setIsPartialItinerary] = useState(false);
+  const [startDate, setStartDate] = useState<Date | null>(null);
   const { toast } = useToast();
   const { exportToPDF, isExporting } = usePDFExport();
 
@@ -75,6 +76,11 @@ const Itinerary = () => {
         setError("Nenhuma preferência encontrada. Por favor, refaça o quiz.");
         setIsLoading(false);
         return;
+      }
+
+      // Store startDate for DaySelector
+      if (quizAnswers.startDate) {
+        setStartDate(new Date(quizAnswers.startDate));
       }
 
       const conversationSummary = sessionStorage.getItem("chatSummary") || "";
@@ -159,6 +165,19 @@ const Itinerary = () => {
   }, [toast, user, canGenerateItinerary, consumeItineraryCredit, refetchCredits]);
 
   useEffect(() => {
+    // Load startDate from quiz answers
+    const quizData = sessionStorage.getItem("quizAnswers");
+    if (quizData) {
+      try {
+        const quizAnswers = JSON.parse(quizData);
+        if (quizAnswers.startDate) {
+          setStartDate(new Date(quizAnswers.startDate));
+        }
+      } catch (e) {
+        console.error("Error parsing quiz answers for startDate:", e);
+      }
+    }
+
     const cached = sessionStorage.getItem("generatedItinerary");
     if (cached) {
       try {
@@ -314,6 +333,7 @@ const Itinerary = () => {
         days={itinerary.days}
         selectedDay={selectedDay}
         onSelectDay={setSelectedDay}
+        startDate={startDate}
       />
 
       <main className="container mx-auto px-3 lg:px-8 py-4 lg:py-6">
