@@ -229,7 +229,7 @@ function renderCoverPage(
       badgeWidth - 5,
       10,
       3,
-      "rgba(255,255,255,0.15)"
+      "#3d3a6b" // Semi-transparent white simulation on dark background
     );
     pdf.text(
       badge as string,
