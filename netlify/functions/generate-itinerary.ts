@@ -164,9 +164,6 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
     };
 
     const destination = quizAnswers.destination ? (destLabels[quizAnswers.destination] || quizAnswers.destination) : "Europa";
-    const styleLabels: Record<string, string> = {
-      romantic: "romântica", family: "em família", solo: "solo", backpacker: "mochilão"
-    };
     const style = quizAnswers.travelStyle ? (styleLabels[quizAnswers.travelStyle] || quizAnswers.travelStyle) : "cultural";
     const budget = budgetLabels[quizAnswers.budget] || "moderado";
 
