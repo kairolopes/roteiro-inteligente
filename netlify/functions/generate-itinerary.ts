@@ -12,7 +12,7 @@ REGRAS CRÍTICAS:
 1. O roteiro DEVE ter EXATAMENTE o número de dias solicitado
 2. Cada dia deve ter 3-5 atividades bem distribuídas
 3. As atividades devem ser geograficamente coerentes (mesma cidade ou próximas)
-4. Inclua estimativas realistas de custos em EUR
+4. Inclua estimativas realistas de custos em Reais Brasileiros (R$). NUNCA use Euro (€), Dólar ($) ou outra moeda.
 5. Horários devem ser realistas considerando tempo de deslocamento
 
 FORMATO DO JSON:
@@ -21,7 +21,7 @@ FORMATO DO JSON:
   "summary": "Resumo de 2-3 frases sobre a viagem",
   "destinations": ["cidade1", "cidade2"],
   "duration": "X dias",
-  "totalBudget": "€X.XXX - €X.XXX",
+  "totalBudget": "R$X.XXX - R$X.XXX",
   "days": [
     {
       "day": 1,
@@ -36,7 +36,7 @@ FORMATO DO JSON:
           "location": "Nome do local específico",
           "coordinates": { "lat": 00.0000, "lng": 00.0000 },
           "duration": "2 horas",
-          "cost": "€XX",
+          "cost": "R$XXX",
           "tips": "Dica útil para o viajante",
           "category": "sightseeing|food|culture|nature|shopping|transport"
         }
