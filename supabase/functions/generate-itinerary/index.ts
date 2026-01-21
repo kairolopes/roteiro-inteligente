@@ -32,7 +32,7 @@ Se houver conflito entre o quiz e a conversa, A CONVERSA TEM PRIORIDADE ABSOLUTA
 INSTRUÇÕES CRÍTICAS:
 1. Crie roteiros realistas com atividades específicas e lugares REAIS que existem
 2. OBRIGATÓRIO: Inclua coordenadas geográficas PRECISAS [latitude, longitude] para CADA atividade - isso é essencial para o mapa funcionar
-3. Estime custos na moeda local ou em reais (R$) de forma realista baseado em preços atuais
+3. Estime TODOS os custos em Reais Brasileiros (R$). NUNCA use Euro (€), Dólar ($) ou outra moeda. Valores devem ser realistas baseados em preços atuais.
 4. Adicione dicas práticas úteis baseadas em experiências reais de viajantes
 5. Considere tempo de deslocamento entre atividades
 6. Sugira restaurantes e locais específicos REAIS com nomes verdadeiros
@@ -222,8 +222,8 @@ serve(async (req) => {
       
       if (quizAnswers.budget) {
         const budgetLabels: Record<string, string> = {
-          economic: "€50-80/dia", moderate: "€80-150/dia",
-          comfortable: "€150-300/dia", luxury: "€300+/dia", flexible: "€100-200/dia"
+          economic: "R$300-500/dia", moderate: "R$500-900/dia",
+          comfortable: "R$900-1.800/dia", luxury: "R$1.800+/dia", flexible: "R$600-1.200/dia"
         };
         contextParts.push(`Orçamento: ${budgetLabels[quizAnswers.budget]}`);
       }
@@ -316,7 +316,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
               },
               totalBudget: { 
                 type: "string", 
-                description: "Orçamento estimado por pessoa (ex: €2.000 - €2.500)" 
+                description: "Orçamento estimado por pessoa em Reais (ex: R$5.000 - R$8.000)" 
               },
               destinations: {
                 type: "array",
@@ -364,7 +364,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
                             description: "Categoria da atividade"
                           },
                           tips: { type: "string", description: "Dica útil prática (ex: Reserve com antecedência, Chegue às 8h para evitar filas)" },
-                          cost: { type: "string", description: "Custo estimado (ex: €25)" },
+                          cost: { type: "string", description: "Custo estimado em Reais (ex: R$150)" },
                           estimatedRating: { type: "number", description: "Avaliação estimada 1-5 baseada em popularidade" }
                         },
                         required: ["id", "time", "title", "description", "location", "coordinates", "duration", "category"]
