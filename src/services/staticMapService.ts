@@ -10,6 +10,277 @@ interface MapOptions {
 }
 
 /**
+ * Convert latitude to tile Y coordinate
+ */
+function latToTileY(lat: number, zoom: number): number {
+  return Math.floor(
+    ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) *
+      Math.pow(2, zoom)
+  );
+}
+
+/**
+ * Convert longitude to tile X coordinate
+ */
+function lngToTileX(lng: number, zoom: number): number {
+  return Math.floor(((lng + 180) / 360) * Math.pow(2, zoom));
+}
+
+/**
+ * Convert tile X coordinate back to longitude
+ */
+function tileXToLng(x: number, zoom: number): number {
+  return (x / Math.pow(2, zoom)) * 360 - 180;
+}
+
+/**
+ * Convert tile Y coordinate back to latitude
+ */
+function tileYToLat(y: number, zoom: number): number {
+  const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, zoom);
+  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+
+/**
+ * Calculate appropriate zoom level based on coordinate bounds
+ */
+function calculateZoom(
+  minLat: number,
+  maxLat: number,
+  minLng: number,
+  maxLng: number,
+  width: number,
+  height: number
+): number {
+  const TILE_SIZE = 256;
+  const latDiff = maxLat - minLat;
+  const lngDiff = maxLng - minLng;
+
+  // Add padding
+  const paddedLatDiff = latDiff * 1.3;
+  const paddedLngDiff = lngDiff * 1.3;
+
+  // Calculate zoom for longitude
+  const zoomLng = Math.log2((360 / paddedLngDiff) * (width / TILE_SIZE));
+  // Calculate zoom for latitude (approximate)
+  const zoomLat = Math.log2((180 / paddedLatDiff) * (height / TILE_SIZE));
+
+  const zoom = Math.min(zoomLng, zoomLat);
+  return Math.max(2, Math.min(12, Math.floor(zoom)));
+}
+
+/**
+ * Load an image from URL and return as HTMLImageElement
+ */
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load tile: ${url}`));
+    img.src = url;
+  });
+}
+
+/**
+ * Generates a real map image using OpenStreetMap tiles
+ * Returns a PNG data URL that can be embedded in PDF
+ */
+export async function generateRealMapImage(
+  coordinates: Coordinate[],
+  cities: string[],
+  width: number = 600,
+  height: number = 400
+): Promise<string | null> {
+  if (coordinates.length === 0) {
+    return null;
+  }
+
+  const TILE_SIZE = 256;
+
+  // Calculate bounds
+  const minLat = Math.min(...coordinates.map((c) => c.lat));
+  const maxLat = Math.max(...coordinates.map((c) => c.lat));
+  const minLng = Math.min(...coordinates.map((c) => c.lng));
+  const maxLng = Math.max(...coordinates.map((c) => c.lng));
+
+  // Calculate center
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+
+  // Calculate zoom
+  const zoom = calculateZoom(minLat, maxLat, minLng, maxLng, width, height);
+
+  // Calculate center tile
+  const centerTileX = lngToTileX(centerLng, zoom);
+  const centerTileY = latToTileY(centerLat, zoom);
+
+  // Calculate how many tiles we need in each direction
+  const tilesX = Math.ceil(width / TILE_SIZE) + 1;
+  const tilesY = Math.ceil(height / TILE_SIZE) + 1;
+
+  // Calculate the starting tile
+  const startTileX = centerTileX - Math.floor(tilesX / 2);
+  const startTileY = centerTileY - Math.floor(tilesY / 2);
+
+  // Create canvas
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    return null;
+  }
+
+  // Fill with light blue background (water color)
+  ctx.fillStyle = "#aadaff";
+  ctx.fillRect(0, 0, width, height);
+
+  // Load and draw tiles
+  const tilePromises: Promise<{ img: HTMLImageElement; x: number; y: number } | null>[] = [];
+
+  for (let x = 0; x < tilesX; x++) {
+    for (let y = 0; y < tilesY; y++) {
+      const tileX = startTileX + x;
+      const tileY = startTileY + y;
+
+      // Check tile bounds
+      if (tileX < 0 || tileY < 0 || tileX >= Math.pow(2, zoom) || tileY >= Math.pow(2, zoom)) {
+        continue;
+      }
+
+      // Use OpenStreetMap tile server
+      const url = `https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
+
+      const promise = loadImage(url)
+        .then((img) => ({
+          img,
+          x: x * TILE_SIZE - ((centerTileX - startTileX) * TILE_SIZE - width / 2),
+          y: y * TILE_SIZE - ((centerTileY - startTileY) * TILE_SIZE - height / 2),
+        }))
+        .catch(() => null);
+
+      tilePromises.push(promise);
+    }
+  }
+
+  // Wait for all tiles to load
+  const tiles = await Promise.all(tilePromises);
+
+  // Draw tiles
+  for (const tile of tiles) {
+    if (tile) {
+      ctx.drawImage(tile.img, tile.x, tile.y, TILE_SIZE, TILE_SIZE);
+    }
+  }
+
+  // Helper function to convert lat/lng to pixel position
+  const latLngToPixel = (lat: number, lng: number): { x: number; y: number } => {
+    const tileX = ((lng + 180) / 360) * Math.pow(2, zoom);
+    const tileY =
+      ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) *
+      Math.pow(2, zoom);
+
+    const x = (tileX - startTileX) * TILE_SIZE - ((centerTileX - startTileX) * TILE_SIZE - width / 2);
+    const y = (tileY - startTileY) * TILE_SIZE - ((centerTileY - startTileY) * TILE_SIZE - height / 2);
+
+    return { x, y };
+  };
+
+  // Draw route line (dashed)
+  ctx.beginPath();
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = "#3b82f6";
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  coordinates.forEach((coord, i) => {
+    const pos = latLngToPixel(coord.lat, coord.lng);
+    if (i === 0) {
+      ctx.moveTo(pos.x, pos.y);
+    } else {
+      ctx.lineTo(pos.x, pos.y);
+    }
+  });
+  ctx.stroke();
+
+  // Draw route line shadow
+  ctx.beginPath();
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = "rgba(30, 64, 175, 0.3)";
+  ctx.lineWidth = 6;
+  coordinates.forEach((coord, i) => {
+    const pos = latLngToPixel(coord.lat, coord.lng);
+    if (i === 0) {
+      ctx.moveTo(pos.x + 2, pos.y + 2);
+    } else {
+      ctx.lineTo(pos.x + 2, pos.y + 2);
+    }
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw markers
+  coordinates.forEach((coord, i) => {
+    const pos = latLngToPixel(coord.lat, coord.lng);
+    const cityName = cities[i] || `${i + 1}`;
+
+    // Marker shadow
+    ctx.beginPath();
+    ctx.arc(pos.x + 2, pos.y + 2, 14, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(30, 64, 175, 0.3)";
+    ctx.fill();
+
+    // Marker background
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = "#3b82f6";
+    ctx.fill();
+
+    // Marker inner
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+
+    // Number
+    ctx.fillStyle = "#3b82f6";
+    ctx.font = "bold 12px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(i + 1), pos.x, pos.y);
+
+    // City label with background
+    const label = cityName.length > 15 ? cityName.substring(0, 15) + "..." : cityName;
+    const labelWidth = ctx.measureText(label).width + 10;
+    
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.beginPath();
+    ctx.roundRect(pos.x - labelWidth / 2, pos.y + 18, labelWidth, 16, 4);
+    ctx.fill();
+
+    ctx.fillStyle = "#1f2937";
+    ctx.font = "600 10px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(label, pos.x, pos.y + 21);
+  });
+
+  // Attribution
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  ctx.fillRect(width - 130, height - 18, 130, 18);
+  ctx.fillStyle = "#666666";
+  ctx.font = "9px Arial, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("© OpenStreetMap", width - 5, height - 5);
+
+  return canvas.toDataURL("image/png");
+}
+
+/**
  * Generates a static map URL using OpenStreetMap tiles via staticmaps.xyz
  * This is a free service that doesn't require API keys
  */

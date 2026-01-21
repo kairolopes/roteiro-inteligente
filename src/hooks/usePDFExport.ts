@@ -9,6 +9,7 @@ import {
 } from "@/services/qrCodeService";
 import {
   generateSvgRouteMap,
+  generateRealMapImage,
 } from "@/services/staticMapService";
 
 // Progress step type matching PDFProgressModal
@@ -290,12 +291,24 @@ async function renderMapPage(
   
   const cities = itinerary.days.map((d) => d.city);
   
-  if (coordinates.length >= 2) {
+  if (coordinates.length >= 1) {
     const mapWidth = CONTENT_WIDTH;
     const mapHeight = 120;
     
-    const svgMap = generateSvgRouteMap(coordinates, cities, mapWidth * 3, mapHeight * 3);
-    const mapImage = await svgToImageData(svgMap, mapWidth * 3, mapHeight * 3);
+    // Try to generate real OSM map first
+    let mapImage: string | null = null;
+    
+    try {
+      mapImage = await generateRealMapImage(coordinates, cities, mapWidth * 2, mapHeight * 2);
+    } catch (e) {
+      console.warn("Failed to generate real map, falling back to SVG:", e);
+    }
+    
+    // Fallback to SVG if real map fails
+    if (!mapImage) {
+      const svgMap = generateSvgRouteMap(coordinates, cities, mapWidth * 3, mapHeight * 3);
+      mapImage = await svgToImageData(svgMap, mapWidth * 3, mapHeight * 3);
+    }
     
     if (mapImage) {
       try {
