@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
-import { Itinerary } from "@/types/itinerary";
-import { PDFProgressStep } from "@/components/itinerary/PDFProgressModal";
+import type { Itinerary } from "@/types/itinerary";
+import type { PDFProgressStep } from "@/components/itinerary/PDFProgressModal";
 
 interface PDFExportState {
   isExporting: boolean;
