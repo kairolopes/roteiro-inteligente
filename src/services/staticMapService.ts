@@ -150,8 +150,9 @@ export async function generateRealMapImage(
         continue;
       }
 
-      // Use OpenStreetMap tile server
-      const url = `https://tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
+      // Use OSM tile proxy to avoid CORS issues
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://rvmvoogyrafiogxdbisx.supabase.co';
+      const url = `${supabaseUrl}/functions/v1/osm-tile-proxy?z=${zoom}&x=${tileX}&y=${tileY}`;
 
       const promise = loadImage(url)
         .then((img) => ({
