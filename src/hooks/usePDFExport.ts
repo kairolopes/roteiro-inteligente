@@ -1,8 +1,13 @@
 import { useState, useCallback } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
-import type { Itinerary } from "@/types/itinerary";
-import type { PDFProgressStep } from "@/components/itinerary/PDFProgressModal";
+
+// Use same type as PDFProgressModal
+export type PDFProgressStep =
+  | "fetching-images"
+  | "generating-map"
+  | "creating-pdf"
+  | "complete";
 
 interface PDFExportState {
   isExporting: boolean;
@@ -10,104 +15,123 @@ interface PDFExportState {
   progress: number;
 }
 
-// Category configuration for PDF
-const categoryStyles: Record<string, { label: string; color: string; bgColor: string }> = {
-  attraction: { label: "Atração", color: "#3b82f6", bgColor: "rgba(59, 130, 246, 0.2)" },
-  restaurant: { label: "Restaurante", color: "#ea580c", bgColor: "rgba(234, 88, 12, 0.2)" },
-  transport: { label: "Transporte", color: "#22c55e", bgColor: "rgba(34, 197, 94, 0.2)" },
-  accommodation: { label: "Hospedagem", color: "#a855f7", bgColor: "rgba(168, 85, 247, 0.2)" },
-  activity: { label: "Atividade", color: "#ec4899", bgColor: "rgba(236, 72, 153, 0.2)" },
+// Types matching src/types/itinerary.ts
+interface ActivityData {
+  id: string;
+  time: string;
+  title: string;
+  description: string;
+  location: string;
+  coordinates?: [number, number];
+  duration: string;
+  category: "attraction" | "restaurant" | "transport" | "accommodation" | "activity";
+  tips?: string;
+  cost?: string;
+  estimatedRating?: number;
+  rating?: number;
+}
+
+interface DayData {
+  day: number;
+  date: string;
+  city: string;
+  country: string;
+  coordinates: [number, number];
+  activities: ActivityData[];
+  highlights: string[];
+}
+
+interface ItineraryData {
+  id: string;
+  title: string;
+  summary: string;
+  duration: string;
+  totalBudget: string;
+  destinations: string[];
+  days: DayData[];
+  createdAt: string;
+}
+
+const categoryLabels: Record<string, string> = {
+  restaurant: "Restaurante",
+  attraction: "Atracao",
+  transport: "Transporte",
+  accommodation: "Hospedagem",
+  activity: "Atividade",
 };
 
-const defaultStyle = { label: "Atividade", color: "#6b7280", bgColor: "rgba(107, 114, 128, 0.2)" };
+const categoryColors: Record<string, string> = {
+  restaurant: "#ea580c",
+  attraction: "#8b5cf6",
+  transport: "#3b82f6",
+  accommodation: "#10b981",
+  activity: "#ec4899",
+};
 
-// Generate HTML content for PDF
-function generatePDFHTML(itinerary: Itinerary): string {
-  const today = new Date().toLocaleDateString('pt-BR', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+function generatePDFHTML(itinerary: ItineraryData): string {
+  const daysHTML = itinerary.days
+    .map((day) => {
+      const activitiesHTML = day.activities
+        .map((activity) => {
+          const category = activity.category || "activity";
+          const color = categoryColors[category] || "#6b7280";
+          const label = categoryLabels[category] || "Atividade";
+          const rating = activity.estimatedRating || activity.rating;
 
-  // Generate day sections
-  const daySections = itinerary.days.map(day => {
-    const activities = day.activities.map(activity => {
-      const style = categoryStyles[activity.category] || defaultStyle;
-      const rating = activity.estimatedRating || activity.rating;
-      
-      return `
-        <div style="background: rgba(30, 41, 59, 0.8); border-radius: 12px; border-left: 4px solid ${style.color}; margin-bottom: 16px; overflow: hidden;">
-          <div style="background: ${style.bgColor}; padding: 12px 16px; display: flex; align-items: center; gap: 8px;">
-            <span style="color: ${style.color}; font-size: 14px; font-weight: 500;">${style.label}</span>
-            ${rating ? `<span style="margin-left: auto; color: #facc15; font-size: 14px;">★ ${typeof rating === 'number' ? rating.toFixed(1) : rating}</span>` : ''}
-          </div>
-          <div style="padding: 16px;">
-            <div style="display: flex; gap: 16px;">
-              <div style="flex-shrink: 0; text-align: center;">
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center;">
-                  <span style="color: #60a5fa; font-size: 12px;">⏰</span>
-                </div>
-                <span style="font-size: 14px; font-weight: 600; color: white; margin-top: 4px; display: block;">${activity.time}</span>
-              </div>
-              <div style="flex: 1; min-width: 0;">
-                <h4 style="font-size: 16px; font-weight: 600; color: white; margin: 0 0 8px 0;">${activity.title}</h4>
-                <p style="font-size: 14px; color: #d1d5db; margin: 0 0 8px 0;">${activity.description}</p>
-                <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
-                  📍 ${activity.location}
-                </div>
-                <div style="display: flex; gap: 16px; font-size: 12px; color: #d1d5db;">
-                  <span>⏱ ${activity.duration}</span>
-                  ${activity.cost ? `<span>💰 ${activity.cost}</span>` : ''}
-                </div>
-                ${activity.tips ? `
-                  <div style="margin-top: 12px; padding: 12px; border-radius: 8px; background: rgba(234, 179, 8, 0.2); font-size: 12px; color: #fde047;">
-                    💡 ${activity.tips}
-                  </div>
-                ` : ''}
-              </div>
+          const tipsHTML = activity.tips
+            ? `<div style="margin-top: 8px; padding: 8px; background: #fef3c7; border-radius: 6px; font-size: 11px; color: #92400e;">
+              <strong>Dica:</strong> ${activity.tips}
+            </div>`
+            : "";
+
+          return `
+          <div style="display: flex; gap: 16px; margin-bottom: 16px; padding: 16px; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="flex-shrink: 0; width: 60px; text-align: center;">
+              <div style="font-size: 14px; font-weight: 600; color: #1f2937;">${activity.time}</div>
+              ${activity.duration ? `<div style="font-size: 11px; color: #6b7280;">${activity.duration}</div>` : ""}
             </div>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="padding: 2px 8px; background: ${color}20; color: ${color}; border-radius: 4px; font-size: 10px; font-weight: 600;">${label}</span>
+                ${activity.cost ? `<span style="font-size: 11px; color: #6b7280;">${activity.cost}</span>` : ""}
+                ${rating ? `<span style="font-size: 11px; color: #facc15;">* ${typeof rating === "number" ? rating.toFixed(1) : rating}</span>` : ""}
+              </div>
+              <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: #1f2937;">${activity.title}</h4>
+              ${activity.location ? `<div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Local: ${activity.location}</div>` : ""}
+              ${activity.description ? `<p style="margin: 0; font-size: 12px; color: #4b5563; line-height: 1.5;">${activity.description}</p>` : ""}
+              ${tipsHTML}
+            </div>
+          </div>
+        `;
+        })
+        .join("");
+
+      const highlightsHTML =
+        day.highlights && day.highlights.length > 0
+          ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+            ${day.highlights.slice(0, 5).map((h) => `<span style="padding: 4px 10px; background: #fce7f3; color: #db2777; border-radius: 999px; font-size: 11px;">* ${h}</span>`).join("")}
+          </div>`
+          : "";
+
+      return `
+        <div style="margin-bottom: 32px; page-break-inside: avoid;">
+          <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 16px 20px; border-radius: 12px 12px 0 0;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 600;">Dia ${day.day} - ${day.city}, ${day.country}</h3>
+            ${day.date ? `<div style="font-size: 13px; opacity: 0.9; margin-top: 4px;">${day.date}</div>` : ""}
+          </div>
+          <div style="background: #f9fafb; padding: 16px; border-radius: 0 0 12px 12px;">
+            ${highlightsHTML}
+            ${activitiesHTML}
           </div>
         </div>
       `;
-    }).join('');
+    })
+    .join("");
 
-    const highlights = day.highlights.slice(0, 5).map(h => 
-      `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; background: rgba(236, 72, 153, 0.2); color: #f472b6; font-size: 12px; font-weight: 500;">★ ${h}</span>`
-    ).join('');
-
-    return `
-      <div style="margin-bottom: 32px; page-break-inside: avoid;">
-        <div style="display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; background: linear-gradient(90deg, #2563eb, #3b82f6); margin-bottom: 16px;">
-          <div style="width: 56px; height: 56px; border-radius: 12px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 24px; font-weight: bold; color: white;">${day.day}</span>
-          </div>
-          <div style="flex: 1;">
-            <h3 style="font-size: 18px; font-weight: bold; color: white; margin: 0;">${day.date}</h3>
-            <div style="font-size: 14px; color: #bfdbfe;">📍 ${day.city}, ${day.country}</div>
-          </div>
-          <div style="padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.2); font-size: 12px; color: white;">
-            📅 ${day.activities.length} atividades
-          </div>
-        </div>
-        ${day.highlights.length > 0 ? `
-          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-            ${highlights}
-          </div>
-        ` : ''}
-        <div style="padding-left: 16px; border-left: 2px solid rgba(59, 130, 246, 0.3); margin-left: 28px;">
-          ${activities}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Destinations preview for cover
-  const destPreviews = itinerary.days.slice(0, 3).map(day => `
-    <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center; flex: 1;">
-      <div style="font-size: 28px; font-weight: bold; color: white; margin-bottom: 4px;">Dia ${day.day}</div>
-      <div style="color: #bfdbfe;">${day.city}</div>
-    </div>
-  `).join('');
+  const destinationsText =
+    itinerary.destinations && itinerary.destinations.length > 0
+      ? itinerary.destinations.join(" - ")
+      : "";
 
   return `
     <!DOCTYPE html>
@@ -116,57 +140,25 @@ function generatePDFHTML(itinerary: Itinerary): string {
       <meta charset="UTF-8">
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; }
       </style>
     </head>
     <body>
-      <div style="width: 794px; background: #0f172a; color: white;">
-        <div style="min-height: 1123px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #0ea5e9 100%); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px;">
-          <div style="width: 80px; height: 80px; border-radius: 16px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; margin-bottom: 32px;">
-            <span style="font-size: 40px;">📍</span>
-          </div>
-          <h1 style="font-size: 48px; font-weight: bold; text-align: center; color: white; margin-bottom: 24px; line-height: 1.2;">
-            ${itinerary.title}
-          </h1>
-          <p style="font-size: 20px; color: #bfdbfe; text-align: center; max-width: 500px; margin-bottom: 32px; line-height: 1.5;">
-            ${itinerary.summary}
-          </p>
-          <div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 48px;">
-            <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,0.2);">
-              <span>📅</span>
-              <span style="color: white; font-weight: 500;">${itinerary.duration}</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,0.2);">
-              <span>📍</span>
-              <span style="color: white; font-weight: 500;">${itinerary.destinations.join(' → ')}</span>
-            </div>
-            ${itinerary.totalBudget ? `
-              <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,0.2);">
-                <span>💰</span>
-                <span style="color: white; font-weight: 500;">${itinerary.totalBudget}</span>
-              </div>
-            ` : ''}
-          </div>
-          <div style="display: flex; gap: 16px; width: 100%; max-width: 600px;">
-            ${destPreviews}
-          </div>
-          <div style="position: absolute; bottom: 32px; text-align: center; width: 100%;">
-            <p style="color: #93c5fd; font-size: 14px;">Roteiro gerado por Viaje com Sofia</p>
-            <p style="color: rgba(147, 197, 253, 0.6); font-size: 12px; margin-top: 4px;">${today}</p>
+      <div style="width: 794px; padding: 40px; background: white;">
+        <div style="text-align: center; padding: 60px 40px; background: linear-gradient(135deg, #1e1b4b, #312e81); color: white; border-radius: 16px; margin-bottom: 40px;">
+          <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 16px;">${itinerary.title}</h1>
+          ${itinerary.summary ? `<p style="font-size: 14px; opacity: 0.9; max-width: 500px; margin: 0 auto 24px;">${itinerary.summary}</p>` : ""}
+          <div style="display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;">
+            ${itinerary.duration ? `<span style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; font-size: 13px;">Duracao: ${itinerary.duration}</span>` : ""}
+            ${itinerary.totalBudget ? `<span style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; font-size: 13px;">Orcamento: ${itinerary.totalBudget}</span>` : ""}
+            ${destinationsText ? `<span style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 8px; font-size: 13px;">${destinationsText}</span>` : ""}
           </div>
         </div>
-        <div style="padding: 48px 32px; background: #0f172a;">
-          <h2 style="font-size: 28px; font-weight: bold; color: white; margin-bottom: 32px; display: flex; align-items: center; gap: 12px;">
-            📅 Roteiro Completo
-          </h2>
-          ${daySections}
-        </div>
-        <div style="min-height: 400px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); display: flex; align-items: center; justify-content: center; text-align: center; padding: 48px;">
-          <div>
-            <h2 style="font-size: 36px; font-weight: bold; color: white; margin-bottom: 16px;">Boa Viagem!</h2>
-            <p style="font-size: 20px; color: #bfdbfe; margin-bottom: 24px;">Aproveite cada momento da sua aventura</p>
-            <p style="color: rgba(147, 197, 253, 0.6); font-size: 14px;">Roteiro criado com Viaje com Sofia</p>
-          </div>
+        
+        ${daysHTML}
+        
+        <div style="text-align: center; padding: 24px; color: #9ca3af; font-size: 11px; border-top: 1px solid #e5e7eb; margin-top: 40px;">
+          Roteiro criado com Viaje com Sofia - viagecomsofia.com
         </div>
       </div>
     </body>
@@ -174,103 +166,121 @@ function generatePDFHTML(itinerary: Itinerary): string {
   `;
 }
 
-export const usePDFExport = () => {
+export function usePDFExport() {
   const [state, setState] = useState<PDFExportState>({
     isExporting: false,
-    currentStep: 'fetching-images',
+    currentStep: "fetching-images",
     progress: 0,
   });
 
-  const updateProgress = (step: PDFProgressStep, progress: number) => {
-    setState(prev => ({ ...prev, currentStep: step, progress }));
-  };
+  const updateProgress = useCallback(
+    (step: PDFProgressStep, progress: number) => {
+      setState({ isExporting: true, currentStep: step, progress });
+    },
+    []
+  );
 
-  const exportToPDF = useCallback(async (itinerary: Itinerary) => {
-    setState({ isExporting: true, currentStep: 'fetching-images', progress: 0 });
+  const exportToPDF = useCallback(
+    async (itinerary: ItineraryData) => {
+      setState({ isExporting: true, currentStep: "fetching-images", progress: 0 });
 
-    try {
-      updateProgress('fetching-images', 10);
-      
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = '794px';
-      document.body.appendChild(container);
+      try {
+        updateProgress("fetching-images", 10);
 
-      updateProgress('fetching-images', 20);
-      container.innerHTML = generatePDFHTML(itinerary);
+        const container = document.createElement("div");
+        container.style.position = "absolute";
+        container.style.left = "-9999px";
+        container.style.top = "0";
+        container.innerHTML = generatePDFHTML(itinerary);
+        document.body.appendChild(container);
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-      updateProgress('generating-map', 40);
-      updateProgress('creating-pdf', 50);
-      
-      const contentElement = container.firstElementChild as HTMLElement;
-      
-      const canvas = await html2canvas(contentElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#0f172a',
-        logging: false,
-        windowWidth: 794,
-      });
+        updateProgress("generating-map", 30);
 
-      updateProgress('creating-pdf', 70);
+        const contentElement = container.querySelector("div") as HTMLElement;
+        if (!contentElement) {
+          throw new Error("Failed to find content element");
+        }
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
+        updateProgress("creating-pdf", 50);
 
-      let heightLeft = imgHeight;
-      let position = 0;
-      let pageNumber = 0;
+        const canvas = await html2canvas(contentElement, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      pageNumber++;
+        updateProgress("creating-pdf", 70);
 
-      while (heightLeft > 0) {
-        position = -pageHeight * pageNumber;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
+
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+        let page = 1;
+
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 0.95),
+          "JPEG",
+          0,
+          position,
+          imgWidth,
+          imgHeight
+        );
         heightLeft -= pageHeight;
-        pageNumber++;
-        
-        const progressValue = 70 + Math.min(25, (pageNumber / Math.ceil(imgHeight / pageHeight)) * 25);
-        updateProgress('creating-pdf', progressValue);
+
+        while (heightLeft > 0) {
+          position = -pageHeight * page;
+          pdf.addPage();
+          pdf.addImage(
+            canvas.toDataURL("image/jpeg", 0.95),
+            "JPEG",
+            0,
+            position,
+            imgWidth,
+            imgHeight
+          );
+          heightLeft -= pageHeight;
+          page++;
+        }
+
+        updateProgress("complete", 100);
+
+        const filename = `roteiro-${itinerary.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "-")
+          .substring(0, 30)}.pdf`;
+        pdf.save(filename);
+
+        document.body.removeChild(container);
+
+        setTimeout(() => {
+          setState({ isExporting: false, currentStep: "fetching-images", progress: 0 });
+        }, 1000);
+      } catch (error) {
+        console.error("PDF export error:", error);
+        setState({ isExporting: false, currentStep: "fetching-images", progress: 0 });
+        throw error;
       }
+    },
+    [updateProgress]
+  );
 
-      updateProgress('complete', 100);
-
-      const fileName = `roteiro-${itinerary.title.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}.pdf`;
-      pdf.save(fileName);
-
-      document.body.removeChild(container);
-
-      setTimeout(() => {
-        setState({ isExporting: false, currentStep: 'fetching-images', progress: 0 });
-      }, 1500);
-
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      setState({ isExporting: false, currentStep: 'fetching-images', progress: 0 });
-      throw error;
-    }
-  }, []);
-
-  return { 
-    exportToPDF, 
+  return {
+    exportToPDF,
     isExporting: state.isExporting,
     currentStep: state.currentStep,
     progress: state.progress,
   };
-};
+}
