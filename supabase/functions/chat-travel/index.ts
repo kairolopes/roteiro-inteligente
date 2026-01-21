@@ -38,20 +38,21 @@ IMPORTANTE:
 // Helper para delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Função de fetch com retry automático para rate limits
+// Função de fetch com retry automático para rate limits e sobrecarga
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
   maxRetries = 5
-): Promise<Response> {
+): Promise<Response | null> {
   const waitTimes = [5000, 10000, 20000, 30000, 60000]; // 5s, 10s, 20s, 30s, 60s
+  const retryableStatuses = [429, 503]; // Rate limit e Model Overloaded
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(url, options);
     
-    if (response.status === 429) {
+    if (retryableStatuses.includes(response.status)) {
       const waitTime = waitTimes[attempt] || 60000;
-      console.log(`Rate limit hit, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+      console.log(`Error ${response.status}, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
       await delay(waitTime);
       continue;
     }
@@ -60,7 +61,7 @@ async function fetchWithRetry(
   }
   
   // Retorna null para indicar que todas as tentativas falharam
-  return null as unknown as Response;
+  return null;
 }
 
 // Função para fazer a chamada com fallback de modelo
@@ -72,6 +73,7 @@ async function fetchWithFallback(
   apiKey: string
 ): Promise<Response> {
   const models = ["gemini-3-flash-preview", "gemini-1.5-flash"];
+  const retryableStatuses = [429, 503];
   
   for (const model of models) {
     console.log(`Trying model: ${model}`);
@@ -90,22 +92,23 @@ async function fetchWithFallback(
     
     const response = await fetchWithRetry(url, options);
     
-    // Se response é null, todas as tentativas falharam - tentar próximo modelo
-    if (!response || response.status === 429) {
-      console.log(`Model ${model} failed after all retries, trying next model...`);
+    // Se response é null ou status é retryável, tentar próximo modelo
+    if (!response || retryableStatuses.includes(response.status)) {
+      console.log(`Model ${model} failed, trying next model...`);
       continue;
     }
     
-    // Se a resposta foi bem sucedida ou outro erro (não rate limit)
-    if (response.ok || response.status !== 429) {
-      console.log(`Model ${model} succeeded`);
-      return response;
-    }
+    // Resposta válida (sucesso ou erro não-retryável)
+    console.log(`Model ${model} responded with status ${response.status}`);
+    return response;
   }
   
   // Todos os modelos falharam
   console.log("All models failed");
-  return new Response(null, { status: 429 });
+  return new Response(
+    JSON.stringify({ error: "Todos os modelos estão sobrecarregados. Tente novamente em alguns minutos." }),
+    { status: 503, headers: { "Content-Type": "application/json" } }
+  );
 }
 
 serve(async (req) => {
@@ -229,10 +232,10 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
-      if (response.status === 429) {
+      if (response.status === 429 || response.status === 503) {
         return new Response(
-          JSON.stringify({ error: "Muitas requisições. Por favor, aguarde um momento." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "O serviço está sobrecarregado. Por favor, aguarde um momento e tente novamente." }),
+          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
