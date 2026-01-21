@@ -16,6 +16,7 @@ interface UserCredits {
 interface UseUserCreditsReturn {
   credits: UserCredits | null;
   isLoading: boolean;
+  isAdmin: boolean;
   hasActiveSubscription: boolean;
   canGenerateItinerary: boolean;
   canSendChatMessage: boolean;
@@ -35,6 +36,35 @@ export function useUserCredits(): UseUserCreditsReturn {
   const { user } = useAuth();
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user has admin role
+  const checkAdminRole = useCallback(async () => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error checking admin role:", error);
+        setIsAdmin(false);
+        return;
+      }
+
+      setIsAdmin(!!data);
+    } catch (err) {
+      console.error("Error in checkAdminRole:", err);
+      setIsAdmin(false);
+    }
+  }, [user]);
 
   const fetchCredits = useCallback(async () => {
     if (!user) {
@@ -79,7 +109,8 @@ export function useUserCredits(): UseUserCreditsReturn {
 
   useEffect(() => {
     fetchCredits();
-  }, [fetchCredits]);
+    checkAdminRole();
+  }, [fetchCredits, checkAdminRole]);
 
   const hasActiveSubscription = useCallback(() => {
     if (!credits?.subscription_type || !credits?.subscription_expires_at) {
@@ -90,15 +121,17 @@ export function useUserCredits(): UseUserCreditsReturn {
 
   const canGenerateItinerary = useCallback(() => {
     if (!user) return false;
+    if (isAdmin) return true; // Admin has unlimited access
     if (hasActiveSubscription()) return true;
     if (!credits) return true; // First time user, allow free
     if (credits.free_itineraries_used < FREE_ITINERARIES_LIMIT) return true;
     if (credits.paid_credits > 0) return true;
     return false;
-  }, [user, credits, hasActiveSubscription]);
+  }, [user, credits, hasActiveSubscription, isAdmin]);
 
   const canSendChatMessage = useCallback(() => {
     if (!user) return false;
+    if (isAdmin) return true; // Admin has unlimited access
     if (hasActiveSubscription()) {
       if (credits?.subscription_type === "annual") return true;
       // Monthly has limit
@@ -106,7 +139,7 @@ export function useUserCredits(): UseUserCreditsReturn {
     }
     if (!credits) return true; // First time user
     return credits.chat_messages_used < FREE_CHAT_MESSAGES_LIMIT;
-  }, [user, credits, hasActiveSubscription]);
+  }, [user, credits, hasActiveSubscription, isAdmin]);
 
   const remainingFreeItineraries = credits
     ? Math.max(0, FREE_ITINERARIES_LIMIT - credits.free_itineraries_used)
@@ -125,6 +158,9 @@ export function useUserCredits(): UseUserCreditsReturn {
 
   const consumeItineraryCredit = useCallback(async (): Promise<boolean> => {
     if (!user || !credits) return false;
+
+    // Admin doesn't consume credits
+    if (isAdmin) return true;
 
     // Check subscription first
     if (hasActiveSubscription()) {
@@ -170,10 +206,13 @@ export function useUserCredits(): UseUserCreditsReturn {
     }
 
     return false;
-  }, [user, credits, hasActiveSubscription, fetchCredits]);
+  }, [user, credits, hasActiveSubscription, fetchCredits, isAdmin]);
 
   const consumeChatMessage = useCallback(async (): Promise<boolean> => {
     if (!user || !credits) return true; // Allow if no credits record yet
+
+    // Admin doesn't consume credits
+    if (isAdmin) return true;
 
     // Annual subscribers have unlimited
     if (hasActiveSubscription() && credits.subscription_type === "annual") {
@@ -195,11 +234,12 @@ export function useUserCredits(): UseUserCreditsReturn {
 
     await fetchCredits();
     return true;
-  }, [user, credits, hasActiveSubscription, fetchCredits]);
+  }, [user, credits, hasActiveSubscription, fetchCredits, isAdmin]);
 
   return {
     credits,
     isLoading,
+    isAdmin,
     hasActiveSubscription: hasActiveSubscription(),
     canGenerateItinerary: canGenerateItinerary(),
     canSendChatMessage: canSendChatMessage(),
