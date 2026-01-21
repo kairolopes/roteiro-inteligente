@@ -1,14 +1,8 @@
 import { useState, useCallback } from "react";
 import { jsPDF } from "jspdf";
-import { Itinerary, ItineraryDay, Activity } from "@/types/itinerary";
-import { generateSvgRouteMap, svgToDataUrl } from "@/services/staticMapService";
-import { supabase } from "@/integrations/supabase/client";
+import html2canvas from "html2canvas";
+import { Itinerary } from "@/types/itinerary";
 import { PDFProgressStep } from "@/components/itinerary/PDFProgressModal";
-
-interface ImageData {
-  url: string;
-  credit: string;
-}
 
 interface PDFExportState {
   isExporting: boolean;
@@ -16,14 +10,206 @@ interface PDFExportState {
   progress: number;
 }
 
-// Category configuration for visual styling
-const categoryConfig: Record<string, { emoji: string; color: [number, number, number] }> = {
-  attraction: { emoji: "🏛️", color: [59, 130, 246] },
-  restaurant: { emoji: "🍽️", color: [234, 88, 12] },
-  transport: { emoji: "🚌", color: [34, 197, 94] },
-  accommodation: { emoji: "🏨", color: [168, 85, 247] },
-  activity: { emoji: "🎭", color: [236, 72, 153] },
+// Category configuration for PDF
+const categoryStyles: Record<string, { label: string; color: string; bgColor: string }> = {
+  attraction: { label: "Atração", color: "#3b82f6", bgColor: "rgba(59, 130, 246, 0.2)" },
+  restaurant: { label: "Restaurante", color: "#ea580c", bgColor: "rgba(234, 88, 12, 0.2)" },
+  transport: { label: "Transporte", color: "#22c55e", bgColor: "rgba(34, 197, 94, 0.2)" },
+  accommodation: { label: "Hospedagem", color: "#a855f7", bgColor: "rgba(168, 85, 247, 0.2)" },
+  activity: { label: "Atividade", color: "#ec4899", bgColor: "rgba(236, 72, 153, 0.2)" },
 };
+
+const defaultStyle = { label: "Atividade", color: "#6b7280", bgColor: "rgba(107, 114, 128, 0.2)" };
+
+// Generate HTML content for PDF
+function generatePDFHTML(itinerary: Itinerary): string {
+  const today = new Date().toLocaleDateString('pt-BR', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
+  // Generate day sections
+  const daySections = itinerary.days.map(day => {
+    const activities = day.activities.map(activity => {
+      const style = categoryStyles[activity.category] || defaultStyle;
+      const rating = activity.estimatedRating || activity.rating;
+      
+      return `
+        <div style="background: rgba(30, 41, 59, 0.8); border-radius: 12px; border-left: 4px solid ${style.color}; margin-bottom: 16px; overflow: hidden;">
+          <!-- Category Header -->
+          <div style="background: ${style.bgColor}; padding: 12px 16px; display: flex; align-items: center; gap: 8px;">
+            <span style="color: ${style.color}; font-size: 14px; font-weight: 500;">${style.label}</span>
+            ${rating ? `<span style="margin-left: auto; color: #facc15; font-size: 14px;">★ ${typeof rating === 'number' ? rating.toFixed(1) : rating}</span>` : ''}
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 16px;">
+            <div style="display: flex; gap: 16px;">
+              <!-- Time -->
+              <div style="flex-shrink: 0; text-align: center;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center;">
+                  <span style="color: #60a5fa; font-size: 12px;">⏰</span>
+                </div>
+                <span style="font-size: 14px; font-weight: 600; color: white; margin-top: 4px; display: block;">${activity.time}</span>
+              </div>
+              
+              <!-- Details -->
+              <div style="flex: 1; min-width: 0;">
+                <h4 style="font-size: 16px; font-weight: 600; color: white; margin: 0 0 8px 0;">${activity.title}</h4>
+                <p style="font-size: 14px; color: #d1d5db; margin: 0 0 8px 0;">${activity.description}</p>
+                
+                <!-- Location -->
+                <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
+                  📍 ${activity.location}
+                </div>
+                
+                <!-- Meta -->
+                <div style="display: flex; gap: 16px; font-size: 12px; color: #d1d5db;">
+                  <span>⏱ ${activity.duration}</span>
+                  ${activity.cost ? `<span>💰 ${activity.cost}</span>` : ''}
+                </div>
+                
+                <!-- Tips -->
+                ${activity.tips ? `
+                  <div style="margin-top: 12px; padding: 12px; border-radius: 8px; background: rgba(234, 179, 8, 0.2); font-size: 12px; color: #fde047;">
+                    💡 ${activity.tips}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const highlights = day.highlights.slice(0, 5).map(h => 
+      `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; background: rgba(236, 72, 153, 0.2); color: #f472b6; font-size: 12px; font-weight: 500;">★ ${h}</span>`
+    ).join('');
+
+    return `
+      <div style="margin-bottom: 32px; page-break-inside: avoid;">
+        <!-- Day Header -->
+        <div style="display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; background: linear-gradient(90deg, #2563eb, #3b82f6); margin-bottom: 16px;">
+          <div style="width: 56px; height: 56px; border-radius: 12px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 24px; font-weight: bold; color: white;">${day.day}</span>
+          </div>
+          <div style="flex: 1;">
+            <h3 style="font-size: 18px; font-weight: bold; color: white; margin: 0;">${day.date}</h3>
+            <div style="font-size: 14px; color: #bfdbfe;">📍 ${day.city}, ${day.country}</div>
+          </div>
+          <div style="padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.2); font-size: 12px; color: white;">
+            📅 ${day.activities.length} atividades
+          </div>
+        </div>
+        
+        <!-- Highlights -->
+        ${day.highlights.length > 0 ? `
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+            ${highlights}
+          </div>
+        ` : ''}
+        
+        <!-- Activities -->
+        <div style="padding-left: 16px; border-left: 2px solid rgba(59, 130, 246, 0.3); margin-left: 28px;">
+          ${activities}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Destinations preview for cover
+  const destPreviews = itinerary.days.slice(0, 3).map(day => `
+    <div style="background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center; flex: 1;">
+      <div style="font-size: 28px; font-weight: bold; color: white; margin-bottom: 4px;">Dia ${day.day}</div>
+      <div style="color: #bfdbfe;">${day.city}</div>
+    </div>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
+      </style>
+    </head>
+    <body>
+      <div style="width: 794px; background: #0f172a; color: white;">
+        
+        <!-- ========== COVER PAGE ========== -->
+        <div style="min-height: 1123px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #0ea5e9 100%); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px;">
+          
+          <!-- Logo -->
+          <div style="width: 80px; height: 80px; border-radius: 16px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; margin-bottom: 32px;">
+            <span style="font-size: 40px;">📍</span>
+          </div>
+          
+          <!-- Title -->
+          <h1 style="font-size: 48px; font-weight: bold; text-align: center; color: white; margin-bottom: 24px; line-height: 1.2;">
+            ${itinerary.title}
+          </h1>
+          
+          <!-- Summary -->
+          <p style="font-size: 20px; color: #bfdbfe; text-align: center; max-width: 500px; margin-bottom: 32px; line-height: 1.5;">
+            ${itinerary.summary}
+          </p>
+          
+          <!-- Meta badges -->
+          <div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 48px;">
+            <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,0.2);">
+              <span>📅</span>
+              <span style="color: white; font-weight: 500;">${itinerary.duration}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,0.2);">
+              <span>📍</span>
+              <span style="color: white; font-weight: 500;">${itinerary.destinations.join(' → ')}</span>
+            </div>
+            ${itinerary.totalBudget ? `
+              <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,0.2);">
+                <span>💰</span>
+                <span style="color: white; font-weight: 500;">${itinerary.totalBudget}</span>
+              </div>
+            ` : ''}
+          </div>
+          
+          <!-- Destinations preview -->
+          <div style="display: flex; gap: 16px; width: 100%; max-width: 600px;">
+            ${destPreviews}
+          </div>
+          
+          <!-- Footer -->
+          <div style="position: absolute; bottom: 32px; text-align: center; width: 100%;">
+            <p style="color: #93c5fd; font-size: 14px;">Roteiro gerado por Viaje com Sofia</p>
+            <p style="color: rgba(147, 197, 253, 0.6); font-size: 12px; margin-top: 4px;">${today}</p>
+          </div>
+        </div>
+        
+        <!-- ========== DAY PAGES ========== -->
+        <div style="padding: 48px 32px; background: #0f172a;">
+          <h2 style="font-size: 28px; font-weight: bold; color: white; margin-bottom: 32px; display: flex; align-items: center; gap: 12px;">
+            📅 Roteiro Completo
+          </h2>
+          
+          ${daySections}
+        </div>
+        
+        <!-- ========== FINAL PAGE ========== -->
+        <div style="min-height: 400px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); display: flex; align-items: center; justify-content: center; text-align: center; padding: 48px;">
+          <div>
+            <h2 style="font-size: 36px; font-weight: bold; color: white; margin-bottom: 16px;">Boa Viagem!</h2>
+            <p style="font-size: 20px; color: #bfdbfe; margin-bottom: 24px;">Aproveite cada momento da sua aventura</p>
+            <p style="color: rgba(147, 197, 253, 0.6); font-size: 14px;">Roteiro criado com Viaje com Sofia</p>
+          </div>
+        </div>
+        
+      </div>
+    </body>
+    </html>
+  `;
+}
 
 export const usePDFExport = () => {
   const [state, setState] = useState<PDFExportState>({
@@ -36,384 +222,86 @@ export const usePDFExport = () => {
     setState(prev => ({ ...prev, currentStep: step, progress }));
   };
 
-  // Fetch images from Unsplash via edge function
-  const fetchImages = async (queries: string[]): Promise<Record<string, ImageData>> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-travel-images', {
-        body: { queries, width: 800, height: 500 },
-      });
-
-      if (error) throw error;
-      return data?.images || {};
-    } catch (error) {
-      console.error('Error fetching images:', error);
-      // Return empty object - we'll use fallbacks
-      return {};
-    }
-  };
-
-  // Convert image URL to base64 for PDF embedding
-  const imageUrlToBase64 = async (url: string): Promise<string | null> => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error('Error converting image to base64:', error);
-      return null;
-    }
-  };
-
   const exportToPDF = useCallback(async (itinerary: Itinerary) => {
     setState({ isExporting: true, currentStep: 'fetching-images', progress: 0 });
 
     try {
-      // Step 1: Fetch images
+      // Step 1: Create invisible container with HTML
       updateProgress('fetching-images', 10);
       
-      const imageQueries = [
-        itinerary.destinations[0] || itinerary.title, // Cover image
-        ...itinerary.days.map(d => `${d.city} ${d.country} travel`),
-      ];
-      
-      const images = await fetchImages(imageQueries.slice(0, 8)); // Limit to avoid rate limits
-      updateProgress('fetching-images', 40);
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '794px';
+      document.body.appendChild(container);
 
-      // Step 2: Generate route map
-      updateProgress('generating-map', 50);
-      
-      const coordinates = itinerary.days.map(d => ({
-        lat: d.coordinates[0],
-        lng: d.coordinates[1],
-      }));
-      const cities = itinerary.days.map(d => d.city);
-      const routeMapSvg = generateSvgRouteMap(coordinates, cities, 500, 280);
-      
-      updateProgress('generating-map', 60);
+      // Step 2: Generate and inject HTML
+      updateProgress('fetching-images', 20);
+      container.innerHTML = generatePDFHTML(itinerary);
 
-      // Step 3: Create PDF
-      updateProgress('creating-pdf', 70);
+      // Wait for content to render
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
+      updateProgress('generating-map', 40);
+
+      // Step 3: Capture with html2canvas
+      updateProgress('creating-pdf', 50);
+      
+      const contentElement = container.firstElementChild as HTMLElement;
+      
+      const canvas = await html2canvas(contentElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#0f172a',
+        logging: false,
+        windowWidth: 794,
       });
 
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 15;
-      const contentWidth = pageWidth - margin * 2;
-      const primaryColor: [number, number, number] = [59, 130, 246];
-      const textColor: [number, number, number] = [31, 41, 55];
-      const mutedColor: [number, number, number] = [107, 114, 128];
+      updateProgress('creating-pdf', 70);
 
-      // ========== COVER PAGE ==========
-      // Background gradient simulation
-      pdf.setFillColor(30, 64, 175);
-      pdf.rect(0, 0, pageWidth, pageHeight, "F");
+      // Step 4: Create PDF from canvas
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      // Gradient overlay
-      for (let i = 0; i < 50; i++) {
-        const alpha = i / 50;
-        pdf.setFillColor(30 + alpha * 29, 64 + alpha * 66, 175 + alpha * 71);
-        pdf.rect(0, pageHeight * (i / 50), pageWidth, pageHeight / 50, "F");
-      }
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
 
-      // Cover image (if available)
-      const coverQuery = itinerary.destinations[0] || itinerary.title;
-      const coverImageData = images[coverQuery];
-      
-      if (coverImageData) {
-        try {
-          const coverBase64 = await imageUrlToBase64(coverImageData.url);
-          if (coverBase64) {
-            // Add image with overlay
-            pdf.addImage(coverBase64, 'JPEG', 0, 0, pageWidth, pageHeight * 0.6);
-            // Dark overlay gradient
-            pdf.setFillColor(0, 0, 0);
-            pdf.setGState(new (pdf as any).GState({ opacity: 0.4 }));
-            pdf.rect(0, 0, pageWidth, pageHeight * 0.6, "F");
-            pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
-          }
-        } catch (e) {
-          console.log('Could not add cover image');
-        }
-      }
+      let heightLeft = imgHeight;
+      let position = 0;
+      let pageNumber = 0;
 
-      // Title area
-      const titleY = pageHeight * 0.65;
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(32);
-      pdf.setFont("helvetica", "bold");
-      
-      // Word wrap title
-      const titleLines = pdf.splitTextToSize(itinerary.title, contentWidth);
-      pdf.text(titleLines, margin, titleY);
-      
-      // Subtitle
-      pdf.setFontSize(14);
-      pdf.setFont("helvetica", "normal");
-      const subtitleY = titleY + titleLines.length * 12 + 8;
-      pdf.text(`${itinerary.duration} • ${itinerary.destinations.join(" → ")}`, margin, subtitleY);
+      // Add first page
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      pageNumber++;
 
-      // Budget badge
-      if (itinerary.totalBudget) {
-        pdf.setFillColor(255, 255, 255);
-        pdf.roundedRect(margin, subtitleY + 10, 60, 10, 2, 2, "F");
-        pdf.setTextColor(...primaryColor);
-        pdf.setFontSize(10);
-        pdf.text(`💰 ${itinerary.totalBudget}`, margin + 5, subtitleY + 17);
-      }
-
-      // Footer
-      pdf.setTextColor(200, 200, 200);
-      pdf.setFontSize(8);
-      pdf.text("Roteiro gerado por TravelPlan AI", margin, pageHeight - 15);
-      pdf.text(new Date().toLocaleDateString("pt-BR"), pageWidth - margin, pageHeight - 15, { align: "right" });
-
-      updateProgress('creating-pdf', 80);
-
-      // ========== SUMMARY PAGE ==========
-      pdf.addPage();
-      let y = margin;
-
-      // Page header
-      pdf.setFillColor(...primaryColor);
-      pdf.rect(0, 0, pageWidth, 25, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(16);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("📋 Resumo do Roteiro", margin, 16);
-      
-      y = 35;
-      pdf.setTextColor(...textColor);
-
-      // Summary text
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "normal");
-      const summaryLines = pdf.splitTextToSize(itinerary.summary, contentWidth);
-      pdf.text(summaryLines, margin, y);
-      y += summaryLines.length * 5 + 10;
-
-      // Route Map
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("🗺️ Rota da Viagem", margin, y);
-      y += 8;
-
-      if (routeMapSvg) {
-        try {
-          const mapDataUrl = svgToDataUrl(routeMapSvg);
-          pdf.addImage(mapDataUrl, 'PNG', margin, y, contentWidth, 70);
-          y += 75;
-        } catch (e) {
-          console.log('Could not add route map');
-          y += 5;
-        }
-      }
-
-      // Highlights per day
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("✨ Destaques por Dia", margin, y);
-      y += 8;
-
-      for (const day of itinerary.days) {
-        if (y > pageHeight - 30) {
-          pdf.addPage();
-          y = margin;
-        }
-
-        pdf.setFillColor(240, 249, 255);
-        pdf.roundedRect(margin, y - 4, contentWidth, 16, 2, 2, "F");
-        
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(...primaryColor);
-        pdf.text(`Dia ${day.day}: ${day.city}`, margin + 4, y + 3);
-        
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(...mutedColor);
-        pdf.setFontSize(9);
-        const highlights = day.highlights.slice(0, 3).join(" • ");
-        pdf.text(highlights, margin + 4, y + 9);
-        
-        y += 20;
-      }
-
-      updateProgress('creating-pdf', 90);
-
-      // ========== DAY PAGES ==========
-      for (let dayIndex = 0; dayIndex < itinerary.days.length; dayIndex++) {
-        const day = itinerary.days[dayIndex];
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = -pageHeight * pageNumber;
         pdf.addPage();
-        y = 0;
-
-        // Day header with image
-        const dayImageKey = `${day.city} ${day.country} travel`;
-        const dayImageData = images[dayImageKey];
-
-        pdf.setFillColor(...primaryColor);
-        pdf.rect(0, 0, pageWidth, 50, "F");
-
-        // Try to add city image
-        if (dayImageData) {
-          try {
-            const dayBase64 = await imageUrlToBase64(dayImageData.url);
-            if (dayBase64) {
-              pdf.addImage(dayBase64, 'JPEG', 0, 0, pageWidth, 50);
-              // Dark overlay
-              pdf.setFillColor(0, 0, 0);
-              pdf.setGState(new (pdf as any).GState({ opacity: 0.5 }));
-              pdf.rect(0, 0, pageWidth, 50, "F");
-              pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
-            }
-          } catch (e) {
-            // Keep solid color background
-          }
-        }
-
-        // Day title
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(20);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(`Dia ${day.day}`, margin, 22);
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        pageNumber++;
         
-        pdf.setFontSize(14);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(`${day.city}, ${day.country}`, margin, 32);
-        
-        pdf.setFontSize(10);
-        pdf.text(day.date, margin, 42);
-
-        y = 60;
-        pdf.setTextColor(...textColor);
-
-        // Highlights
-        if (day.highlights.length > 0) {
-          pdf.setFillColor(254, 249, 195);
-          pdf.roundedRect(margin, y - 4, contentWidth, 12, 2, 2, "F");
-          pdf.setFontSize(9);
-          pdf.setTextColor(161, 98, 7);
-          pdf.text(`✨ ${day.highlights.join(" • ")}`, margin + 4, y + 3);
-          y += 16;
-        }
-
-        // Activities
-        for (const activity of day.activities) {
-          if (y > pageHeight - 40) {
-            pdf.addPage();
-            y = margin;
-          }
-
-          const config = categoryConfig[activity.category] || categoryConfig.activity;
-
-          // Activity card
-          pdf.setDrawColor(...config.color);
-          pdf.setLineWidth(0.5);
-          pdf.setFillColor(255, 255, 255);
-          pdf.roundedRect(margin, y - 2, contentWidth, 32, 3, 3, "FD");
-
-          // Category indicator
-          pdf.setFillColor(...config.color);
-          pdf.rect(margin, y - 2, 4, 32, "F");
-
-          // Time badge
-          pdf.setFillColor(240, 240, 240);
-          pdf.roundedRect(margin + 8, y + 1, 18, 7, 1, 1, "F");
-          pdf.setFontSize(7);
-          pdf.setTextColor(...mutedColor);
-          pdf.text(activity.time, margin + 10, y + 6);
-
-          // Title
-          pdf.setFontSize(11);
-          pdf.setFont("helvetica", "bold");
-          pdf.setTextColor(...textColor);
-          const titleText = `${config.emoji} ${activity.title}`;
-          pdf.text(titleText.substring(0, 50), margin + 30, y + 6);
-
-          // Description (truncated)
-          pdf.setFontSize(8);
-          pdf.setFont("helvetica", "normal");
-          pdf.setTextColor(...mutedColor);
-          const descText = activity.description.substring(0, 90) + (activity.description.length > 90 ? "..." : "");
-          pdf.text(descText, margin + 8, y + 14);
-
-          // Location & Duration
-          pdf.setFontSize(7);
-          pdf.text(`📍 ${activity.location.substring(0, 40)}`, margin + 8, y + 21);
-          
-          let metaX = margin + 8;
-          pdf.text(`⏱ ${activity.duration}`, metaX, y + 27);
-          metaX += 25;
-          
-          if (activity.cost) {
-            pdf.text(`💰 ${activity.cost}`, metaX, y + 27);
-          }
-
-          y += 38;
-
-          // Tips box
-          if (activity.tips) {
-            if (y > pageHeight - 20) {
-              pdf.addPage();
-              y = margin;
-            }
-
-            pdf.setFillColor(254, 249, 195);
-            pdf.roundedRect(margin + 4, y - 4, contentWidth - 8, 10, 2, 2, "F");
-            pdf.setFontSize(7);
-            pdf.setTextColor(161, 98, 7);
-            pdf.text(`💡 ${activity.tips.substring(0, 80)}`, margin + 8, y + 2);
-            y += 14;
-          }
-        }
-      }
-
-      // ========== FINAL PAGE ==========
-      pdf.addPage();
-      y = margin;
-
-      pdf.setFillColor(...primaryColor);
-      pdf.rect(0, 0, pageWidth, pageHeight, "F");
-
-      // Thank you message
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(24);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("Boa Viagem! ✈️", pageWidth / 2, pageHeight / 2 - 20, { align: "center" });
-
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "normal");
-      pdf.text("Roteiro criado com TravelPlan AI", pageWidth / 2, pageHeight / 2, { align: "center" });
-
-      pdf.setFontSize(10);
-      pdf.text(new Date().toLocaleDateString("pt-BR", { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }), pageWidth / 2, pageHeight / 2 + 15, { align: "center" });
-
-      // Photo credits
-      const credits = Object.values(images).map(img => img.credit).filter(Boolean);
-      if (credits.length > 0) {
-        pdf.setFontSize(6);
-        pdf.setTextColor(200, 200, 200);
-        pdf.text("Fotos: " + credits.slice(0, 3).join(" | "), pageWidth / 2, pageHeight - 15, { align: "center" });
+        const progressValue = 70 + Math.min(25, (pageNumber / Math.ceil(imgHeight / pageHeight)) * 25);
+        updateProgress('creating-pdf', progressValue);
       }
 
       updateProgress('complete', 100);
 
-      // Save
+      // Step 5: Save PDF
       const fileName = `roteiro-${itinerary.title.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}.pdf`;
       pdf.save(fileName);
+
+      // Cleanup
+      document.body.removeChild(container);
 
       // Reset state after a short delay
       setTimeout(() => {
