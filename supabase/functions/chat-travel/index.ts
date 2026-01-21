@@ -71,7 +71,7 @@ async function fetchWithFallback(
   messages: Array<{ role: string; content: string }>,
   apiKey: string
 ): Promise<Response> {
-  const models = ["gemini-3-flash", "gemini-1.5-flash"];
+  const models = ["gemini-3-flash-preview", "gemini-1.5-flash"];
   
   for (const model of models) {
     console.log(`Trying model: ${model}`);
