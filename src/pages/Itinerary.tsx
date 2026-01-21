@@ -52,7 +52,7 @@ const Itinerary = () => {
   const [isPartialItinerary, setIsPartialItinerary] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const { toast } = useToast();
-  const { exportToPDF, isExporting } = usePDFExport();
+  const { exportToPDF, isExporting, currentStep: pdfStep, progress: pdfProgress } = usePDFExport();
 
   const generateItineraryWithStreaming = useCallback(async (skipCreditCheck = false) => {
     // Check if user needs to login
@@ -332,6 +332,8 @@ const Itinerary = () => {
         itinerary={itinerary}
         onExportPDF={handleExportPDF}
         isExporting={isExporting}
+        pdfProgress={pdfProgress}
+        pdfStep={pdfStep}
         startDate={startDate}
         onStartDateChange={setStartDate}
       />

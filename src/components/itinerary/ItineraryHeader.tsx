@@ -10,17 +10,20 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AuthModal from "@/components/auth/AuthModal";
+import PDFProgressModal, { PDFProgressStep } from "@/components/itinerary/PDFProgressModal";
 import { cn } from "@/lib/utils";
 
 interface ItineraryHeaderProps {
   itinerary: Itinerary;
   onExportPDF: () => void;
   isExporting: boolean;
+  pdfProgress?: number;
+  pdfStep?: PDFProgressStep;
   startDate?: Date | null;
   onStartDateChange?: (date: Date) => void;
 }
 
-const ItineraryHeader = ({ itinerary, onExportPDF, isExporting, startDate, onStartDateChange }: ItineraryHeaderProps) => {
+const ItineraryHeader = ({ itinerary, onExportPDF, isExporting, pdfProgress = 0, pdfStep = 'fetching-images', startDate, onStartDateChange }: ItineraryHeaderProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -202,6 +205,11 @@ const ItineraryHeader = ({ itinerary, onExportPDF, isExporting, startDate, onSta
         </div>
       </motion.header>
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <PDFProgressModal 
+        isOpen={isExporting} 
+        currentStep={pdfStep} 
+        progress={pdfProgress} 
+      />
     </>
   );
 };
