@@ -228,13 +228,12 @@ serve(async (req) => {
         contextParts.push(`Orçamento: ${budgetLabels[quizAnswers.budget]}`);
       }
       
-      if (quizAnswers.travelStyle?.length > 0) {
+      if (quizAnswers.travelStyle) {
         const styleLabels: Record<string, string> = {
-          romantic: "romântica", adventure: "aventura", cultural: "cultural",
-          gastronomy: "gastronômica", family: "família", party: "festas",
-          photography: "fotogênica", relaxing: "relaxante"
+          romantic: "romântica", family: "em família",
+          solo: "solo", backpacker: "mochilão"
         };
-        contextParts.push(`Estilo: ${quizAnswers.travelStyle.map((s: string) => styleLabels[s] || s).join(", ")}`);
+        contextParts.push(`Estilo: ${styleLabels[quizAnswers.travelStyle] || quizAnswers.travelStyle}`);
       }
       
       if (quizAnswers.interests?.length > 0) {
