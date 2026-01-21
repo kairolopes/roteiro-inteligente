@@ -37,40 +37,28 @@ function generatePDFHTML(itinerary: Itinerary): string {
       
       return `
         <div style="background: rgba(30, 41, 59, 0.8); border-radius: 12px; border-left: 4px solid ${style.color}; margin-bottom: 16px; overflow: hidden;">
-          <!-- Category Header -->
           <div style="background: ${style.bgColor}; padding: 12px 16px; display: flex; align-items: center; gap: 8px;">
             <span style="color: ${style.color}; font-size: 14px; font-weight: 500;">${style.label}</span>
             ${rating ? `<span style="margin-left: auto; color: #facc15; font-size: 14px;">★ ${typeof rating === 'number' ? rating.toFixed(1) : rating}</span>` : ''}
           </div>
-          
-          <!-- Content -->
           <div style="padding: 16px;">
             <div style="display: flex; gap: 16px;">
-              <!-- Time -->
               <div style="flex-shrink: 0; text-align: center;">
                 <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center;">
                   <span style="color: #60a5fa; font-size: 12px;">⏰</span>
                 </div>
                 <span style="font-size: 14px; font-weight: 600; color: white; margin-top: 4px; display: block;">${activity.time}</span>
               </div>
-              
-              <!-- Details -->
               <div style="flex: 1; min-width: 0;">
                 <h4 style="font-size: 16px; font-weight: 600; color: white; margin: 0 0 8px 0;">${activity.title}</h4>
                 <p style="font-size: 14px; color: #d1d5db; margin: 0 0 8px 0;">${activity.description}</p>
-                
-                <!-- Location -->
                 <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
                   📍 ${activity.location}
                 </div>
-                
-                <!-- Meta -->
                 <div style="display: flex; gap: 16px; font-size: 12px; color: #d1d5db;">
                   <span>⏱ ${activity.duration}</span>
                   ${activity.cost ? `<span>💰 ${activity.cost}</span>` : ''}
                 </div>
-                
-                <!-- Tips -->
                 ${activity.tips ? `
                   <div style="margin-top: 12px; padding: 12px; border-radius: 8px; background: rgba(234, 179, 8, 0.2); font-size: 12px; color: #fde047;">
                     💡 ${activity.tips}
@@ -89,7 +77,6 @@ function generatePDFHTML(itinerary: Itinerary): string {
 
     return `
       <div style="margin-bottom: 32px; page-break-inside: avoid;">
-        <!-- Day Header -->
         <div style="display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 12px; background: linear-gradient(90deg, #2563eb, #3b82f6); margin-bottom: 16px;">
           <div style="width: 56px; height: 56px; border-radius: 12px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
             <span style="font-size: 24px; font-weight: bold; color: white;">${day.day}</span>
@@ -102,15 +89,11 @@ function generatePDFHTML(itinerary: Itinerary): string {
             📅 ${day.activities.length} atividades
           </div>
         </div>
-        
-        <!-- Highlights -->
         ${day.highlights.length > 0 ? `
           <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
             ${highlights}
           </div>
         ` : ''}
-        
-        <!-- Activities -->
         <div style="padding-left: 16px; border-left: 2px solid rgba(59, 130, 246, 0.3); margin-left: 28px;">
           ${activities}
         </div>
@@ -138,26 +121,16 @@ function generatePDFHTML(itinerary: Itinerary): string {
     </head>
     <body>
       <div style="width: 794px; background: #0f172a; color: white;">
-        
-        <!-- ========== COVER PAGE ========== -->
         <div style="min-height: 1123px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #0ea5e9 100%); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px;">
-          
-          <!-- Logo -->
           <div style="width: 80px; height: 80px; border-radius: 16px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; margin-bottom: 32px;">
             <span style="font-size: 40px;">📍</span>
           </div>
-          
-          <!-- Title -->
           <h1 style="font-size: 48px; font-weight: bold; text-align: center; color: white; margin-bottom: 24px; line-height: 1.2;">
             ${itinerary.title}
           </h1>
-          
-          <!-- Summary -->
           <p style="font-size: 20px; color: #bfdbfe; text-align: center; max-width: 500px; margin-bottom: 32px; line-height: 1.5;">
             ${itinerary.summary}
           </p>
-          
-          <!-- Meta badges -->
           <div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 48px;">
             <div style="display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,0.2);">
               <span>📅</span>
@@ -174,29 +147,20 @@ function generatePDFHTML(itinerary: Itinerary): string {
               </div>
             ` : ''}
           </div>
-          
-          <!-- Destinations preview -->
           <div style="display: flex; gap: 16px; width: 100%; max-width: 600px;">
             ${destPreviews}
           </div>
-          
-          <!-- Footer -->
           <div style="position: absolute; bottom: 32px; text-align: center; width: 100%;">
             <p style="color: #93c5fd; font-size: 14px;">Roteiro gerado por Viaje com Sofia</p>
             <p style="color: rgba(147, 197, 253, 0.6); font-size: 12px; margin-top: 4px;">${today}</p>
           </div>
         </div>
-        
-        <!-- ========== DAY PAGES ========== -->
         <div style="padding: 48px 32px; background: #0f172a;">
           <h2 style="font-size: 28px; font-weight: bold; color: white; margin-bottom: 32px; display: flex; align-items: center; gap: 12px;">
             📅 Roteiro Completo
           </h2>
-          
           ${daySections}
         </div>
-        
-        <!-- ========== FINAL PAGE ========== -->
         <div style="min-height: 400px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); display: flex; align-items: center; justify-content: center; text-align: center; padding: 48px;">
           <div>
             <h2 style="font-size: 36px; font-weight: bold; color: white; margin-bottom: 16px;">Boa Viagem!</h2>
@@ -204,7 +168,6 @@ function generatePDFHTML(itinerary: Itinerary): string {
             <p style="color: rgba(147, 197, 253, 0.6); font-size: 14px;">Roteiro criado com Viaje com Sofia</p>
           </div>
         </div>
-        
       </div>
     </body>
     </html>
@@ -226,7 +189,6 @@ export const usePDFExport = () => {
     setState({ isExporting: true, currentStep: 'fetching-images', progress: 0 });
 
     try {
-      // Step 1: Create invisible container with HTML
       updateProgress('fetching-images', 10);
       
       const container = document.createElement('div');
@@ -236,16 +198,12 @@ export const usePDFExport = () => {
       container.style.width = '794px';
       document.body.appendChild(container);
 
-      // Step 2: Generate and inject HTML
       updateProgress('fetching-images', 20);
       container.innerHTML = generatePDFHTML(itinerary);
 
-      // Wait for content to render
       await new Promise(resolve => setTimeout(resolve, 300));
 
       updateProgress('generating-map', 40);
-
-      // Step 3: Capture with html2canvas
       updateProgress('creating-pdf', 50);
       
       const contentElement = container.firstElementChild as HTMLElement;
@@ -261,10 +219,9 @@ export const usePDFExport = () => {
 
       updateProgress('creating-pdf', 70);
 
-      // Step 4: Create PDF from canvas
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
+      const imgWidth = 210;
+      const pageHeight = 297;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
       const pdf = new jsPDF({
@@ -277,12 +234,10 @@ export const usePDFExport = () => {
       let position = 0;
       let pageNumber = 0;
 
-      // Add first page
       pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
       pageNumber++;
 
-      // Add additional pages if needed
       while (heightLeft > 0) {
         position = -pageHeight * pageNumber;
         pdf.addPage();
@@ -296,14 +251,11 @@ export const usePDFExport = () => {
 
       updateProgress('complete', 100);
 
-      // Step 5: Save PDF
       const fileName = `roteiro-${itinerary.title.toLowerCase().replace(/\s+/g, "-").substring(0, 30)}.pdf`;
       pdf.save(fileName);
 
-      // Cleanup
       document.body.removeChild(container);
 
-      // Reset state after a short delay
       setTimeout(() => {
         setState({ isExporting: false, currentStep: 'fetching-images', progress: 0 });
       }, 1500);
