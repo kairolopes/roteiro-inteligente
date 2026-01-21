@@ -332,7 +332,7 @@ async function renderMapPage(
   pdf.setFontSize(10);
   
   itinerary.days.forEach((day, i) => {
-    const y = summaryY + 10 + i * 12;
+    const y = summaryY + 10 + i * 18;
     if (y < PAGE_HEIGHT - MARGIN) {
       // Day number badge
       const color = COLORS.categories.attraction;
@@ -342,18 +342,22 @@ async function renderMapPage(
       pdf.setFontSize(8);
       pdf.text(String(day.day), MARGIN + 4, y - 0.5, { align: "center" });
       
-      // Day info
+      // City name (left)
       pdf.setTextColor(COLORS.text);
       pdf.setFontSize(10);
       pdf.text(`${day.city}, ${day.country}`, MARGIN + 12, y);
       
-      pdf.setTextColor(COLORS.textLight);
-      pdf.setFontSize(9);
-      pdf.text(`${day.activities.length} atividades`, MARGIN + 100, y);
-      
+      // Date (right aligned)
       if (day.date) {
-        pdf.text(day.date, CONTENT_WIDTH + MARGIN - 30, y, { align: "right" });
+        pdf.setTextColor(COLORS.textLight);
+        pdf.setFontSize(9);
+        pdf.text(day.date, CONTENT_WIDTH + MARGIN, y, { align: "right" });
       }
+      
+      // Activities count (below city, smaller font)
+      pdf.setTextColor(COLORS.textLight);
+      pdf.setFontSize(8);
+      pdf.text(`${day.activities.length} atividades`, MARGIN + 12, y + 5);
     }
   });
 }
