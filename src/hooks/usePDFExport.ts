@@ -265,7 +265,7 @@ function renderCoverPage(
   // Footer branding
   pdf.setFontSize(9);
   pdf.setTextColor("#6366f1");
-  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
+  pdf.text("Viaje com Sofía", PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
 }
 
 // Render Map Page
@@ -640,7 +640,7 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
   pdf.setTextColor(COLORS.primary);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
-  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 20, { align: "center" });
+  pdf.text("Viaje com Sofía", PAGE_WIDTH / 2, PAGE_HEIGHT - 20, { align: "center" });
   
   pdf.setTextColor(COLORS.textLight);
   pdf.setFont("helvetica", "normal");
