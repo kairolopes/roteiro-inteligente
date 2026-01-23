@@ -88,7 +88,11 @@ const Chat = () => {
     onDelta: (text: string) => void,
     onDone: () => void
   ) => {
-    const resp = await fetch(getChatUrl(), {
+    const chatUrl = getChatUrl();
+    console.log('[Chat Debug] URL:', chatUrl);
+    console.log('[Chat Debug] Messages:', messagesToSend.length);
+    
+    const resp = await fetch(chatUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -96,6 +100,8 @@ const Chat = () => {
       },
       body: JSON.stringify({ messages: messagesToSend, quizAnswers: answers }),
     });
+    
+    console.log('[Chat Debug] Response status:', resp.status);
 
     if (!resp.ok) {
       const errorData = await resp.json().catch(() => ({}));

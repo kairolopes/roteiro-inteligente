@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.osm-tile-proxy]
 verify_jwt = false
+
+[functions.reset-admin-password]
+verify_jwt = false
