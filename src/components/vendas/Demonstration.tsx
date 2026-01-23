@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { CheckCircle, Sparkles, Map, FileText } from "lucide-react";
+import { SofiaDemo } from "./SofiaDemo";
 
 const features = [
   {
@@ -40,47 +41,14 @@ export function Demonstration() {
 
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Screenshot Mockup */}
+            {/* Interactive Demo */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="relative"
             >
-              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-muted to-muted/50 border border-border/50 shadow-2xl aspect-[4/3]">
-                {/* Browser Chrome */}
-                <div className="absolute top-0 left-0 right-0 h-10 bg-muted/80 border-b border-border/50 flex items-center px-4 gap-2">
-                  <div className="w-3 h-3 rounded-full bg-destructive/50" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/50" />
-                  <div className="flex-1 mx-4">
-                    <div className="h-5 bg-background/50 rounded-md max-w-xs mx-auto" />
-                  </div>
-                </div>
-
-                {/* Content Placeholder */}
-                <div className="absolute inset-0 top-10 p-6 flex flex-col gap-4">
-                  <div className="h-8 bg-primary/20 rounded-md w-3/4" />
-                  <div className="flex gap-4 flex-1">
-                    <div className="flex-1 bg-background/50 rounded-lg p-4 space-y-3">
-                      <div className="h-4 bg-muted-foreground/20 rounded w-full" />
-                      <div className="h-4 bg-muted-foreground/20 rounded w-5/6" />
-                      <div className="h-4 bg-muted-foreground/20 rounded w-4/6" />
-                      <div className="h-20 bg-primary/10 rounded-lg mt-4" />
-                    </div>
-                    <div className="flex-1 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Map className="h-16 w-16 text-primary/40" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating Badge */}
-              <div className="absolute -bottom-4 -right-4 bg-primary text-primary-foreground rounded-full px-4 py-2 shadow-lg flex items-center gap-2 text-sm font-medium">
-                <CheckCircle className="h-4 w-4" />
-                Roteiro Pronto!
-              </div>
+              <SofiaDemo />
             </motion.div>
 
             {/* Features */}
