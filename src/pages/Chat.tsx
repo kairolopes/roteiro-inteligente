@@ -106,12 +106,15 @@ const Chat = () => {
     if (!resp.ok) {
       const errorData = await resp.json().catch(() => ({}));
       if (resp.status === 429) {
-        throw new Error(errorData.error || "Limite de requisições atingido. Aguarde um momento.");
+        throw new Error("Sofia está ocupada. Tente novamente em 30 segundos.");
       }
       if (resp.status === 402) {
-        throw new Error(errorData.error || "Créditos insuficientes.");
+        throw new Error("Créditos insuficientes para continuar.");
       }
-      throw new Error(errorData.error || "Erro ao conectar com a IA");
+      if (resp.status >= 500) {
+        throw new Error("Falha temporária no servidor. Tente novamente.");
+      }
+      throw new Error(errorData.error || "Verifique sua conexão e tente novamente.");
     }
 
     if (!resp.body) throw new Error("Resposta vazia");
@@ -206,7 +209,8 @@ const Chat = () => {
       setIsLoading(false);
       
       const errorMessage = error instanceof Error ? error.message : "Erro ao enviar mensagem";
-      const isRateLimit = errorMessage.includes("requisições") || errorMessage.includes("429") || errorMessage.includes("rate");
+      const isRateLimit = errorMessage.includes("ocupada") || errorMessage.includes("429") || errorMessage.includes("rate");
+      const isServerError = errorMessage.includes("servidor") || errorMessage.includes("500");
       
       if (isRateLimit) {
         setRateLimitError(true);
@@ -214,10 +218,8 @@ const Chat = () => {
       
       toast({
         variant: "destructive",
-        title: isRateLimit ? "Muitas requisições" : "Erro",
-        description: isRateLimit 
-          ? "O servidor está ocupado. Aguarde alguns segundos e tente novamente."
-          : errorMessage,
+        title: isRateLimit ? "Sofia ocupada" : isServerError ? "Erro temporário" : "Erro de conexão",
+        description: errorMessage,
       });
     }
   };

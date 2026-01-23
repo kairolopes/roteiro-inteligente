@@ -102,12 +102,15 @@ const Itinerary = () => {
       if (!response.ok || !response.body) {
         const errorData = await response.json().catch(() => ({}));
         if (response.status === 429) {
-          throw new Error("Limite de requisições atingido. Aguarde um momento.");
+          throw new Error("Sofia está ocupada. Tente novamente em 30 segundos.");
         }
         if (response.status === 402) {
-          throw new Error("Créditos insuficientes.");
+          throw new Error("Créditos insuficientes para gerar o roteiro.");
         }
-        throw new Error(errorData.error || "Erro ao gerar roteiro");
+        if (response.status >= 500) {
+          throw new Error("Falha temporária no servidor. Tente novamente.");
+        }
+        throw new Error(errorData.error || "Verifique sua conexão e tente novamente.");
       }
 
       const reader = response.body.getReader();
