@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Play, Sparkles, Clock, MapPin, Star } from "lucide-react";
+import { Sparkles, Clock, MapPin, Star } from "lucide-react";
+import { SofiaDemo } from "./SofiaDemo";
 
 interface VendasHeroProps {
   onCTAClick: () => void;
@@ -78,7 +79,7 @@ export function VendasHero({ onCTAClick }: VendasHeroProps) {
                 video?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
-              <Play className="mr-2 h-5 w-5" />
+              <Sparkles className="mr-2 h-5 w-5" />
               Ver Como Funciona
             </Button>
           </motion.div>
@@ -105,7 +106,7 @@ export function VendasHero({ onCTAClick }: VendasHeroProps) {
           </motion.div>
         </div>
 
-        {/* Video Section Placeholder */}
+        {/* Interactive Demo */}
         <motion.div
           id="video-section"
           initial={{ opacity: 0, y: 40 }}
@@ -113,16 +114,7 @@ export function VendasHero({ onCTAClick }: VendasHeroProps) {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mt-16 max-w-3xl mx-auto"
         >
-          <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-muted to-muted/50 border border-border/50 shadow-2xl">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 mx-auto cursor-pointer hover:bg-primary/20 transition-colors">
-                  <Play className="h-8 w-8 text-primary ml-1" />
-                </div>
-                <p className="text-muted-foreground">Veja Sofia criando um roteiro em tempo real</p>
-              </div>
-            </div>
-          </div>
+          <SofiaDemo />
         </motion.div>
       </div>
     </section>
