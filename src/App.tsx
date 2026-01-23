@@ -14,8 +14,8 @@ import Profile from "./pages/Profile";
 import Pricing from "./pages/Pricing";
 import Passagens from "./pages/Passagens";
 import FlightDetails from "./pages/FlightDetails";
+import Vendas from "./pages/Vendas";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -38,6 +38,7 @@ const App = () => {
             <Route path="/my-itineraries" element={<MyItineraries />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/vendas" element={<Vendas />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

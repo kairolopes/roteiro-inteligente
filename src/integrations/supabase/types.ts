@@ -107,6 +107,45 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_leads: {
+        Row: {
+          converted: boolean | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string | null
+          phone: string | null
+          source: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          converted?: boolean | null
+          created_at?: string | null
+          email: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          converted?: boolean | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          phone?: string | null
+          source?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: []
+      }
       places_cache: {
         Row: {
           address: string | null
