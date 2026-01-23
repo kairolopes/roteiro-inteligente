@@ -153,8 +153,20 @@ export function QuizSummary({ answers, onCreateItinerary, onEditStep }: QuizSumm
           <div className="flex-1 min-w-0">
             <h4 className="font-semibold mb-1">Destino</h4>
             <p className="text-muted-foreground">
-              {labels.destinations[answers.destination] || answers.destination || "Não selecionado"}
+              {(answers.destinations?.length || 0) > 0
+                ? answers.destinations.map(d => labels.destinations[d] || d).join(", ")
+                : labels.destinations[answers.destination] || answers.destination || "Não selecionado"}
             </p>
+            {answers.destinationDetails && (
+              <p className="text-sm text-muted-foreground/80 mt-1">
+                📍 {answers.destinationDetails}
+              </p>
+            )}
+            {answers.customRequests && (
+              <p className="text-sm text-muted-foreground/80 mt-1 italic">
+                ✨ "{answers.customRequests}"
+              </p>
+            )}
           </div>
           <EditButton stepIndex={STEP_INDICES.destinations} />
         </div>

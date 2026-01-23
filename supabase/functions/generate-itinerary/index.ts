@@ -187,8 +187,17 @@ serve(async (req) => {
         surprise: "destino surpresa"
       };
       
-      if (quizAnswers.destination) {
+      // Suporte a múltiplos destinos
+      if (quizAnswers.destinations?.length > 0) {
+        const destNames = quizAnswers.destinations.map((d: string) => destLabels[d] || d);
+        contextParts.push(`Destinos selecionados: ${destNames.join(", ")}`);
+      } else if (quizAnswers.destination) {
         contextParts.push(`Destino: ${destLabels[quizAnswers.destination] || quizAnswers.destination}`);
+      }
+      
+      // Região/cidades específicas
+      if (quizAnswers.destinationDetails) {
+        contextParts.push(`Região/cidades específicas: ${quizAnswers.destinationDetails}`);
       }
       
       const durationLabels: Record<string, number> = {
@@ -257,6 +266,12 @@ serve(async (req) => {
 
     const userPrompt = `Crie um roteiro de viagem detalhado com base nestas preferências:
 ${contextParts.join("\n")}
+
+${quizAnswers?.customRequests ? `
+⚠️⚠️⚠️ PEDIDOS ESPECIAIS DO USUÁRIO - PRIORIDADE MÁXIMA ⚠️⚠️⚠️
+O usuário fez os seguintes pedidos específicos que DEVEM ser incluídos no roteiro:
+"${quizAnswers.customRequests}"
+` : ""}
 
 ⚠️ ATENÇÃO MÁXIMA - NÚMERO DE DIAS:
 Este roteiro DEVE ter EXATAMENTE ${numDays} dias.

@@ -56,8 +56,8 @@ const Quiz = () => {
         return answers.budget !== "" && answers.pace !== "";
       case 3: // Dates
         return answers.duration !== "" && answers.startDate !== null;
-      case 4: // Destinations
-        return answers.destination !== "";
+      case 4: // Destinations - agora usa array de destinations
+        return (answers.destinations?.length || 0) > 0;
       case 5: // Interests
         return answers.interests.length > 0;
       case 6: // Travel with

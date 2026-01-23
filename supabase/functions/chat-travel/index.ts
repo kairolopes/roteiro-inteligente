@@ -129,25 +129,44 @@ serve(async (req) => {
     if (quizAnswers) {
       const parts: string[] = [];
       
-      if (quizAnswers.destination) {
+      // Suporte a múltiplos destinos
+      if (quizAnswers.destinations?.length > 0) {
         const destLabels: Record<string, string> = {
-          // Américas
           brazil: "Brasil", argentina: "Argentina", peru: "Peru",
           usa: "Estados Unidos", mexico: "México", canada: "Canadá",
-          // Europa
           italy: "Itália", france: "França", spain: "Espanha",
           portugal: "Portugal", greece: "Grécia", netherlands: "Holanda",
           germany: "Alemanha", switzerland: "Suíça",
-          // Ásia
           japan: "Japão", thailand: "Tailândia", indonesia: "Indonésia",
-          // Oceania
           australia: "Austrália",
-          // Oriente Médio & África
           uae: "Emirados Árabes", egypt: "Egito", morocco: "Marrocos", southafrica: "África do Sul",
-          // Especial
+          surprise: "Destino surpresa"
+        };
+        const destNames = quizAnswers.destinations.map((d: string) => destLabels[d] || d);
+        parts.push(`Destinos selecionados: ${destNames.join(", ")}`);
+      } else if (quizAnswers.destination) {
+        const destLabels: Record<string, string> = {
+          brazil: "Brasil", argentina: "Argentina", peru: "Peru",
+          usa: "Estados Unidos", mexico: "México", canada: "Canadá",
+          italy: "Itália", france: "França", spain: "Espanha",
+          portugal: "Portugal", greece: "Grécia", netherlands: "Holanda",
+          germany: "Alemanha", switzerland: "Suíça",
+          japan: "Japão", thailand: "Tailândia", indonesia: "Indonésia",
+          australia: "Austrália",
+          uae: "Emirados Árabes", egypt: "Egito", morocco: "Marrocos", southafrica: "África do Sul",
           surprise: "Destino surpresa"
         };
         parts.push(`Destino: ${destLabels[quizAnswers.destination] || quizAnswers.destination}`);
+      }
+      
+      // Região/cidades específicas
+      if (quizAnswers.destinationDetails) {
+        parts.push(`Região/cidades específicas: ${quizAnswers.destinationDetails}`);
+      }
+      
+      // Pedidos especiais do usuário (prioridade máxima)
+      if (quizAnswers.customRequests) {
+        parts.push(`⚠️ PEDIDOS ESPECIAIS DO USUÁRIO: ${quizAnswers.customRequests}`);
       }
 
       if (quizAnswers.travelStyle) {

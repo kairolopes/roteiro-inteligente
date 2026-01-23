@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Globe, MapPin } from "lucide-react";
+import { Check, Globe, MapPin, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuizAnswers } from "@/types/quiz";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 const regions = [
   { id: "all", label: "Todos", icon: "🌍" },
@@ -192,6 +194,8 @@ const destinations = [
   },
 ];
 
+const MAX_DESTINATIONS = 3;
+
 interface DestinationsStepProps {
   answers: QuizAnswers;
   onUpdate: (key: keyof QuizAnswers, value: any) => void;
@@ -200,10 +204,35 @@ interface DestinationsStepProps {
 export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
   const [activeRegion, setActiveRegion] = useState("all");
 
-  // Seleção única de destino
-  const selectDestination = (id: string) => {
-    onUpdate("destination", id);
+  // Multi-select de destinos (até 3)
+  const toggleDestination = (id: string) => {
+    const currentDestinations = answers.destinations || [];
+    
+    // Se for "surprise", limpa tudo e seleciona só ele
+    if (id === "surprise") {
+      onUpdate("destinations", ["surprise"]);
+      onUpdate("destination", "surprise");
+      return;
+    }
+    
+    // Se já tinha "surprise" selecionado, remove
+    const filtered = currentDestinations.filter(d => d !== "surprise");
+    
+    if (filtered.includes(id)) {
+      // Remove se já estava selecionado
+      const newDests = filtered.filter(d => d !== id);
+      onUpdate("destinations", newDests);
+      onUpdate("destination", newDests[0] || "");
+    } else if (filtered.length < MAX_DESTINATIONS) {
+      // Adiciona se ainda tem espaço
+      const newDests = [...filtered, id];
+      onUpdate("destinations", newDests);
+      onUpdate("destination", newDests[0]);
+    }
   };
+
+  const selectedCount = (answers.destinations || []).length;
+  const hasSurprise = (answers.destinations || []).includes("surprise");
 
   const filteredDestinations = activeRegion === "all" 
     ? destinations 
@@ -218,10 +247,10 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
     >
       <div className="text-center mb-6">
         <h2 className="text-2xl lg:text-3xl font-bold mb-3">
-          Para qual <span className="text-primary">destino</span> você quer ir?
+          Para onde você quer <span className="text-primary">viajar</span>?
         </h2>
         <p className="text-muted-foreground">
-          Selecione o país que você gostaria de visitar.
+          Selecione até {MAX_DESTINATIONS} países para combinar em um roteiro.
         </p>
       </div>
 
@@ -246,6 +275,20 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
         ))}
       </div>
 
+      {/* Selected count badge */}
+      {selectedCount > 0 && !hasSurprise && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center"
+        >
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm">
+            <Globe className="w-4 h-4" />
+            {selectedCount} de {MAX_DESTINATIONS} países selecionados
+          </span>
+        </motion.div>
+      )}
+
       {/* Destinations Grid */}
       <motion.div 
         layout
@@ -253,7 +296,8 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
       >
         <AnimatePresence mode="popLayout">
           {filteredDestinations.map((destination) => {
-            const isSelected = answers.destination === destination.id;
+            const isSelected = (answers.destinations || []).includes(destination.id);
+            const isDisabled = !isSelected && selectedCount >= MAX_DESTINATIONS && !hasSurprise;
             
             return (
               <motion.button
@@ -263,12 +307,14 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.2 }}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => selectDestination(destination.id)}
+                whileHover={!isDisabled ? { scale: 1.03 } : {}}
+                whileTap={!isDisabled ? { scale: 0.98 } : {}}
+                onClick={() => !isDisabled && toggleDestination(destination.id)}
+                disabled={isDisabled}
                 className={cn(
                   "relative overflow-hidden rounded-xl aspect-[4/3] group",
-                  isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                  isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                  isDisabled && "opacity-50 cursor-not-allowed"
                 )}
               >
                 <img
@@ -302,6 +348,51 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
           })}
         </AnimatePresence>
       </motion.div>
+
+      {/* Optional: Region/Cities field */}
+      {selectedCount > 0 && !hasSurprise && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-xl p-4 lg:p-6 space-y-4"
+        >
+          <div className="flex items-center gap-2 text-primary">
+            <MapPin className="w-5 h-5" />
+            <h3 className="font-semibold">Quer focar em alguma região ou cidade? (opcional)</h3>
+          </div>
+          <Input
+            placeholder="Ex: Toscana, Costa Amalfitana, Nordeste brasileiro..."
+            value={answers.destinationDetails || ""}
+            onChange={(e) => onUpdate("destinationDetails", e.target.value)}
+            className="bg-background/50"
+          />
+        </motion.div>
+      )}
+
+      {/* Optional: Custom requests field */}
+      {selectedCount > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-card rounded-xl p-4 lg:p-6 space-y-4"
+        >
+          <div className="flex items-center gap-2 text-primary">
+            <Sparkles className="w-5 h-5" />
+            <h3 className="font-semibold">Tem algum sonho ou pedido especial? (opcional)</h3>
+          </div>
+          <Textarea
+            placeholder="Ex: Quero visitar a Torre Eiffel, fazer tour de vinhos na Toscana, ver o pôr do sol em Santorini..."
+            value={answers.customRequests || ""}
+            onChange={(e) => onUpdate("customRequests", e.target.value)}
+            className="bg-background/50 min-h-[100px] resize-none"
+            maxLength={500}
+          />
+          <p className="text-xs text-muted-foreground text-right">
+            {(answers.customRequests || "").length}/500
+          </p>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
