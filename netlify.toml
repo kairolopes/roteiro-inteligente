@@ -6,6 +6,13 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Subdomínio de vendas
+[[redirects]]
+  from = "https://vendas.viagecomsofia.com/*"
+  to = "/vendas"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
