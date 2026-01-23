@@ -6,6 +6,9 @@ export interface QuizAnswers {
   duration: string;
   startDate: Date | null;
   destination: string;
+  destinations: string[]; // Múltiplos países (até 3)
+  destinationDetails: string; // Região/cidades específicas
+  customRequests: string; // Desejos especiais do usuário
   interests: string[];
   travelWith: string;
   hasChildren: boolean;
@@ -22,6 +25,9 @@ export const defaultQuizAnswers: QuizAnswers = {
   duration: "",
   startDate: null,
   destination: "",
+  destinations: [],
+  destinationDetails: "",
+  customRequests: "",
   interests: [],
   travelWith: "",
   hasChildren: false,
