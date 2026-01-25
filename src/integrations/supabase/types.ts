@@ -107,6 +107,33 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_settings: {
+        Row: {
+          created_at: string
+          id: string
+          integration_name: string
+          is_active: boolean
+          settings: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          integration_name: string
+          is_active?: boolean
+          settings?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          integration_name?: string
+          is_active?: boolean
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       landing_leads: {
         Row: {
           converted: boolean | null
@@ -143,6 +170,54 @@ export type Database = {
           utm_campaign?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+        }
+        Relationships: []
+      }
+      notification_logs: {
+        Row: {
+          channel: string
+          created_at: string
+          email: string | null
+          error_message: string | null
+          id: string
+          message_content: string | null
+          phone: string | null
+          sent_at: string | null
+          status: string
+          template_name: string | null
+          type: string
+          user_id: string | null
+          variables: Json | null
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          message_content?: string | null
+          phone?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string | null
+          type: string
+          user_id?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          email?: string | null
+          error_message?: string | null
+          id?: string
+          message_content?: string | null
+          phone?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string | null
+          type?: string
+          user_id?: string | null
+          variables?: Json | null
         }
         Relationships: []
       }
@@ -218,6 +293,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          phone: string | null
           updated_at: string
           user_id: string
         }
@@ -226,6 +302,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          phone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -234,6 +311,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          phone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -395,6 +473,39 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_templates: {
+        Row: {
+          content: string
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          variables: string[] | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          variables?: string[] | null
         }
         Relationships: []
       }
