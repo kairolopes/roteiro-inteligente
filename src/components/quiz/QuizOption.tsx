@@ -91,7 +91,7 @@ export function QuizOption({
             {title}
           </h3>
           {description && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+            <p className="text-sm text-muted-foreground mt-1">
               {description}
             </p>
           )}
