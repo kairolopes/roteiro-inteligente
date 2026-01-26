@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { FlightPrice } from './useFlightPrices';
+import { getFlightPricesUrl, getAuthHeaders } from '@/lib/apiRouting';
 
 export interface CombinedFlight {
   outbound: FlightPrice;
@@ -49,25 +50,22 @@ export function useRoundTripSearch(): UseRoundTripSearchResult {
 
     try {
       // Fetch outbound and return flights in parallel
+      const outboundParams = new URLSearchParams({
+        action: 'search',
+        origin,
+        destination,
+        date: departDate,
+      });
+      const returnParams = new URLSearchParams({
+        action: 'search',
+        origin: destination,
+        destination: origin,
+        date: returnDate,
+      });
+
       const [outboundRes, returnRes] = await Promise.all([
-        fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flight-prices?action=search&origin=${origin}&destination=${destination}&date=${departDate}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        ),
-        fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flight-prices?action=search&origin=${destination}&destination=${origin}&date=${returnDate}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        ),
+        fetch(getFlightPricesUrl(outboundParams), { headers: getAuthHeaders() }),
+        fetch(getFlightPricesUrl(returnParams), { headers: getAuthHeaders() }),
       ]);
 
       if (!outboundRes.ok || !returnRes.ok) {

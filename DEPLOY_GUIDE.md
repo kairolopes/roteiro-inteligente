@@ -1,15 +1,47 @@
-# Guia de Deploy - Viage Com Sofia
+# Guia de Deploy - Viage Com Sofia (100% Independente do Lovable)
 
-Este guia explica como migrar completamente a plataforma Viage Com Sofia para sua própria infraestrutura.
+Este guia explica como fazer deploy da plataforma usando **Netlify + Supabase**, completamente independente do Lovable.
+
+---
+
+## Arquitetura Final
+
+```
+┌─────────────────────────────────────────────────────┐
+│              www.viagecomsofia.com                  │
+│                    (Netlify)                        │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Frontend React (hospedado no Netlify)              │
+│  ├── Login/Cadastro → Supabase Auth                 │
+│  ├── Chat Sofia → Netlify Function (chat-travel)   │
+│  ├── Roteiros → Netlify Function (generate-itin)   │
+│  └── Voos → Netlify Function (flight-prices)       │
+│                                                     │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Netlify Functions (suas APIs)                      │
+│  ├── chat-travel.ts → Google Gemini API            │
+│  ├── generate-itinerary.ts → Google Gemini API     │
+│  ├── flight-prices.ts → Travelpayouts API          │
+│  └── create-payment.ts → Mercado Pago API          │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────┐
+│           Supabase (Seu Banco de Dados)             │
+│  ├── Autenticação de usuários                       │
+│  ├── Tabelas: profiles, user_credits, etc.          │
+│  └── Storage: avatares                              │
+└─────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Pré-requisitos
 
 - Conta no [Supabase](https://supabase.com)
-- Conta na [Vercel](https://vercel.com) ou [Netlify](https://netlify.com)
-- [Node.js](https://nodejs.org) 18+ instalado
-- [Supabase CLI](https://supabase.com/docs/guides/cli) instalado
+- Conta no [Netlify](https://netlify.com)
 - Repositório clonado localmente
 
 ---
@@ -25,7 +57,6 @@ Este guia explica como migrar completamente a plataforma Viage Com Sofia para su
 7. **ANOTE** as seguintes informações da página "Project Settings > API":
    - `Project URL` (ex: https://xxxxx.supabase.co)
    - `anon public` key (começa com `eyJ...`)
-   - `Project Reference ID` (o xxxxx da URL)
 
 ---
 
@@ -40,7 +71,7 @@ Este guia explica como migrar completamente a plataforma Viage Com Sofia para su
 
 ---
 
-## Passo 3: Configurar Autenticação
+## Passo 3: Configurar Autenticação no Supabase
 
 ### Email (Obrigatório)
 
@@ -68,181 +99,78 @@ Este guia explica como migrar completamente a plataforma Viage Com Sofia para su
 
 ---
 
-## Passo 4: Instalar Supabase CLI e Fazer Login
+## Passo 4: Deploy no Netlify
 
-```bash
-# Instalar CLI (se ainda não instalou)
-npm install -g supabase
+### 4.1 Conectar Repositório
 
-# Fazer login
-supabase login
-```
+1. Acesse [app.netlify.com](https://app.netlify.com)
+2. Clique em "Add new site" > "Import an existing project"
+3. Conecte seu repositório GitHub
+4. Selecione o repositório
 
----
+### 4.2 Configurar Build
 
-## Passo 5: Linkar ao Projeto Supabase
+- **Build command**: `npm run build`
+- **Publish directory**: `dist`
+- **Functions directory**: `netlify/functions`
 
-```bash
-# Na raiz do projeto
-supabase link --project-ref SEU_PROJECT_REFERENCE_ID
-```
+### 4.3 Adicionar Variáveis de Ambiente
 
----
+Vá em **Site configuration > Environment variables** e adicione:
 
-## Passo 6: Configurar Secrets
+| Variável | Valor | Descrição |
+|----------|-------|-----------|
+| `VITE_SUPABASE_URL` | `https://xxxxx.supabase.co` | URL do seu projeto Supabase |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGci...` | Chave anon/public do Supabase |
+| `GOOGLE_GEMINI_API_KEY` | `AIza...` | Chave do Google AI Studio |
+| `TRAVELPAYOUTS_API_TOKEN` | `xxx...` | Token da API Travelpayouts |
+| `MP_ACCESS_TOKEN` | `APP_USR-...` | Token do Mercado Pago |
 
-Execute os comandos abaixo substituindo pelos seus valores:
-
-```bash
-# Chave do Google Gemini (obrigatório)
-supabase secrets set GOOGLE_GEMINI_API_KEY=sua_chave_aqui
-
-# Mercado Pago Access Token (obrigatório para pagamentos)
-supabase secrets set MP_ACCESS_TOKEN=seu_access_token_aqui
-
-# Mercado Pago Public Key (obrigatório para pagamentos)
-supabase secrets set MP_PUBLIC_KEY=sua_public_key_aqui
-
-# Opcional: APIs de lugares
-supabase secrets set FOURSQUARE_API_KEY=sua_chave_aqui
-supabase secrets set GOOGLE_PLACES_API_KEY=sua_chave_aqui
-```
-
-### Onde obter as chaves:
+### 4.4 Onde obter as chaves
 
 - **Google Gemini**: [Google AI Studio](https://aistudio.google.com/app/apikey)
+- **Travelpayouts**: [Travelpayouts](https://www.travelpayouts.com/) - Crie conta e obtenha token
 - **Mercado Pago**: [Mercado Pago Developers](https://www.mercadopago.com.br/developers/panel/app)
-- **Foursquare**: [Foursquare Developers](https://foursquare.com/developers)
-- **Google Places**: [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+
+### 4.5 Deploy
+
+Clique em "Deploy site" e aguarde.
 
 ---
 
-## Passo 7: Deploy das Edge Functions
+## Passo 5: Configurar Domínio Personalizado
 
-```bash
-# Deploy de todas as funções
-supabase functions deploy chat-travel
-supabase functions deploy generate-itinerary
-supabase functions deploy create-payment
-supabase functions deploy mp-webhook
-```
+### 5.1 No Netlify
 
----
+1. Vá em **Domain management > Domains**
+2. Clique em "Add a domain"
+3. Digite: `viagecomsofia.com`
+4. Siga as instruções para configurar DNS
 
-## Passo 8: Atualizar Configuração do Frontend
+### 5.2 Na Hostinger (ou seu provedor DNS)
 
-### 8.1 Criar arquivo `.env.production`
-
-Na raiz do projeto, crie o arquivo `.env.production`:
-
-```env
-VITE_SUPABASE_URL=https://SEU_PROJECT_ID.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sua_anon_key_aqui
-VITE_SUPABASE_PROJECT_ID=SEU_PROJECT_ID
-```
-
-### 8.2 Atualizar `src/integrations/supabase/client.ts`
-
-Substitua o conteúdo pelo seguinte:
-
-```typescript
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
-```
+Configure os registros DNS conforme instruções do Netlify.
 
 ---
 
-## Passo 9: Build do Projeto
+## Passo 6: Configurar Webhooks
 
-```bash
-# Instalar dependências
-npm install
-
-# Build de produção
-npm run build
-```
-
-O build será gerado na pasta `dist/`.
-
----
-
-## Passo 10: Deploy na Vercel
-
-### 10.1 Conectar Repositório
-
-1. Acesse [vercel.com](https://vercel.com) e faça login
-2. Clique em "Add New... > Project"
-3. Importe seu repositório do GitHub
-4. Selecione o repositório `viage-com-sofia`
-
-### 10.2 Configurar Build
-
-- **Framework Preset**: Vite
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
-
-### 10.3 Adicionar Variáveis de Ambiente
-
-Adicione as seguintes variáveis:
-
-| Name | Value |
-|------|-------|
-| `VITE_SUPABASE_URL` | https://SEU_PROJECT_ID.supabase.co |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | sua_anon_key_aqui |
-| `VITE_SUPABASE_PROJECT_ID` | SEU_PROJECT_ID |
-
-### 10.4 Deploy
-
-Clique em "Deploy" e aguarde.
-
----
-
-## Passo 11: Configurar Domínio Personalizado
-
-### 11.1 Na Vercel
-
-1. Vá em **Settings > Domains**
-2. Adicione seu domínio: `viagecomsofia.com`
-3. Adicione também: `www.viagecomsofia.com`
-4. Anote os registros DNS fornecidos
-
-### 11.2 Na Hostinger (ou seu provedor DNS)
-
-Configure os seguintes registros:
-
-| Tipo | Nome | Valor |
-|------|------|-------|
-| A | @ | 76.76.21.21 |
-| CNAME | www | cname.vercel-dns.com |
-
-### 11.3 Aguardar Propagação
-
-A propagação DNS pode levar até 48 horas.
-
----
-
-## Passo 12: Atualizar Webhooks do Mercado Pago
+### Mercado Pago
 
 1. Acesse [Mercado Pago Developers](https://www.mercadopago.com.br/developers/panel/app)
-2. Selecione sua aplicação
-3. Vá em **Webhooks > Configurar notificações**
-4. Configure a URL de notificação:
+2. Vá em **Webhooks > Configurar notificações**
+3. URL de notificação:
    ```
-   https://SEU_PROJECT_ID.supabase.co/functions/v1/mp-webhook
+   https://viagecomsofia.com/.netlify/functions/mp-webhook
    ```
-5. Selecione os eventos: `payment`
-6. Salve
+4. Selecione eventos: `payment`
+
+### Hotmart (se usar)
+
+Configure o webhook para:
+```
+https://SEU_PROJECT_ID.supabase.co/functions/v1/hotmart-webhook
+```
 
 ---
 
@@ -254,37 +182,46 @@ Após completar todos os passos, verifique:
 - [ ] Login/cadastro funcionando
 - [ ] Chat com IA funcionando
 - [ ] Geração de roteiros funcionando
-- [ ] Pagamentos Mercado Pago funcionando
-- [ ] Google OAuth funcionando (se configurado)
+- [ ] Busca de voos funcionando
+- [ ] Pagamentos funcionando
 
 ---
 
 ## Solução de Problemas
 
+### Chat/Roteiros não funcionando
+
+1. Verifique se `GOOGLE_GEMINI_API_KEY` está configurada no Netlify
+2. Verifique os logs em: Netlify > Functions > chat-travel ou generate-itinerary
+
+### Voos não carregando
+
+1. Verifique se `TRAVELPAYOUTS_API_TOKEN` está configurada
+2. Verifique os logs da função `flight-prices`
+
 ### Erro de CORS
 
-Verifique se as Edge Functions têm os headers CORS corretos.
-
-### Erro de autenticação
-
-Verifique se as variáveis de ambiente estão corretas no Vercel.
+As Netlify Functions já incluem headers CORS. Se persistir, verifique se o domínio está correto.
 
 ### Pagamentos não processando
 
-1. Verifique se o webhook está configurado corretamente no Mercado Pago
-2. Verifique os logs da função `mp-webhook`:
-   ```bash
-   supabase functions logs mp-webhook
-   ```
+1. Verifique `MP_ACCESS_TOKEN` no Netlify
+2. Verifique se o webhook está configurado corretamente no Mercado Pago
 
-### Chat/Roteiros não funcionando
+---
 
-1. Verifique se a chave GOOGLE_GEMINI_API_KEY está configurada
-2. Verifique os logs:
-   ```bash
-   supabase functions logs chat-travel
-   supabase functions logs generate-itinerary
-   ```
+## Comandos Úteis
+
+```bash
+# Testar localmente
+npm run dev
+
+# Build de produção
+npm run build
+
+# Deploy manual no Netlify (se precisar)
+netlify deploy --prod
+```
 
 ---
 
@@ -293,19 +230,18 @@ Verifique se as variáveis de ambiente estão corretas no Vercel.
 | Serviço | Plano | Custo Mensal |
 |---------|-------|--------------|
 | Supabase | Free | $0 |
-| Vercel | Hobby | $0 |
+| Netlify | Free | $0 |
 | Domínio | Hostinger | ~R$ 40/ano |
 | **Total** | | **~$0/mês** |
 
-Para mais recursos, considere:
+Para escalar:
 - Supabase Pro: $25/mês
-- Vercel Pro: $20/mês
+- Netlify Pro: $19/mês
 
 ---
 
 ## Suporte
 
-Em caso de dúvidas:
-- Documentação Supabase: https://supabase.com/docs
-- Documentação Vercel: https://vercel.com/docs
-- Mercado Pago: https://www.mercadopago.com.br/developers
+- [Documentação Supabase](https://supabase.com/docs)
+- [Documentação Netlify](https://docs.netlify.com)
+- [Mercado Pago Developers](https://www.mercadopago.com.br/developers)

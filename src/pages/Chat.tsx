@@ -11,21 +11,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
+import { getChatUrl, getAuthHeaders } from "@/lib/apiRouting";
+
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
-
-// Dynamic routing: Netlify Functions in production, Supabase Edge Functions for development
-const getChatUrl = () => {
-  const hostname = window.location.hostname;
-  const isProduction = hostname.includes('viagecomsofia') || hostname.includes('netlify.app');
-  
-  if (isProduction) {
-    return '/.netlify/functions/chat-travel';
-  }
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`;
-};
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -82,14 +73,12 @@ const Chat = () => {
   ) => {
     const chatUrl = getChatUrl();
     console.log('[Chat Debug] URL:', chatUrl);
+    console.log('[Chat Debug] URL:', chatUrl);
     console.log('[Chat Debug] Messages:', messagesToSend.length);
     
     const resp = await fetch(chatUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ messages: messagesToSend, quizAnswers: answers }),
     });
     

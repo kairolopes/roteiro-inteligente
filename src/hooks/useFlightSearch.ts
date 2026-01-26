@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { FlightPrice } from './useFlightPrices';
+import { getFlightPricesUrl, getAuthHeaders } from '@/lib/apiRouting';
 
 export interface UseFlightSearchResult {
   flights: FlightPrice[];
@@ -41,13 +42,8 @@ export function useFlightSearch(): UseFlightSearchResult {
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flight-prices?${params.toString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
+        getFlightPricesUrl(params),
+        { headers: getAuthHeaders() }
       );
 
       if (!response.ok) {
