@@ -1,168 +1,87 @@
 
 
-## Plano: Sistema de Conversas WhatsApp no Admin
+## Plano: Corrigir Envio de Mensagens WhatsApp
 
-### Visão Geral
+### Problema Identificado
 
-Transformar a aba WhatsApp em um sistema de conversas estilo chat, onde você verá todas as pessoas que enviaram mensagens e poderá visualizar o histórico completo de cada conversa.
-
----
-
-### Arquitetura
-
-```text
-┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
-│  WhatsApp       │ ──▶ │  Z-API               │ ──▶ │  Edge Function  │
-│  (Clientes)     │     │  (Webhook)           │     │  zapi-webhook   │
-└─────────────────┘     └──────────────────────┘     └────────┬────────┘
-                                                              │
-                                                              ▼
-┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
-│  Admin Panel    │ ◀── │  Realtime            │ ◀── │  whatsapp_      │
-│  (Conversas)    │     │  Subscription        │     │  messages       │
-└─────────────────┘     └──────────────────────┘     └─────────────────┘
-```
+O Z-API retornou erro `"your client-token is not configured"`. Isso significa que a API agora exige um **Client-Token** adicional no header das requisições HTTP.
 
 ---
 
-### Etapa 1: Banco de Dados
+### O que é o Client-Token?
 
-Criar tabela `whatsapp_messages` para armazenar mensagens recebidas e enviadas:
-
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| id | uuid | ID único |
-| phone | text | Número do contato |
-| sender_name | text | Nome do remetente |
-| sender_photo | text | URL da foto |
-| message_id | text | ID da mensagem no WhatsApp |
-| content | text | Conteúdo da mensagem |
-| message_type | text | text, image, audio, video, document |
-| media_url | text | URL da mídia (se houver) |
-| direction | text | inbound (recebida) / outbound (enviada) |
-| status | text | received, sent, read |
-| created_at | timestamp | Data/hora |
-
-**RLS Policies:**
-- Admins podem ler/inserir mensagens
-- Service role pode gerenciar todas
+O Client-Token é uma chave de segurança adicional do Z-API que você encontra no painel da instância. É diferente do token que já está na URL.
 
 ---
 
-### Etapa 2: Edge Function - zapi-webhook
+### Etapa 1: Adicionar Novo Secret
 
-Criar função para receber webhooks do Z-API:
+Você precisará fornecer o **Client-Token** do Z-API:
+
+1. Acesse seu painel Z-API
+2. Vá na instância conectada
+3. Copie o **Client-Token** (geralmente visível junto com Instance ID e Token)
+4. Vou solicitar para você adicionar esse secret
+
+---
+
+### Etapa 2: Atualizar Edge Function
+
+Modificar `supabase/functions/send-whatsapp/index.ts` para incluir o Client-Token no header:
 
 ```typescript
-// Endpoint: /functions/v1/zapi-webhook
-// Validar token secreto: Ff94d05bcd8b546afb957fc52d8e33ebaS
+// Antes (linhas 41-50)
+const zapiResponse = await fetch(zapiUrl, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({...}),
+});
 
-POST body do Z-API:
-{
-  "phone": "5511999999999",
-  "senderName": "João",
-  "senderPhoto": "https://...",
-  "messageId": "ABC123",
-  "text": { "message": "Olá!" },
-  "type": "ReceivedCallback",
-  "fromMe": false
-}
+// Depois
+const zapiClientToken = Deno.env.get("ZAPI_CLIENT_TOKEN");
 
-Ação:
-1. Validar secret token
-2. Inserir mensagem na tabela whatsapp_messages
-3. Retornar 200 OK
+const zapiResponse = await fetch(zapiUrl, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Client-Token": zapiClientToken || "",
+  },
+  body: JSON.stringify({...}),
+});
 ```
 
 ---
 
-### Etapa 3: Componentes de Interface
+### Sobre a Assinatura
 
-#### 3.1 Layout Principal (WhatsAppTab)
+Você mencionou que deveria aparecer seu nome "Tecnologia" como assinatura. Isso já está implementado no `useAdminAuth` hook, mas preciso verificar:
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  WhatsApp                                                    │
-├─────────────────────┬───────────────────────────────────────┤
-│                     │                                       │
-│  Conversas          │  Chat com João                        │
-│  ┌───────────────┐  │  ┌─────────────────────────────────┐  │
-│  │ João          │  │  │ João: Olá, tudo bem?            │  │
-│  │ Última msg... │  │  │ Você: Oi! Tudo sim!             │  │
-│  ├───────────────┤  │  │ João: Gostaria de saber...      │  │
-│  │ Maria         │  │  └─────────────────────────────────┘  │
-│  │ Última msg... │  │                                       │
-│  ├───────────────┤  │  ┌─────────────────────────────────┐  │
-│  │ Pedro         │  │  │ Digite sua mensagem...     [▶]  │  │
-│  │ Última msg... │  │  └─────────────────────────────────┘  │
-│  └───────────────┘  │                                       │
-└─────────────────────┴───────────────────────────────────────┘
-```
+1. Se você tem um perfil na tabela `admin_users`
+2. Se o `signature_type` está configurado como 'personal' ou 'department'
+3. Se o `display_name` ou `custom_signature` está preenchido
 
-#### 3.2 Novos Componentes
-
-| Componente | Função |
-|------------|--------|
-| `ConversationList` | Lista de contatos com última mensagem |
-| `ConversationView` | Histórico de mensagens do contato selecionado |
-| `ChatMessage` | Bolha de mensagem (enviada/recebida) |
-| `ChatInput` | Campo para enviar nova mensagem |
+Após aprovar, vou também verificar sua configuração de assinatura.
 
 ---
-
-### Etapa 4: Atualizar MessageComposer
-
-Modificar para enviar mensagem E salvar na tabela `whatsapp_messages` com direction = 'outbound'.
-
----
-
-### Etapa 5: Realtime
-
-Habilitar Realtime na tabela para atualizar conversas automaticamente:
-
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE whatsapp_messages;
-```
-
----
-
-### Etapa 6: Configurar Webhook no Z-API
-
-Após deploy, você precisará configurar no painel Z-API:
-
-**URL do Webhook:**
-```
-https://rvmvoogyrafiogxdbisx.supabase.co/functions/v1/zapi-webhook
-```
-
-**Token de Segurança:** `Ff94d05bcd8b546afb957fc52d8e33ebaS`
-
----
-
-### Arquivos a Criar
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `supabase/functions/zapi-webhook/index.ts` | Edge Function para receber mensagens |
-| `src/components/admin/whatsapp/ConversationList.tsx` | Lista de conversas |
-| `src/components/admin/whatsapp/ConversationView.tsx` | Chat com histórico |
-| `src/components/admin/whatsapp/ChatMessage.tsx` | Componente de mensagem |
-| `src/components/admin/whatsapp/ChatInput.tsx` | Input para enviar mensagem |
 
 ### Arquivos a Modificar
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/admin/whatsapp/WhatsAppTab.tsx` | Novo layout com conversas |
-| `supabase/functions/send-whatsapp/index.ts` | Salvar mensagens enviadas na tabela |
+| `supabase/functions/send-whatsapp/index.ts` | Adicionar header Client-Token |
+
+### Secrets a Adicionar
+
+| Secret | Descrição |
+|--------|-----------|
+| `ZAPI_CLIENT_TOKEN` | Token de cliente do Z-API |
 
 ---
 
-### Resultado Final
+### Resultado
 
-1. Ver lista de todas as pessoas que mandaram mensagem
-2. Clicar em uma pessoa e ver o histórico completo
-3. Responder diretamente na conversa
-4. Novas mensagens aparecem em tempo real
-5. Assinaturas automáticas por departamento mantidas
+1. Mensagens serão enviadas corretamente via Z-API
+2. Assinatura aparecerá conforme seu perfil de admin
 
