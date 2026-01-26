@@ -1,119 +1,78 @@
 
 
-# Plano: Atualizar migration_completa.sql
+## Plano de Correção: Sincronizar Função Netlify com Edge Function do Supabase
 
-## Objetivo
-Atualizar o arquivo `migration_completa.sql` para incluir **todas** as tabelas, funções, triggers, enums e políticas RLS que o projeto utiliza atualmente.
+### Diagnóstico
 
----
+A versão **Netlify** da função `generate-itinerary` está muito mais simples que a versão **Supabase Edge Function**, causando roteiros menores e menos detalhados em produção.
 
-## Resumo Executivo
+### Comparação das Diferenças
 
-O arquivo `migration_completa.sql` atual contém apenas **7 tabelas** e está desatualizado. O banco de dados completo do projeto possui **18 tabelas**, além de enums, funções de verificação de roles e políticas RLS para administradores.
+| Aspecto | Supabase (correto) | Netlify (problema) |
+|---------|-------------------|-------------------|
+| Prompt | ~60 linhas detalhadas com hierarquia de prioridade | ~45 linhas básicas |
+| Método AI | Tool calling (estruturado) | JSON texto livre |
+| Duração | Usa campo `duration` (weekend, week, etc.) | Tenta calcular por datas inexistentes |
+| Contexto conversa | Prioridade máxima, instruções detalhadas | Simples menção |
+| Pedidos especiais | Suporta `customRequests`, `destinationDetails` | Ignora |
+| Destinos | Suporta 20+ países | Apenas 9 países europeus |
+| Coordenadas | Exige arrays [lat, lng] | Usa objetos {lat, lng} |
 
-**Impacto**: Sem esta atualização, o login e outras funcionalidades críticas não funcionarão no projeto Supabase independente.
+### Arquivos a Modificar
 
----
+1. **`netlify/functions/generate-itinerary.ts`** - Atualizar completamente
 
-## O que será adicionado
+### Detalhes da Implementação
 
-### Novas Tabelas (11 tabelas)
-1. **user_roles** - Sistema de roles (admin, moderator, user)
-2. **admin_users** - Perfis de administradores com departamentos
-3. **admin_activity_logs** - Auditoria de ações administrativas
-4. **affiliate_clicks** - Rastreamento de cliques em links afiliados
-5. **flight_price_cache** - Cache de preços de voos
-6. **landing_leads** - Leads capturados na página de vendas
-7. **notification_logs** - Histórico de notificações enviadas
-8. **integration_settings** - Configurações das integrações (Z-API, Hotmart)
-9. **whatsapp_templates** - Templates de mensagens WhatsApp
-10. **whatsapp_messages** - Histórico de conversas WhatsApp
-11. **customer_tags** e **customer_tag_assignments** - Sistema de tags para CRM
-12. **customer_notes** - Notas sobre clientes
-13. **hotmart_products** - Produtos mapeados do Hotmart
-14. **hotmart_purchases** - Histórico de compras Hotmart
+#### 1. Atualizar o System Prompt
+Copiar o prompt completo da versão Supabase incluindo:
+- Hierarquia de prioridade (conversa > quiz > sugestões)
+- Regras críticas de duração
+- Instruções detalhadas sobre coordenadas
+- Regras de datas reais
 
-### Enums (3 tipos)
-- `app_role` - Tipos de role (admin, moderator, user)
-- `admin_department` - Departamentos (suporte, vendas, etc.)
-- `signature_type` - Tipo de assinatura (departamento ou pessoal)
+#### 2. Corrigir Cálculo de Duração
+```typescript
+// DE (errado):
+let numDays = 7;
+if (quizAnswers.dates?.startDate && quizAnswers.dates?.endDate) { ... }
 
-### Funções Críticas
-- `has_role(_user_id, _role)` - Função SECURITY DEFINER para verificar roles sem recursão RLS
-
-### Alterações em Tabelas Existentes
-- Adicionar coluna `phone` na tabela `profiles`
-
-### Políticas RLS de Admin
-- Permitir admins visualizar/editar profiles, user_credits e transactions
-
----
-
-## Estrutura do Arquivo Atualizado
-
-```text
-PARTE 1:  Funções Auxiliares (update_updated_at_column)
-PARTE 2:  Enums (app_role, admin_department, signature_type)
-PARTE 3:  Tabela profiles (com coluna phone)
-PARTE 4:  Tabela user_roles + função has_role()
-PARTE 5:  Tabela user_credits
-PARTE 6:  Tabela saved_itineraries
-PARTE 7:  Tabela saved_preferences
-PARTE 8:  Tabela transactions
-PARTE 9:  Tabela places_cache (com Foursquare)
-PARTE 10: Tabela affiliate_clicks
-PARTE 11: Tabela flight_price_cache
-PARTE 12: Tabela landing_leads
-PARTE 13: Tabelas de notificação (notification_logs, integration_settings, whatsapp_templates)
-PARTE 14: Tabela whatsapp_messages (com realtime)
-PARTE 15: Tabelas de CRM (customer_tags, customer_tag_assignments, customer_notes)
-PARTE 16: Tabelas Admin (admin_users, admin_activity_logs)
-PARTE 17: Tabelas Hotmart (hotmart_products, hotmart_purchases)
-PARTE 18: Triggers para novos usuários
-PARTE 19: Storage bucket de avatares
-PARTE 20: Dados iniciais (tags, templates, configurações)
+// PARA (correto):
+const durationLabels: Record<string, number> = {
+  weekend: 4, week: 7, twoweeks: 14, month: 21, flexible: 7
+};
+const numDays = durationLabels[quizAnswers?.duration] || 7;
 ```
 
----
+#### 3. Adicionar Suporte a Tool Calling
+Implementar a mesma estrutura de tool calling que o Supabase usa para obter resultados mais estruturados e confiáveis.
 
-## Detalhes Relevantes
+#### 4. Expandir Labels de Destinos
+Adicionar todos os 20+ destinos suportados (Brasil, Japão, Tailândia, etc.)
 
-### Por que o login não funciona?
-O fluxo de autenticação cria automaticamente um registro em `profiles` e `user_credits` via triggers. Se as tabelas não existirem, o trigger falha e o usuário não consegue completar o cadastro.
+#### 5. Processar Campos Adicionais
+- `quizAnswers.destinations` (array de múltiplos destinos)
+- `quizAnswers.destinationDetails` (regiões específicas)
+- `quizAnswers.customRequests` (pedidos especiais)
+- `quizAnswers.startDate` (data real de início)
 
-### Segurança
-Todas as políticas RLS serão configuradas corretamente:
-- Usuários só acessam seus próprios dados
-- Admins podem acessar dados de todos (para CRM)
-- Service role para webhooks e edge functions
+#### 6. Melhorar Contexto da Conversa
+Incluir o `conversationSummary` com instruções de prioridade máxima, igual ao Supabase.
 
-### Dados Iniciais
-O arquivo incluirá dados iniciais para:
-- Templates de WhatsApp padrão
-- Configurações de integrações (desativadas por padrão)
-- Tags de cliente padrão (VIP, Novo, Suporte, Potencial)
+#### 7. Ajustar Formato de Coordenadas
+Mudar de `{ lat, lng }` para `[lat, lng]` para compatibilidade com o mapa.
 
----
+### Impacto Esperado
 
-## Passos da Implementação
+Após a correção:
+- Roteiros terão o número correto de dias baseado no campo `duration`
+- Atividades mais detalhadas com 3-5 por dia
+- Coordenadas funcionarão corretamente no mapa
+- Pedidos especiais e conversa com Sofia serão respeitados
+- Roteiros para qualquer destino global (não apenas Europa)
 
-1. Criar seção de enums no início do arquivo
-2. Adicionar função `has_role()` antes das políticas que a utilizam
-3. Adicionar todas as 11 tabelas novas com suas estruturas completas
-4. Adicionar coluna `phone` na tabela `profiles`
-5. Incluir todas as políticas RLS (incluindo as de admin)
-6. Habilitar realtime para `whatsapp_messages`
-7. Incluir INSERTs para dados iniciais
-8. Atualizar seção de próximos passos
+### Riscos e Mitigação
 
----
-
-## Resultado Esperado
-
-Após executar o novo `migration_completa.sql` no SQL Editor do Supabase independente:
-- Login funcionará corretamente
-- Painel admin estará funcional
-- Integrações (WhatsApp, Hotmart) estarão prontas para configuração
-- Sistema de créditos e assinaturas funcionará
-- CRM com tags e notas estará disponível
+- **Risco**: Quebrar produção
+- **Mitigação**: Manter fallback de modelos AI e tratamento de erros
 
