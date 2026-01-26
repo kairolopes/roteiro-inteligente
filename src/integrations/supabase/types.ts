@@ -613,6 +613,48 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_messages: {
+        Row: {
+          content: string | null
+          created_at: string
+          direction: string
+          id: string
+          media_url: string | null
+          message_id: string | null
+          message_type: string
+          phone: string
+          sender_name: string | null
+          sender_photo: string | null
+          status: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          media_url?: string | null
+          message_id?: string | null
+          message_type?: string
+          phone: string
+          sender_name?: string | null
+          sender_photo?: string | null
+          status?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          media_url?: string | null
+          message_id?: string | null
+          message_type?: string
+          phone?: string
+          sender_name?: string | null
+          sender_photo?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       whatsapp_templates: {
         Row: {
           content: string
