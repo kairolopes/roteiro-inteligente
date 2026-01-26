@@ -11,27 +11,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
-import { getNetlifyFunctionsUrl } from "@/lib/supabaseClient";
-
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-// Use Netlify Functions only when deployed to Netlify, otherwise use Supabase Edge Functions
+// Always use Supabase Edge Functions (Lovable Cloud) - no Netlify dependency
 const getChatUrl = () => {
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  
-  // Use Netlify Functions only for Netlify deployments or custom production domain
-  const isNetlify = hostname.includes('.netlify.app') || 
-                    hostname.includes('viagecomsofia.com') ||
-                    hostname.includes('viagecomsofia.com.br');
-  
-  if (isNetlify) {
-    return `${getNetlifyFunctionsUrl()}/chat-travel`;
-  }
-  
-  // Default to Supabase Edge Functions (Lovable preview, localhost, etc.)
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`;
 };
 
