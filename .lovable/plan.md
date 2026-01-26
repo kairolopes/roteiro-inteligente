@@ -1,50 +1,63 @@
 
 
-## Plano: Corrigir Campo de Input do WhatsApp Invisível
+## Plano: Assinatura em Negrito e Antes da Mensagem
 
-### Causa Raiz
+### Alteração Identificada
 
-O campo de input está sendo **cortado** porque há um problema de layout CSS:
+**Arquivo: `supabase/functions/send-whatsapp/index.ts`**
 
-1. O `Card` tem `overflow-hidden` que corta conteúdo que excede sua altura
-2. A div do Chat View tem `h-full` mas está dentro de um `grid` que não propaga a altura corretamente para o flexbox interno
-3. O `ConversationView` usa `flex flex-col h-full` mas a altura não está sendo calculada corretamente
+Na linha 62, a ordem está:
+```
+mensagem
+
+assinatura
+```
+
+Precisa ser:
+```
+*assinatura*
+
+mensagem
+```
 
 ### Correção Necessária
 
-**Arquivo: `src/components/admin/whatsapp/WhatsAppTab.tsx`**
-
-Adicionar `overflow-hidden` na div do Chat View para garantir que o flexbox interno funcione corretamente:
-
-**Linha 241-246 - De:**
-```tsx
-<div
-  className={cn(
-    'h-full',
-    !selectedPhone && 'hidden lg:flex lg:items-center lg:justify-center'
-  )}
->
+**Linha 62 - De:**
+```typescript
+const finalMessage = signature ? `${message}\n\n${signature}` : message;
 ```
 
 **Para:**
-```tsx
-<div
-  className={cn(
-    'h-full overflow-hidden',
-    !selectedPhone && 'hidden lg:flex lg:items-center lg:justify-center'
-  )}
->
+```typescript
+const finalMessage = signature ? `*${signature}*\n\n${message}` : message;
 ```
 
-### Por que isso funciona
+### Explicação
 
-- `overflow-hidden` força o container a respeitar seus limites de altura
-- Isso permite que o `flex flex-col` do `ConversationView` calcule corretamente o espaço para:
-  - Header (fixo)
-  - ScrollArea (flex-1, ocupa espaço restante)
-  - ChatInput (fixo no fundo)
+| Mudança | Antes | Depois |
+|---------|-------|--------|
+| Ordem | `mensagem + assinatura` | `assinatura + mensagem` |
+| Formatação | texto normal | `*negrito*` (WhatsApp) |
 
 ### Resultado Esperado
 
-O campo de input "Digite sua mensagem..." voltará a aparecer na parte inferior da área de chat.
+Quando você enviar "teste", a mensagem no WhatsApp será:
+
+```
+*Kairo Lopes - Tecnologia*
+
+teste
+```
+
+Que aparecerá como:
+
+**Kairo Lopes - Tecnologia**
+
+teste
+
+### Arquivo a Modificar
+
+1. **`supabase/functions/send-whatsapp/index.ts`** (linha 62)
+   - Inverter ordem: assinatura primeiro
+   - Adicionar asteriscos para negrito: `*${signature}*`
 
