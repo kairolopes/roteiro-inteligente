@@ -71,6 +71,18 @@ serve(async (req) => {
 
     await supabaseAdmin.from("notification_logs").insert(logData);
 
+    // Also save to whatsapp_messages table for conversation view
+    const messageData = {
+      phone: formattedPhone,
+      content: message,
+      message_type: "text",
+      direction: "outbound",
+      status: logStatus,
+      message_id: zapiResult.messageId || null,
+    };
+
+    await supabaseAdmin.from("whatsapp_messages").insert(messageData);
+
     // Log admin activity if admin_user_id provided
     if (admin_user_id) {
       await supabaseAdmin.from("admin_activity_logs").insert({
