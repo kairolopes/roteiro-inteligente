@@ -21,6 +21,46 @@ serve(async (req) => {
       );
     }
 
+    // Initialize Supabase client to fetch admin signature
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // Department signatures mapping
+    const DEPARTMENT_SIGNATURES: Record<string, string> = {
+      suporte: '- Equipe Suporte Sofia 💜',
+      vendas: '- Equipe Vendas Sofia 🎯',
+      administracao: '- Administração Sofia ⚙️',
+      financeiro: '- Equipe Financeiro Sofia 💰',
+      marketing: '- Equipe Marketing Sofia 📢',
+    };
+
+    // Fetch admin profile and get signature
+    let signature = '';
+    if (admin_user_id) {
+      const { data: adminProfile } = await supabaseAdmin
+        .from('admin_users')
+        .select('*')
+        .eq('user_id', admin_user_id)
+        .maybeSingle();
+
+      if (adminProfile) {
+        if (adminProfile.signature_type === 'personal' && adminProfile.custom_signature) {
+          signature = adminProfile.custom_signature;
+        } else if (adminProfile.signature_type === 'personal' && adminProfile.display_name) {
+          const deptName = adminProfile.department.charAt(0).toUpperCase() + adminProfile.department.slice(1);
+          signature = `- ${adminProfile.display_name} (${deptName})`;
+        } else {
+          signature = DEPARTMENT_SIGNATURES[adminProfile.department] || '';
+        }
+      }
+    }
+
+    // Append signature to message if available
+    const finalMessage = signature ? `${message}\n\n${signature}` : message;
+
     const zapiInstanceId = Deno.env.get("ZAPI_INSTANCE_ID");
     const zapiToken = Deno.env.get("ZAPI_TOKEN");
 
@@ -48,25 +88,18 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         phone: formattedPhone,
-        message: message,
+        message: finalMessage,
       }),
     });
 
     const zapiResult = await zapiResponse.json();
-
-    // Log the notification
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
 
     const logStatus = zapiResponse.ok ? "sent" : "failed";
     const logData = {
       type: "manual_message",
       channel: "whatsapp",
       phone: formattedPhone,
-      message_content: message,
+      message_content: finalMessage,
       status: logStatus,
       sent_at: logStatus === "sent" ? new Date().toISOString() : null,
       error_message: !zapiResponse.ok ? JSON.stringify(zapiResult) : null,
@@ -77,7 +110,7 @@ serve(async (req) => {
     // Also save to whatsapp_messages table for conversation view
     const messageData = {
       phone: formattedPhone,
-      content: message,
+      content: finalMessage,
       message_type: "text",
       direction: "outbound",
       status: logStatus,
