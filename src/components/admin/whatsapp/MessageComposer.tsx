@@ -55,14 +55,11 @@ export const MessageComposer = ({
 
     setIsSending(true);
     try {
-      const fullMessage = signature 
-        ? `${message.trim()}\n\n${signature}`
-        : message.trim();
-
+      // Edge Function applies signature automatically
       const { error } = await supabase.functions.invoke('send-whatsapp', {
         body: {
           phone: phone,
-          message: fullMessage,
+          message: message.trim(),
           admin_user_id: adminProfile?.user_id,
         },
       });
