@@ -7,31 +7,31 @@ const budgets = [
     id: "economic",
     emoji: "💰",
     title: "Econômico",
-    description: "Até R$ 400/dia por pessoa",
+    description: "Até R$ 400/dia: Hostel, transporte público, refeições simples",
   },
   {
     id: "moderate",
     emoji: "💰💰",
     title: "Moderado",
-    description: "R$ 400 - R$ 750/dia por pessoa",
+    description: "R$ 400 - R$ 750/dia: Hotel 3★, transporte misto, restaurantes locais",
   },
   {
     id: "comfortable",
     emoji: "💰💰💰",
     title: "Confortável",
-    description: "R$ 750 - R$ 1.500/dia por pessoa",
+    description: "R$ 750 - R$ 1.500/dia: Hotel 4★, táxi/aluguel, experiências premium",
   },
   {
     id: "luxury",
     emoji: "💎",
     title: "Luxo",
-    description: "Acima de R$ 1.500/dia por pessoa",
+    description: "Acima de R$ 1.500/dia: Hotel 5★, transfers privados, fine dining",
   },
   {
     id: "flexible",
     emoji: "🤷",
     title: "Flexível",
-    description: "Depende das oportunidades",
+    description: "Depende das oportunidades e ofertas",
   },
 ];
 
@@ -76,7 +76,7 @@ export function BudgetStep({ answers, onUpdate }: BudgetStepProps) {
             Qual seu <span className="text-primary">orçamento</span>?
           </h2>
           <p className="text-muted-foreground">
-            Valores médios por dia, por pessoa (sem passagem aérea)
+            Inclui hospedagem, alimentação, transporte local e passeios. Não inclui passagem aérea.
           </p>
         </div>
 

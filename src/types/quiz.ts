@@ -5,6 +5,7 @@ export interface QuizAnswers {
   budget: string;
   duration: string;
   startDate: Date | null;
+  endDate: Date | null;
   destination: string;
   destinations: string[]; // Múltiplos países (até 3)
   destinationDetails: string; // Região/cidades específicas
@@ -24,6 +25,7 @@ export const defaultQuizAnswers: QuizAnswers = {
   budget: "",
   duration: "",
   startDate: null,
+  endDate: null,
   destination: "",
   destinations: [],
   destinationDetails: "",

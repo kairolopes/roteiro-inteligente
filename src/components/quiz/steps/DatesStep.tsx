@@ -18,7 +18,7 @@ const durations = [
   { id: "week", emoji: "🗓️", title: "Uma semana", description: "7 dias" },
   { id: "twoweeks", emoji: "📆", title: "Duas semanas", description: "14 dias" },
   { id: "month", emoji: "🌍", title: "Um mês ou mais", description: "30+ dias" },
-  { id: "flexible", emoji: "🤔", title: "Ainda não sei", description: "Me ajude a decidir" },
+  { id: "custom", emoji: "✨", title: "Personalizado", description: "Escolho datas específicas de ida e volta" },
 ];
 
 interface DatesStepProps {
@@ -60,14 +60,20 @@ export function DatesStep({ answers, onUpdate }: DatesStepProps) {
         </div>
       </div>
 
-      {/* Start Date */}
+      {/* Start Date - Always shown */}
       <div>
         <div className="text-center mb-6">
           <h2 className="text-xl lg:text-2xl font-bold mb-2">
-            Quando você quer <span className="text-primary">viajar</span>?
+            {answers.duration === "custom" ? (
+              <>Data de <span className="text-primary">ida</span></>
+            ) : (
+              <>Quando você quer <span className="text-primary">viajar</span>?</>
+            )}
           </h2>
           <p className="text-muted-foreground text-sm">
-            Selecione a data aproximada de partida
+            {answers.duration === "custom" 
+              ? "Selecione a data de partida"
+              : "Selecione a data aproximada de partida"}
           </p>
         </div>
 
@@ -96,12 +102,66 @@ export function DatesStep({ answers, onUpdate }: DatesStepProps) {
                 onSelect={(date) => onUpdate("startDate", date)}
                 disabled={(date) => date < new Date()}
                 initialFocus
+                fixedWeeks
                 className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
         </div>
       </div>
+
+      {/* End Date - Only shown when custom duration */}
+      {answers.duration === "custom" && (
+        <div>
+          <div className="text-center mb-6">
+            <h2 className="text-xl lg:text-2xl font-bold mb-2">
+              Data de <span className="text-primary">volta</span>
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Selecione a data de retorno
+            </p>
+          </div>
+
+          <div className="flex justify-center">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full max-w-sm justify-start text-left font-normal h-14 text-base glass-card border-border",
+                    !answers.endDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-3 h-5 w-5" />
+                  {answers.endDate ? (
+                    format(answers.endDate, "PPP", { locale: ptBR })
+                  ) : (
+                    <span>Selecione a data de volta</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar
+                  mode="single"
+                  selected={answers.endDate || undefined}
+                  onSelect={(date) => onUpdate("endDate", date)}
+                  disabled={(date) => {
+                    const today = new Date();
+                    const startDate = answers.startDate;
+                    if (startDate) {
+                      return date < startDate;
+                    }
+                    return date < today;
+                  }}
+                  initialFocus
+                  fixedWeeks
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
