@@ -1,69 +1,50 @@
 
-## Plano: Corrigir Assinatura WhatsApp - "Kairo Lopes - Tecnologia"
 
-### Problemas Identificados
+## Plano: Corrigir Campo de Input do WhatsApp Invisível
 
-1. **Assinatura duplicada**: Frontend e Edge Function estão aplicando assinatura
-2. **Formato errado**: Configurado "- Equipe Tecnologia Sofia 💻" quando deveria ser "Kairo Lopes - Tecnologia"
-3. **Departamento errado**: "administracao" ao invés de um departamento personalizado
+### Causa Raiz
 
-### Solução
+O campo de input está sendo **cortado** porque há um problema de layout CSS:
 
-#### Parte 1: Atualizar perfil no banco de dados
+1. O `Card` tem `overflow-hidden` que corta conteúdo que excede sua altura
+2. A div do Chat View tem `h-full` mas está dentro de um `grid` que não propaga a altura corretamente para o flexbox interno
+3. O `ConversationView` usa `flex flex-col h-full` mas a altura não está sendo calculada corretamente
 
-Atualizar seu perfil `admin_users` com:
-
-| Campo | Valor Atual | Novo Valor |
-|-------|------------|------------|
-| `display_name` | "Kairo" | "Kairo Lopes" |
-| `custom_signature` | "- Equipe Tecnologia Sofia 💻" | "Kairo Lopes - Tecnologia" |
-
-```sql
-UPDATE admin_users 
-SET 
-  display_name = 'Kairo Lopes',
-  custom_signature = 'Kairo Lopes - Tecnologia'
-WHERE user_id = '645d964d-3b1d-4268-946e-90ec8fc66ba1';
-```
-
-#### Parte 2: Remover duplicação de assinatura
-
-O frontend **não deve** adicionar assinatura porque a Edge Function já faz isso.
+### Correção Necessária
 
 **Arquivo: `src/components/admin/whatsapp/WhatsAppTab.tsx`**
-- Linha 105-106: Remover adição de assinatura no frontend
-- Enviar apenas `content` para a Edge Function (sem assinatura)
 
-**De:**
-```typescript
-const signature = getSignature();
-const fullMessage = signature ? `${content}\n\n${signature}` : content;
-// ...
-message: fullMessage,
+Adicionar `overflow-hidden` na div do Chat View para garantir que o flexbox interno funcione corretamente:
+
+**Linha 241-246 - De:**
+```tsx
+<div
+  className={cn(
+    'h-full',
+    !selectedPhone && 'hidden lg:flex lg:items-center lg:justify-center'
+  )}
+>
 ```
 
 **Para:**
-```typescript
-// Edge Function aplica a assinatura automaticamente
-// ...
-message: content,
+```tsx
+<div
+  className={cn(
+    'h-full overflow-hidden',
+    !selectedPhone && 'hidden lg:flex lg:items-center lg:justify-center'
+  )}
+>
 ```
 
-**Arquivo: `src/components/admin/whatsapp/MessageComposer.tsx`**
-- Mesma correção nas linhas 54-62
+### Por que isso funciona
+
+- `overflow-hidden` força o container a respeitar seus limites de altura
+- Isso permite que o `flex flex-col` do `ConversationView` calcule corretamente o espaço para:
+  - Header (fixo)
+  - ScrollArea (flex-1, ocupa espaço restante)
+  - ChatInput (fixo no fundo)
 
 ### Resultado Esperado
 
-Após as correções, quando você enviar "ola", a mensagem final será:
+O campo de input "Digite sua mensagem..." voltará a aparecer na parte inferior da área de chat.
 
-```
-ola
-
-Kairo Lopes - Tecnologia
-```
-
-### Arquivos a Modificar
-
-1. **Banco de dados**: UPDATE na tabela `admin_users`
-2. **`src/components/admin/whatsapp/WhatsAppTab.tsx`**: Remover assinatura duplicada (linhas 105-106, 112)
-3. **`src/components/admin/whatsapp/MessageComposer.tsx`**: Remover assinatura duplicada (linhas 54-58, 63)
