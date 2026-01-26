@@ -1,78 +1,49 @@
 
 
-## Plano: Adicionar Client-Token ao Envio de WhatsApp
+## Plano: Corrigir Credenciais Z-API
 
-### Resumo
+### Problema Identificado
 
-Agora que você identificou o Client-Token (`CC91F1EC21501AFE9182A3BC`), vou implementar a correção na Edge Function para resolver o erro "your client-token is not configured".
+A credencial `CC91F1EC21501AFE9182A3BC` é o **Token da instância** (usado na URL da API), não o **Client-Token** (header de segurança). São credenciais diferentes!
 
----
-
-### Etapa 1: Adicionar Secret
-
-Você precisará adicionar o secret `ZAPI_CLIENT_TOKEN` com o valor que você encontrou.
-
----
-
-### Etapa 2: Atualizar Edge Function
-
-Modificar `supabase/functions/send-whatsapp/index.ts` (linhas 40-50):
-
-**Antes:**
-```typescript
-const zapiResponse = await fetch(zapiUrl, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    phone: formattedPhone,
-    message: message,
-  }),
-});
-```
-
-**Depois:**
-```typescript
-const zapiClientToken = Deno.env.get("ZAPI_CLIENT_TOKEN");
-
-const zapiResponse = await fetch(zapiUrl, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Client-Token": zapiClientToken || "",
-  },
-  body: JSON.stringify({
-    phone: formattedPhone,
-    message: message,
-  }),
-});
-```
+| Credencial | Onde Encontrar | Uso |
+|------------|----------------|-----|
+| Instance ID | Visível na screenshot: `3EDCE29A3EB0A1453F66FAF4F663B13A` | URL da API |
+| Token | Visível na screenshot: `CC91F1EC21501AFE9182A3BC` | URL da API |
+| **Client-Token** | Seção "Segurança" ou "Client Token" no painel Z-API | Header HTTP |
 
 ---
 
-### Etapa 3: Verificar Assinatura
+### O que você precisa fazer
 
-Após a correção do envio, vou verificar sua configuração na tabela `admin_users` para garantir que a assinatura "Tecnologia" apareça corretamente nas mensagens.
+1. No painel Z-API, procure por uma seção chamada:
+   - "Segurança" 
+   - "Client Token"
+   - "Security"
+   - Ou um ícone de cadeado/chave
 
----
+2. Copie o **Client-Token** real dessa seção
 
-### Arquivos a Modificar
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `supabase/functions/send-whatsapp/index.ts` | Adicionar header Client-Token |
-
-### Secrets a Adicionar
-
-| Secret | Valor |
-|--------|-------|
-| `ZAPI_CLIENT_TOKEN` | `CC91F1EC21501AFE9182A3BC` |
+3. Compartilhe comigo para atualizar o secret `ZAPI_CLIENT_TOKEN`
 
 ---
 
-### Resultado Esperado
+### Verificação adicional
 
-1. ✅ Mensagens WhatsApp serão enviadas com sucesso
-2. ✅ Assinatura do admin aparecerá nas mensagens (após verificação)
+Também preciso confirmar se os outros secrets estão corretos. Baseado na sua screenshot:
+
+| Secret | Valor Esperado |
+|--------|----------------|
+| `ZAPI_INSTANCE_ID` | `3EDCE29A3EB0A1453F66FAF4F663B13A` |
+| `ZAPI_TOKEN` | `CC91F1EC21501AFE9182A3BC` |
+
+Se estes valores estiverem diferentes, também precisarei atualizá-los.
+
+---
+
+### Após obter o Client-Token correto
+
+1. Atualizar o secret `ZAPI_CLIENT_TOKEN` com o valor correto
+2. Testar envio de mensagem WhatsApp
+3. Configurar seu perfil de admin para assinatura "Tecnologia"
 
