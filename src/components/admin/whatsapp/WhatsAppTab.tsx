@@ -110,7 +110,7 @@ export const WhatsAppTab = () => {
         body: {
           phone: selectedPhone,
           message: fullMessage,
-          admin_user_id: adminProfile?.id,
+          admin_user_id: adminProfile?.user_id,
         },
       });
 

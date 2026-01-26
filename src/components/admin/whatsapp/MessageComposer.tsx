@@ -63,7 +63,7 @@ export const MessageComposer = ({
         body: {
           phone: phone,
           message: fullMessage,
-          admin_user_id: adminProfile?.id,
+          admin_user_id: adminProfile?.user_id,
         },
       });
 
