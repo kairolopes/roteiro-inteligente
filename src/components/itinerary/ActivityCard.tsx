@@ -11,12 +11,14 @@ import {
   Coins,
   Star,
   ExternalLink,
-  Navigation
+  Navigation,
+  CheckCircle2
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
 import { cn } from "@/lib/utils";
 import { DayContext } from "@/lib/affiliateLinks";
 import AffiliateButtons from "./AffiliateButtons";
+import { Badge } from "@/components/ui/badge";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -92,8 +94,10 @@ const ActivityCard = ({ activity, index, dayContext, tripDates }: ActivityCardPr
   const CategoryIcon = config.icon;
   const googleMapsUrl = getGoogleMapsUrl(activity);
   
-  // Use estimated rating from AI or default
-  const rating = activity.estimatedRating || activity.rating;
+  // Use Google Places rating if validated, otherwise use AI estimate
+  const rating = activity.rating || activity.estimatedRating;
+  const isValidated = (activity as any).validated === true;
+  const userRatingsTotal = activity.userRatingsTotal;
 
   return (
     <motion.div
@@ -106,7 +110,7 @@ const ActivityCard = ({ activity, index, dayContext, tripDates }: ActivityCardPr
       )}
     >
       {/* Category Header with Icon */}
-      <div className={cn("px-3 py-2 lg:px-4 lg:py-3 flex items-center gap-2", config.bgClass)}>
+      <div className={cn("px-3 py-2 lg:px-4 lg:py-3 flex items-center gap-2 flex-wrap", config.bgClass)}>
         <CategoryIcon className={cn("w-4 h-4 lg:w-5 lg:h-5", config.textClass)} />
         <span className={cn("text-xs lg:text-sm font-medium capitalize", config.textClass)}>
           {activity.category === "attraction" ? "Atração" : 
@@ -114,10 +118,25 @@ const ActivityCard = ({ activity, index, dayContext, tripDates }: ActivityCardPr
            activity.category === "transport" ? "Transporte" :
            activity.category === "accommodation" ? "Hospedagem" : "Atividade"}
         </span>
+        
+        {/* Verified Badge */}
+        {isValidated && (
+          <Badge variant="secondary" className="ml-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[10px] lg:text-xs px-1.5 py-0.5">
+            <CheckCircle2 className="w-3 h-3 mr-0.5" />
+            Verificado
+          </Badge>
+        )}
+        
+        {/* Rating with review count */}
         {rating && (
           <div className="ml-auto flex items-center gap-1">
             <Star className="w-3 h-3 lg:w-4 lg:h-4 fill-yellow-400 text-yellow-400" />
             <span className="text-xs lg:text-sm font-medium">{typeof rating === 'number' ? rating.toFixed(1) : rating}</span>
+            {userRatingsTotal && userRatingsTotal > 0 && (
+              <span className="text-[10px] lg:text-xs text-muted-foreground">
+                ({userRatingsTotal.toLocaleString('pt-BR')})
+              </span>
+            )}
           </div>
         )}
       </div>
