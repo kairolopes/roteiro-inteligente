@@ -54,15 +54,109 @@ const Chat = () => {
 
   const sendInitialMessage = async (answers: QuizAnswers) => {
     const destLabels: Record<string, string> = {
+      brazil: "Brasil", argentina: "Argentina", peru: "Peru",
+      usa: "Estados Unidos", mexico: "México", canada: "Canadá",
       italy: "Itália", france: "França", spain: "Espanha",
       portugal: "Portugal", greece: "Grécia", netherlands: "Holanda",
-      germany: "Alemanha", switzerland: "Suíça", surprise: "destino surpresa"
+      germany: "Alemanha", switzerland: "Suíça",
+      japan: "Japão", thailand: "Tailândia", indonesia: "Indonésia",
+      australia: "Austrália", uae: "Emirados Árabes", egypt: "Egito",
+      morocco: "Marrocos", southafrica: "África do Sul",
+      surprise: "destino surpresa"
     };
     
-    const destination = answers.destination ? (destLabels[answers.destination] || answers.destination) : "Europa";
-    const initialMessage = `Olá! Acabei de responder o quiz e estou planejando uma viagem para ${destination}. Pode me ajudar a criar um roteiro personalizado?`;
+    const styleLabels: Record<string, string> = {
+      romantic: "romântica", family: "em família", solo: "solo", backpacker: "mochilão"
+    };
     
-    await sendMessage(initialMessage, answers, true); // Pass true for isInitial
+    const budgetLabels: Record<string, string> = {
+      economic: "econômico", moderate: "moderado", comfortable: "confortável", 
+      luxury: "luxo", flexible: "flexível"
+    };
+    
+    const formatDate = (date: Date | string | null) => {
+      if (!date) return null;
+      const d = typeof date === 'string' ? new Date(date) : date;
+      return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+    
+    // Construir mensagem inicial COMPLETA com todos os dados do quiz
+    const parts: string[] = [];
+    parts.push(`Olá! Acabei de responder o quiz de preferências de viagem.`);
+    
+    // Destinos (múltiplos)
+    if (answers.destinations?.length > 0) {
+      const destNames = answers.destinations.map(d => destLabels[d] || d);
+      parts.push(`🌍 Destinos: ${destNames.join(", ")}.`);
+    } else if (answers.destination) {
+      parts.push(`🌍 Destino: ${destLabels[answers.destination] || answers.destination}.`);
+    }
+    
+    // Região específica
+    if (answers.destinationDetails) {
+      parts.push(`📍 Região específica: ${answers.destinationDetails}.`);
+    }
+    
+    // Datas COMPLETAS
+    if (answers.startDate) {
+      const start = formatDate(answers.startDate);
+      const end = answers.endDate ? formatDate(answers.endDate) : null;
+      if (end) {
+        parts.push(`📅 Datas: ${start} até ${end}.`);
+      } else if (answers.duration) {
+        const durationLabels: Record<string, string> = {
+          weekend: "3-4 dias", week: "7 dias", twoweeks: "14 dias", month: "30+ dias", flexible: "flexível"
+        };
+        parts.push(`📅 Início: ${start}, duração: ${durationLabels[answers.duration] || answers.duration}.`);
+      }
+    } else if (answers.duration) {
+      const durationLabels: Record<string, string> = {
+        weekend: "3-4 dias", week: "7 dias", twoweeks: "14 dias", month: "30+ dias", flexible: "flexível"
+      };
+      parts.push(`⏱️ Duração: ${durationLabels[answers.duration] || answers.duration}.`);
+    }
+    
+    // PEDIDOS ESPECIAIS - PRIORIDADE MÁXIMA
+    if (answers.customRequests) {
+      parts.push(`⭐ PEDIDOS ESPECIAIS: ${answers.customRequests}`);
+    }
+    
+    // Estilo de viagem
+    if (answers.travelStyle) {
+      parts.push(`✈️ Estilo: viagem ${styleLabels[answers.travelStyle] || answers.travelStyle}.`);
+    }
+    
+    // Orçamento
+    if (answers.budget) {
+      parts.push(`💰 Orçamento: ${budgetLabels[answers.budget] || answers.budget}.`);
+    }
+    
+    // Com quem viaja
+    if (answers.travelWith) {
+      const withLabels: Record<string, string> = {
+        solo: "sozinho(a)", couple: "em casal", friends: "com amigos",
+        "family-kids": "família com crianças", "family-adults": "família adultos", pets: "com pet"
+      };
+      parts.push(`👥 Viajando: ${withLabels[answers.travelWith] || answers.travelWith}.`);
+    }
+    
+    // Interesses
+    if (answers.interests?.length > 0) {
+      parts.push(`❤️ Interesses: ${answers.interests.join(", ")}.`);
+    }
+    
+    // Hospedagem
+    if (answers.accommodation) {
+      const accLabels: Record<string, string> = {
+        luxury: "luxo", boutique: "boutique", midrange: "confortável", budget: "econômico", airbnb: "apartamentos"
+      };
+      parts.push(`🏨 Hospedagem: ${accLabels[answers.accommodation] || answers.accommodation}.`);
+    }
+    
+    parts.push(`\nPode criar um pré-roteiro dia a dia baseado nessas informações?`);
+    
+    const initialMessage = parts.join(" ");
+    await sendMessage(initialMessage, answers, true);
   };
 
   const streamChat = async (
