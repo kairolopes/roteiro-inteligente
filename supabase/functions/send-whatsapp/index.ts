@@ -59,7 +59,7 @@ serve(async (req) => {
     }
 
     // Append signature to message if available
-    const finalMessage = signature ? `${message}\n\n${signature}` : message;
+    const finalMessage = signature ? `*${signature}*\n\n${message}` : message;
 
     const zapiInstanceId = Deno.env.get("ZAPI_INSTANCE_ID");
     const zapiToken = Deno.env.get("ZAPI_TOKEN");
