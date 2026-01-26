@@ -244,6 +244,96 @@ export type Database = {
         }
         Relationships: []
       }
+      hotmart_products: {
+        Row: {
+          created_at: string
+          credits_to_add: number | null
+          hotmart_product_id: string
+          id: string
+          is_active: boolean
+          name: string
+          product_ucode: string | null
+          subscription_days: number | null
+          subscription_type: string | null
+          updated_at: string
+          welcome_message: string | null
+        }
+        Insert: {
+          created_at?: string
+          credits_to_add?: number | null
+          hotmart_product_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          product_ucode?: string | null
+          subscription_days?: number | null
+          subscription_type?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          created_at?: string
+          credits_to_add?: number | null
+          hotmart_product_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          product_ucode?: string | null
+          subscription_days?: number | null
+          subscription_type?: string | null
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      hotmart_purchases: {
+        Row: {
+          amount: number | null
+          buyer_email: string
+          buyer_name: string | null
+          buyer_phone: string | null
+          created_at: string
+          currency: string | null
+          event_type: string
+          hotmart_product_id: string
+          hotmart_transaction_id: string
+          id: string
+          raw_data: Json | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          buyer_email: string
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          created_at?: string
+          currency?: string | null
+          event_type: string
+          hotmart_product_id: string
+          hotmart_transaction_id: string
+          id?: string
+          raw_data?: Json | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          buyer_email?: string
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          created_at?: string
+          currency?: string | null
+          event_type?: string
+          hotmart_product_id?: string
+          hotmart_transaction_id?: string
+          id?: string
+          raw_data?: Json | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           created_at: string

@@ -5,7 +5,8 @@ import {
   UserPlus, 
   Plug, 
   Settings,
-  Sparkles
+  Sparkles,
+  Flame
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'customers', label: 'Clientes', icon: Users },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { id: 'hotmart', label: 'Hotmart', icon: Flame },
   { id: 'leads', label: 'Leads', icon: UserPlus },
   { id: 'integrations', label: 'Integrações', icon: Plug },
   { id: 'settings', label: 'Configurações', icon: Settings },

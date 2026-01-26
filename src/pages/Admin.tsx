@@ -4,6 +4,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DashboardTab } from '@/components/admin/dashboard/DashboardTab';
 import { CustomersTab } from '@/components/admin/customers/CustomersTab';
 import { WhatsAppTab } from '@/components/admin/whatsapp/WhatsAppTab';
+import { HotmartTab } from '@/components/admin/hotmart/HotmartTab';
 import { LeadsTab } from '@/components/admin/leads/LeadsTab';
 import { IntegrationsTab } from '@/components/admin/integrations/IntegrationsTab';
 import { SettingsTab } from '@/components/admin/settings/SettingsTab';
@@ -19,6 +20,8 @@ const Admin = () => {
         return <CustomersTab />;
       case 'whatsapp':
         return <WhatsAppTab />;
+      case 'hotmart':
+        return <HotmartTab />;
       case 'leads':
         return <LeadsTab />;
       case 'integrations':
