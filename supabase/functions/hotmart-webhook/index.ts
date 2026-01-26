@@ -5,33 +5,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hotmart-hottok',
 };
 
+// Interface flexível - todos os campos opcionais
 interface HotmartPayload {
   event: string;
   data: {
-    purchase: {
-      transaction: string;
-      order_date: number;
+    purchase?: {
+      transaction?: string;
+      order_date?: number;
       approved_date?: number;
-      status: string;
-      price: {
-        value: number;
-        currency_code: string;
+      status?: string;
+      price?: {
+        value?: number;
+        currency_code?: string;
       };
     };
-    product: {
-      id: number;
-      ucode: string;
-      name: string;
+    product?: {
+      id?: number;
+      ucode?: string;
+      name?: string;
     };
-    buyer: {
-      email: string;
-      name: string;
+    buyer?: {
+      email?: string;
+      name?: string;
       checkout_phone?: string;
     };
     subscription?: {
-      status: string;
-      plan: {
-        name: string;
+      status?: string;
+      plan?: {
+        name?: string;
       };
     };
   };
@@ -46,7 +47,6 @@ Deno.serve(async (req) => {
     const HOTMART_HOTTOK = Deno.env.get('HOTMART_HOTTOK');
     const receivedHottok = req.headers.get('x-hotmart-hottok');
 
-    // Validar hottok
     if (HOTMART_HOTTOK && receivedHottok !== HOTMART_HOTTOK) {
       console.error('Invalid hottok received');
       return new Response(
@@ -56,24 +56,35 @@ Deno.serve(async (req) => {
     }
 
     const payload: HotmartPayload = await req.json();
-    console.log('Hotmart webhook received:', payload.event);
+    const { event, data } = payload;
+    console.log('Hotmart webhook received:', event);
+
+    // Extrair dados com optional chaining
+    const purchase = data?.purchase;
+    const product = data?.product;
+    const buyer = data?.buyer;
+
+    // Se não tem dados essenciais de compra, ignorar graciosamente
+    if (!purchase?.transaction || !buyer?.email) {
+      console.log(`Event ${event} skipped - missing purchase/buyer data`);
+      return new Response(
+        JSON.stringify({ success: true, event, skipped: true, reason: 'no_purchase_data' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { event, data } = payload;
-    const { purchase, product, buyer, subscription } = data;
-
-    // Extrair dados
+    // Agora seguro para extrair
     const transactionId = purchase.transaction;
-    const productId = String(product.id);
-    const productUcode = product.ucode;
+    const productId = String(product?.id || '0');
     const buyerEmail = buyer.email;
-    const buyerName = buyer.name;
-    const buyerPhone = buyer.checkout_phone || null;
-    const amount = purchase.price.value;
-    const currency = purchase.price.currency_code;
+    const buyerName = buyer?.name || 'Cliente';
+    const buyerPhone = buyer?.checkout_phone || null;
+    const amount = purchase?.price?.value || 0;
+    const currency = purchase?.price?.currency_code || 'BRL';
 
     // Mapear status
     let status = 'pending';
@@ -115,19 +126,11 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('hotmart_product_id', productId)
         .eq('is_active', true)
-        .single();
-
-      // Buscar ou criar profile
-      let { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', buyerEmail)
         .maybeSingle();
 
-      // Tentar encontrar por email na tabela auth.users via query
+      // Buscar usuário existente por email
       const { data: authUsers } = await supabase.auth.admin.listUsers();
-      const authUser = authUsers?.users?.find(u => u.email === buyerEmail);
-      
+      let authUser = authUsers?.users?.find(u => u.email === buyerEmail);
       let userId = authUser?.id;
 
       // Se não existe usuário, criar um
@@ -145,14 +148,21 @@ Deno.serve(async (req) => {
 
         if (createError) {
           console.error('Error creating user:', createError);
+          // Se erro de duplicação, tentar buscar novamente
+          if (createError.message?.includes('already') || createError.message?.includes('duplicate')) {
+            const { data: retryUsers } = await supabase.auth.admin.listUsers();
+            const retryUser = retryUsers?.users?.find(u => u.email === buyerEmail);
+            userId = retryUser?.id;
+          }
         } else {
           userId = newUser.user?.id;
           console.log('Created new user:', userId);
         }
       }
 
-      // Atualizar profile
+      // Continuar processamento se temos userId
       if (userId) {
+        // Atualizar profile
         await supabase
           .from('profiles')
           .upsert({
@@ -178,15 +188,13 @@ Deno.serve(async (req) => {
             subscriptionExpires = new Date(now.getTime() + productConfig.subscription_days * 24 * 60 * 60 * 1000);
           }
 
-          // Buscar créditos atuais
           const { data: currentCredits } = await supabase
             .from('user_credits')
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
           if (currentCredits) {
-            // Atualizar créditos existentes
             await supabase
               .from('user_credits')
               .update({
@@ -196,7 +204,6 @@ Deno.serve(async (req) => {
               })
               .eq('user_id', userId);
           } else {
-            // Criar registro de créditos
             await supabase
               .from('user_credits')
               .insert({
@@ -210,12 +217,12 @@ Deno.serve(async (req) => {
           console.log('Credits added:', productConfig.credits_to_add);
         }
 
-        // Adicionar tag "Hotmart" ao cliente
+        // Adicionar tag "Hotmart"
         const { data: hotmartTag } = await supabase
           .from('customer_tags')
           .select('id')
           .eq('name', 'Hotmart')
-          .single();
+          .maybeSingle();
 
         let tagId = hotmartTag?.id;
 
@@ -251,7 +258,7 @@ Deno.serve(async (req) => {
 
             const welcomeMessage = productConfig.welcome_message
               .replace('{nome}', buyerName.split(' ')[0])
-              .replace('{produto}', product.name);
+              .replace('{produto}', product?.name || 'produto');
 
             try {
               await fetch(`https://api.z-api.io/instances/${zapiInstanceId}/token/${zapiToken}/send-text`, {
@@ -273,27 +280,25 @@ Deno.serve(async (req) => {
 
     // Processar cancelamentos/reembolsos
     if (status === 'cancelled' || status === 'refunded') {
-      // Buscar compra para pegar user_id
       const { data: existingPurchase } = await supabase
         .from('hotmart_purchases')
         .select('user_id')
         .eq('hotmart_transaction_id', transactionId)
-        .single();
+        .maybeSingle();
 
       if (existingPurchase?.user_id) {
-        // Buscar configuração do produto para saber quantos créditos remover
         const { data: productConfig } = await supabase
           .from('hotmart_products')
           .select('credits_to_add')
           .eq('hotmart_product_id', productId)
-          .single();
+          .maybeSingle();
 
         if (productConfig?.credits_to_add) {
           const { data: currentCredits } = await supabase
             .from('user_credits')
             .select('paid_credits')
             .eq('user_id', existingPurchase.user_id)
-            .single();
+            .maybeSingle();
 
           if (currentCredits) {
             const newCredits = Math.max(0, (currentCredits.paid_credits || 0) - productConfig.credits_to_add);
@@ -301,13 +306,15 @@ Deno.serve(async (req) => {
               .from('user_credits')
               .update({ paid_credits: newCredits })
               .eq('user_id', existingPurchase.user_id);
+            
+            console.log('Credits removed due to refund/cancel:', productConfig.credits_to_add);
           }
         }
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, event }),
+      JSON.stringify({ success: true, event, processed: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
