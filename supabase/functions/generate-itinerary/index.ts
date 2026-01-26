@@ -139,7 +139,7 @@ async function enrichItineraryWithPlaces(
   return { ...itinerary, days: enrichedDays };
 }
 
-const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem detalhados para qualquer lugar do mundo. 
+const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem ULTRA-DETALHADOS para qualquer lugar do mundo. 
 Quando solicitado, você DEVE usar a função generate_itinerary para retornar um roteiro estruturado.
 
 ⚠️ HIERARQUIA DE PRIORIDADE (RESPEITE RIGOROSAMENTE):
@@ -163,18 +163,25 @@ Se houver conflito entre o quiz e a conversa, A CONVERSA TEM PRIORIDADE ABSOLUTA
 - Os dias da semana DEVEM ser corretos e reais (Segunda, Terça, etc.)
 - Calcule cada dia subsequente a partir da data de início
 
+🔴🔴🔴 QUANTIDADE MÍNIMA DE ATIVIDADES - OBRIGATÓRIO 🔴🔴🔴
+Cada dia DEVE ter NO MÍNIMO 5-6 atividades para criar um roteiro completo e rico:
+- Estrutura obrigatória: Café da manhã → Atividade manhã → Almoço → Atividade tarde → Atividade tarde 2 → Jantar
+- NUNCA crie dias com menos de 5 atividades
+- Roteiros curtos (2-3 atividades/dia) são PROIBIDOS
+- O objetivo é um PDF de 3+ páginas com conteúdo rico
+
 INSTRUÇÕES CRÍTICAS:
 1. Crie roteiros realistas com atividades específicas e lugares REAIS que existem
 2. OBRIGATÓRIO: Inclua coordenadas geográficas PRECISAS [latitude, longitude] para CADA atividade - isso é essencial para o mapa funcionar
 3. Estime TODOS os custos em Reais Brasileiros (R$). NUNCA use Euro (€), Dólar ($) ou outra moeda. Valores devem ser realistas baseados em preços atuais.
-4. Adicione dicas práticas úteis baseadas em experiências reais de viajantes
+4. Adicione dicas práticas úteis e DETALHADAS para CADA atividade (2-3 frases por dica)
 5. Considere tempo de deslocamento entre atividades
 6. Sugira restaurantes e locais específicos REAIS com nomes verdadeiros
 7. Organize as atividades de forma lógica geograficamente
 8. Para cada atividade, inclua:
    - Coordenadas precisas do local (obrigatório para navegação)
-   - Descrição detalhada do que esperar
-   - Dicas práticas (horários, filas, reservas necessárias)
+   - Descrição detalhada do que esperar (2-3 frases, não apenas 1)
+   - Dicas práticas específicas (horários, filas, reservas necessárias, o que vestir, etc.)
    - Custo estimado realista
    - Avaliação estimada (1-5) baseada em popularidade
 
@@ -191,7 +198,8 @@ DICAS DE QUALIDADE:
 - Inclua dicas como "Reserve com antecedência", "Chegue cedo para evitar filas"
 - Mencione melhores horários para visitar
 - Sugira alternativas para dias de chuva quando aplicável
-- Considere fuso horário e clima local do destino`;
+- Considere fuso horário e clima local do destino
+- Dica: mencione nome de pratos típicos para experimentar em restaurantes`;
 
 // Models to try in order (primary, fallback)
 const AI_MODELS = ["gemini-2.0-flash", "gemini-1.5-pro"];
@@ -398,13 +406,33 @@ serve(async (req) => {
     };
     const numDays = durationLabels[quizAnswers?.duration] || 7;
 
-    const userPrompt = `Crie um roteiro de viagem detalhado com base nestas preferências:
+    const userPrompt = `Crie um roteiro de viagem ULTRA-DETALHADO com base nestas preferências:
 ${contextParts.join("\n")}
 
 ${quizAnswers?.customRequests ? `
-⚠️⚠️⚠️ PEDIDOS ESPECIAIS DO USUÁRIO - PRIORIDADE MÁXIMA ⚠️⚠️⚠️
-O usuário fez os seguintes pedidos específicos que DEVEM ser incluídos no roteiro:
+🔴🔴🔴 PEDIDOS ESPECIAIS DO USUÁRIO - PRIORIDADE ABSOLUTA 🔴🔴🔴
+O usuário escreveu estes desejos ESPECÍFICOS que DEVEM aparecer no roteiro:
 "${quizAnswers.customRequests}"
+
+⚠️ VOCÊ É OBRIGADO A:
+1. Incluir atividades que atendam EXATAMENTE a estes pedidos
+2. Se o usuário quer "comer queijos", inclua restaurantes/fazendas de queijos REAIS
+3. Se o usuário quer "vinhos na Toscana", inclua vinícolas na Toscana com nomes reais
+4. Se o usuário quer "praias paradisíacas", inclua praias específicas com coordenadas
+5. NÃO IGNORE estes pedidos - eles são a RAZÃO PRINCIPAL do roteiro
+6. Mencione explicitamente estes pedidos nas atividades do roteiro
+` : ""}
+
+${quizAnswers?.destinationDetails ? `
+🟠🟠🟠 REGIÃO/CIDADES ESPECÍFICAS - ALTA PRIORIDADE 🟠🟠🟠
+O usuário quer focar NESTA região/cidades específicas: "${quizAnswers.destinationDetails}"
+
+⚠️ VOCÊ DEVE:
+1. Concentrar o roteiro NESTA região específica
+2. Se for "Toscana", use cidades como Florença, Siena, Pisa, San Gimignano, Montepulciano
+3. Se for "Costa Amalfitana", use Positano, Amalfi, Ravello, Sorrento
+4. NÃO substitua por outras regiões do país
+5. O usuário escolheu esta região por um motivo - RESPEITE isso
 ` : ""}
 
 ⚠️ ATENÇÃO MÁXIMA - NÚMERO DE DIAS:
@@ -412,6 +440,16 @@ Este roteiro DEVE ter EXATAMENTE ${numDays} dias.
 - NÃO crie ${numDays - 1} dias
 - NÃO crie ${numDays + 1} dias  
 - Crie EXATAMENTE ${numDays} dias (Dia 1 até Dia ${numDays})
+
+📋 ESTRUTURA OBRIGATÓRIA - MÍNIMO 5-6 ATIVIDADES POR DIA:
+- Café da manhã/Hotel (1 atividade)
+- Manhã: 1-2 atrações principais
+- Almoço em restaurante específico REAL (1 atividade)
+- Tarde: 1-2 atrações ou atividades
+- Jantar em restaurante específico REAL (1 atividade)
+- TOTAL: mínimo 5-6 atividades por dia
+- Cada descrição deve ter 2-3 frases detalhadas
+- Cada dica deve ser prática e específica
 
 ${conversationSummary ? `
 ⚠️⚠️⚠️ CONVERSA COM O USUÁRIO - PRIORIDADE MÁXIMA E ABSOLUTA ⚠️⚠️⚠️
@@ -436,9 +474,11 @@ ${conversationSummary}
 
 REGRAS FINAIS OBRIGATÓRIAS:
 1. Inclua coordenadas [latitude, longitude] PRECISAS para cada atividade
-2. Use nomes de lugares REAIS e existentes
-3. Adicione dicas práticas úteis para cada atividade
+2. Use nomes de lugares REAIS e existentes (restaurantes, atrações, hotéis)
+3. Adicione dicas práticas úteis e detalhadas para cada atividade
 4. O roteiro DEVE ter EXATAMENTE ${numDays} dias
+5. Cada dia DEVE ter NO MÍNIMO 5-6 atividades
+6. Descrições detalhadas (2-3 frases) para cada atividade
 
 Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
