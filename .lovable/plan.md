@@ -1,77 +1,73 @@
 
-## Plano: Melhorias no Quiz - Orçamento, Datas e Ritmo
+## Plano: Melhorias no Calendário de Volta e UX do Modal de Login
 
-### Problema 1: Orçamento sem explicação do que está incluso
-
-**Situação atual:**
-- Descrições mostram apenas valores (ex: "R$ 400 - R$ 750/dia por pessoa")
-- Usuário não sabe o que está incluído no valor
-
-**Solução:**
-Adicionar descrições mais detalhadas em cada opção de orçamento:
-
-| Opção | Nova descrição |
-|-------|----------------|
-| Econômico | "Até R$ 400/dia: Hostel, transporte público, refeições simples" |
-| Moderado | "R$ 400 - R$ 750/dia: Hotel 3★, transporte misto, restaurantes locais" |
-| Confortável | "R$ 750 - R$ 1.500/dia: Hotel 4★, táxi/aluguel, experiências premium" |
-| Luxo | "Acima de R$ 1.500/dia: Hotel 5★, transfers privados, fine dining" |
-| Flexível | "Depende das oportunidades e ofertas encontradas" |
-
-Adicionar também uma nota explicativa abaixo do título: "Inclui hospedagem, alimentação, transporte local e passeios. Não inclui passagem aérea."
-
----
-
-### Problema 2: "Ainda não sei" deve ser "Personalizado" com data ida e volta
+### Problema 1: Calendário de volta não inicia na data de ida
 
 **Situação atual:**
-- Opção "Ainda não sei" com descrição "Me ajude a decidir"
-- Apenas uma data (startDate) é solicitada
+- Quando o usuário seleciona "Personalizado" e escolhe uma data de ida
+- O calendário de volta abre no mês atual, não no mês da data de ida
+- Usuário precisa navegar manualmente até o mês correto
 
 **Solução:**
-1. Renomear opção para **"Personalizado"** com descrição **"Escolho datas específicas de ida e volta"**
-2. Adicionar campo `endDate` ao tipo `QuizAnswers`
-3. Quando selecionado "Personalizado" (id: `custom`), mostrar dois calendários:
-   - Data de ida (startDate)
-   - Data de volta (endDate)
+Usar a prop `defaultMonth` no calendário de volta para iniciar na data de ida selecionada:
 
-**Alterações no tipo:**
 ```typescript
-// Adicionar ao QuizAnswers
-endDate: Date | null;
+<Calendar
+  mode="single"
+  selected={answers.endDate || undefined}
+  onSelect={(date) => onUpdate("endDate", date)}
+  defaultMonth={answers.startDate || undefined} // Iniciar no mês da data de ida
+  disabled={(date) => {
+    const startDate = answers.startDate;
+    if (startDate) {
+      return date <= startDate; // Data de volta deve ser DEPOIS da ida
+    }
+    return date < new Date();
+  }}
+  fixedWeeks
+  className="pointer-events-auto"
+/>
 ```
 
 ---
 
-### Problema 3: Calendário muda de tamanho ao trocar de mês
+### Problema 2: Modal de Login com UX ruim - "estoura a página superior"
 
 **Situação atual:**
-- O calendário já tem largura fixa (252px no month)
-- Mas pode haver variação na altura entre meses
+- O modal usa `fixed inset-0` com `flex items-center justify-center`
+- Em telas menores ou com teclado aberto (mobile), o modal pode ficar cortado no topo
+- Não há scroll quando o conteúdo é maior que a tela
+- Falta padding superior adequado para header fixo
 
 **Solução:**
-Forçar altura mínima fixa no container do calendário para evitar mudanças:
-- Adicionar `min-h-[300px]` no container do calendário
-- Garantir que `table` e `row` tenham alturas consistentes
-- Sempre mostrar 6 semanas (42 dias) para altura constante usando `fixedWeeks` prop
+Redesenhar o modal com UX aprimorada:
 
----
+1. **Container com scroll**: Adicionar `overflow-y-auto` no overlay
+2. **Padding seguro**: Usar `py-8 sm:py-12` para garantir espaço no topo e fundo
+3. **Max-height responsivo**: Limitar altura do modal com `max-h-[90vh]`
+4. **Alinhamento flexível**: Usar `items-start` em mobile e `items-center` em desktop
+5. **Safe area para iOS**: Adicionar padding para notch
 
-### Problema 4: Ritmo ideal com texto truncado ("...")
+**Alterações no AuthModal.tsx:**
 
-**Situação atual:**
-- `QuizOption` usa `line-clamp-2` que corta o texto
-- Não há tooltip para mostrar texto completo
-
-**Solução:**
-1. Remover o `line-clamp-2` do componente `QuizOption`
-2. Deixar o texto completo visível sempre
-3. Alternativamente, usar descrições mais curtas que caibam no espaço
-
-As descrições de ritmo são curtas o suficiente para caber:
-- "Poucos lugares, mais tempo em cada um" (37 caracteres)
-- "Equilíbrio entre passeios e descanso" (37 caracteres)
-- "Ver o máximo possível, dias cheios" (34 caracteres)
+```typescript
+// Container overlay - adicionar scroll e padding
+<motion.div
+  className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm"
+  onClick={onClose}
+>
+  {/* Container de centralização com padding */}
+  <div className="min-h-full flex items-center justify-center p-4 py-8 sm:py-12">
+    {/* Card do modal */}
+    <motion.div
+      onClick={(e) => e.stopPropagation()}
+      className="w-full max-w-md glass-card rounded-2xl p-6 relative my-auto"
+    >
+      {/* Conteúdo */}
+    </motion.div>
+  </div>
+</motion.div>
+```
 
 ---
 
@@ -79,62 +75,76 @@ As descrições de ritmo são curtas o suficiente para caber:
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/types/quiz.ts` | Adicionar `endDate: Date \| null` |
-| `src/components/quiz/steps/BudgetStep.tsx` | Atualizar descrições do orçamento com detalhes do que inclui |
-| `src/components/quiz/steps/DatesStep.tsx` | Renomear "Ainda não sei" para "Personalizado", adicionar seletor de data de volta quando custom selecionado |
-| `src/components/ui/calendar.tsx` | Adicionar `fixedWeeks` para altura constante, min-height no container |
-| `src/components/quiz/QuizOption.tsx` | Remover `line-clamp-2` para mostrar texto completo |
+| `src/components/quiz/steps/DatesStep.tsx` | Adicionar `defaultMonth={answers.startDate}` no calendário de volta |
+| `src/components/auth/AuthModal.tsx` | Reestruturar layout para scroll e melhor posicionamento |
 
 ---
 
 ### Detalhes Técnicos
 
-**1. BudgetStep.tsx - Novas descrições:**
-```typescript
-const budgets = [
-  { id: "economic", emoji: "💰", title: "Econômico", 
-    description: "Até R$ 400/dia: Hostel, transporte público, refeições simples" },
-  { id: "moderate", emoji: "💰💰", title: "Moderado", 
-    description: "R$ 400 - R$ 750/dia: Hotel 3★, transporte misto, restaurantes locais" },
-  { id: "comfortable", emoji: "💰💰💰", title: "Confortável", 
-    description: "R$ 750 - R$ 1.500/dia: Hotel 4★, táxi/aluguel, experiências premium" },
-  { id: "luxury", emoji: "💎", title: "Luxo", 
-    description: "Acima de R$ 1.500/dia: Hotel 5★, transfers privados, fine dining" },
-  { id: "flexible", emoji: "🤷", title: "Flexível", 
-    description: "Depende das oportunidades e ofertas" },
-];
-```
+**1. DatesStep.tsx - Calendário de volta iniciando na data de ida:**
 
-**2. DatesStep.tsx - Personalizado com duas datas:**
+Linha ~144: Adicionar prop `defaultMonth`
 ```typescript
-const durations = [
-  // ... outras opções
-  { id: "custom", emoji: "✨", title: "Personalizado", 
-    description: "Escolho datas específicas de ida e volta" },
-];
-
-// Mostrar dois calendários quando duration === "custom"
-{answers.duration === "custom" && (
-  <>
-    <DatePicker label="Data de ida" value={startDate} />
-    <DatePicker label="Data de volta" value={endDate} />
-  </>
-)}
-```
-
-**3. Calendar.tsx - Altura fixa:**
-```typescript
-<DayPicker
-  fixedWeeks // Sempre mostra 6 semanas
-  className={cn("p-3 min-h-[320px]", className)}
-  // ...
+<Calendar
+  mode="single"
+  selected={answers.endDate || undefined}
+  onSelect={(date) => onUpdate("endDate", date)}
+  defaultMonth={answers.startDate || undefined}
+  disabled={(date) => {
+    const startDate = answers.startDate;
+    if (startDate) {
+      return date <= startDate;
+    }
+    return date < new Date();
+  }}
+  initialFocus
+  fixedWeeks
+  className="pointer-events-auto"
 />
 ```
 
-**4. QuizOption.tsx - Texto completo:**
+**2. AuthModal.tsx - Layout melhorado:**
+
+Estrutura atualizada:
 ```typescript
-// Remover line-clamp-2
-<p className="text-sm text-muted-foreground mt-1">
-  {description}
-</p>
+<AnimatePresence>
+  {isOpen && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div className="min-h-full flex items-center justify-center p-4 py-8 sm:py-12">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-md glass-card rounded-2xl p-6 relative"
+        >
+          {/* Conteúdo existente */}
+        </motion.div>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
 ```
+
+**Melhorias visuais adicionais:**
+- Animação de entrada com `y: 20` para efeito slide-up suave
+- Botão de fechar com tamanho maior para mobile: `p-2` ao invés do atual
+- Focus trap implícito pelo backdrop click
+
+---
+
+### Resultado Esperado
+
+1. **Calendário de volta**: Abre automaticamente no mês da data de ida selecionada
+2. **Modal de login**: 
+   - Nunca fica cortado no topo
+   - Pode rolar se necessário em telas pequenas
+   - Animação mais suave
+   - Funciona corretamente com teclado virtual no mobile
