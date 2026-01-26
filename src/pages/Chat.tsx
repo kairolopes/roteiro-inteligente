@@ -322,7 +322,7 @@ ${chatHistory}
                 <Bot className="w-8 h-8 text-primary-foreground" />
               </div>
               <h2 className="text-2xl font-bold mb-3">
-                Olá! Sou a Sofía 👋
+                Olá! Sou a Sofia 👋
               </h2>
               <p className="text-muted-foreground max-w-md mb-6">
                 Sua assistente de viagens com IA. Vou te ajudar a criar o 
@@ -336,7 +336,7 @@ ${chatHistory}
               {quizAnswers && isLoading && (
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Conectando com a Sofía...</span>
+                  <span>Conectando com a Sofia...</span>
                 </div>
               )}
             </motion.div>
@@ -515,7 +515,7 @@ ${chatHistory}
           </form>
           <div className="flex items-center justify-between mt-2">
             <p className="text-xs text-muted-foreground">
-              Sofía pode cometer erros. Verifique informações importantes.
+              Sofia pode cometer erros. Verifique informações importantes.
             </p>
             {user && !hasActiveSubscription && (
               <p className="text-xs text-muted-foreground">
