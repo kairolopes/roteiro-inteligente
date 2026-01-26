@@ -141,17 +141,17 @@ export function DatesStep({ answers, onUpdate }: DatesStepProps) {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="center">
-                <Calendar
+              <Calendar
                   mode="single"
                   selected={answers.endDate || undefined}
                   onSelect={(date) => onUpdate("endDate", date)}
+                  defaultMonth={answers.startDate || undefined}
                   disabled={(date) => {
-                    const today = new Date();
                     const startDate = answers.startDate;
                     if (startDate) {
-                      return date < startDate;
+                      return date <= startDate;
                     }
-                    return date < today;
+                    return date < new Date();
                   }}
                   initialFocus
                   fixedWeeks
