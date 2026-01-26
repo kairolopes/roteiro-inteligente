@@ -40,9 +40,9 @@ export function Footer() {
               <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
                 <Plane className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold">
-                Viage com <span className="text-primary">Sofía</span>
-              </span>
+            <span className="text-xl font-bold">
+              Viage com <span className="text-primary">Sofia</span>
+            </span>
             </a>
             <p className="text-sm text-muted-foreground mb-6">
               Planeje sua viagem dos sonhos com inteligência artificial. 
@@ -106,7 +106,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Viage com Sofía. Todos os direitos reservados.
+            © {new Date().getFullYear()} Viage com Sofia. Todos os direitos reservados.
           </p>
           <p className="text-sm text-muted-foreground">
             Feito com ❤️ para viajantes sonhadores

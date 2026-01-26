@@ -53,7 +53,7 @@ export function HeroSection() {
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight mb-4 lg:mb-6"
           >
             Conheça a{" "}
-            <span className="text-gradient">Sofía</span>, sua{" "}
+            <span className="text-gradient">Sofia</span>, sua{" "}
             <span className="text-primary">assistente de viagem</span>
           </motion.h1>
 
@@ -65,7 +65,7 @@ export function HeroSection() {
             className="text-base lg:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 lg:mb-10 px-4"
           >
             Roteiros personalizados criados com inteligência artificial em minutos. 
-            Diga adeus ao trabalho de planejar, deixe a Sofía cuidar de tudo.
+            Diga adeus ao trabalho de planejar, deixe a Sofia cuidar de tudo.
           </motion.p>
 
           {/* CTA Buttons */}
