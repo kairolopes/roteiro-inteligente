@@ -4,15 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Travelpayouts Verification -->
-    <script data-noptimize="1" data-cfasync="false" data-wpfc-render="false">
-      (function () {
-          var script = document.createElement("script");
-          script.async = 1;
-          script.src = 'https://tpembars.com/Njk2NzE4.js?t=696718';
-          document.head.appendChild(script);
-      })();
-    </script>
+    <!-- Travelpayouts loaded after React in body -->
     <link rel="icon" href="/favicon.png" type="image/png" />
     <title>Viage com Sofía - Planeje sua Viagem com IA</title>
     <meta name="description" content="Planeje sua viagem dos sonhos com inteligência artificial. Roteiros personalizados para destinos pelo mundo." />
@@ -31,5 +23,17 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Travelpayouts: carregado após React com delay para evitar conflitos -->
+    <script data-noptimize="1" data-cfasync="false" data-wpfc-render="false">
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var script = document.createElement("script");
+          script.async = true;
+          script.src = 'https://tpembars.com/Njk2NzE4.js?t=696718';
+          document.body.appendChild(script);
+        }, 2000);
+      });
+    </script>
   </body>
 </html>

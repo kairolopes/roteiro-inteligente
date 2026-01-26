@@ -32,11 +32,15 @@ interface InterestsStepProps {
 
 export function InterestsStep({ answers, onUpdate }: InterestsStepProps) {
   const toggleInterest = (id: string) => {
-    const current = answers.interests;
-    if (current.includes(id)) {
-      onUpdate("interests", current.filter((i) => i !== id));
-    } else {
-      onUpdate("interests", [...current, id]);
+    try {
+      const current = answers.interests;
+      if (current.includes(id)) {
+        onUpdate("interests", current.filter((i) => i !== id));
+      } else {
+        onUpdate("interests", [...current, id]);
+      }
+    } catch (error) {
+      console.error("Erro ao selecionar interesse:", error);
     }
   };
 
