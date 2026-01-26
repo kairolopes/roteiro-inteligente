@@ -6,6 +6,107 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+
+// Validate place using Google Places API
+async function validatePlace(
+  title: string, 
+  city: string
+): Promise<{
+  coordinates: [number, number] | null;
+  rating: number | null;
+  googleMapsUrl: string | null;
+  placeId: string | null;
+  photoReference: string | null;
+} | null> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/google-places`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ query: title, city }),
+    });
+
+    if (!response.ok) {
+      console.log(`Google Places validation failed for: ${title}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data.error || !data.coordinates) {
+      console.log(`Place not found: ${title}`);
+      return null;
+    }
+
+    console.log(`Place validated: ${title} (cached: ${data.cached})`);
+
+    return {
+      coordinates: data.coordinates,
+      rating: data.rating,
+      googleMapsUrl: data.googleMapsUrl,
+      placeId: data.placeId,
+      photoReference: data.photoReference,
+    };
+  } catch (error) {
+    console.error(`Error validating place ${title}:`, error);
+    return null;
+  }
+}
+
+// Enrich itinerary with real place data
+async function enrichItineraryWithPlaces(itinerary: any): Promise<any> {
+  if (!itinerary?.days) return itinerary;
+
+  console.log("Enriching itinerary with Google Places data...");
+
+  let validatedCount = 0;
+  const categoriesToValidate = ["attraction", "restaurant"];
+  const maxActivitiesPerDay = 5;
+
+  const enrichedDays = await Promise.all(
+    itinerary.days.map(async (day: any) => {
+      const enrichedActivities = await Promise.all(
+        day.activities.map(async (activity: any, index: number) => {
+          // Only validate attractions and restaurants, limit per day
+          if (
+            !categoriesToValidate.includes(activity.category) ||
+            index >= maxActivitiesPerDay
+          ) {
+            return activity;
+          }
+
+          const placeData = await validatePlace(activity.title, day.city);
+
+          if (placeData) {
+            validatedCount++;
+            return {
+              ...activity,
+              coordinates: placeData.coordinates || activity.coordinates,
+              rating: placeData.rating || activity.estimatedRating,
+              googleMapsUrl: placeData.googleMapsUrl,
+              placeId: placeData.placeId,
+              photoReference: placeData.photoReference,
+              validated: true,
+            };
+          }
+
+          return activity;
+        })
+      );
+
+      return { ...day, activities: enrichedActivities };
+    })
+  );
+
+  console.log(`Enrichment complete: ${validatedCount} places validated`);
+
+  return { ...itinerary, days: enrichedDays };
+}
+
 const ITINERARY_SYSTEM_PROMPT = `Você é um especialista em criar roteiros de viagem detalhados para qualquer lugar do mundo. 
 Quando solicitado, você DEVE usar a função generate_itinerary para retornar um roteiro estruturado.
 
@@ -493,6 +594,14 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
       itinerary.days = itinerary.days.slice(0, numDays);
       itinerary.days.forEach((day: any, idx: number) => { day.day = idx + 1; });
       itinerary.duration = `${numDays} dias`;
+    }
+
+    // Enrich with Google Places data
+    try {
+      itinerary = await enrichItineraryWithPlaces(itinerary);
+    } catch (enrichError) {
+      console.error("Error enriching itinerary:", enrichError);
+      // Continue with AI data if enrichment fails
     }
 
     // Add metadata
