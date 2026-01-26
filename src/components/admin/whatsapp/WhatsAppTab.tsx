@@ -102,14 +102,12 @@ export const WhatsAppTab = () => {
   const handleSendMessage = async (content: string) => {
     if (!selectedPhone) return;
 
-    const signature = getSignature();
-    const fullMessage = signature ? `${content}\n\n${signature}` : content;
-
+    // Edge Function applies signature automatically
     try {
       const { error } = await supabase.functions.invoke('send-whatsapp', {
         body: {
           phone: selectedPhone,
-          message: fullMessage,
+          message: content,
           admin_user_id: adminProfile?.user_id,
         },
       });
