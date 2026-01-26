@@ -21,13 +21,18 @@ const DEPARTMENT_SIGNATURES: Record<string, string> = {
 };
 
 export const useAdminAuth = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
+      // Aguardar auth terminar de carregar
+      if (authLoading) {
+        return;
+      }
+
       if (!user) {
         setIsAdmin(false);
         setAdminProfile(null);
@@ -77,7 +82,7 @@ export const useAdminAuth = () => {
     };
 
     checkAdminStatus();
-  }, [user]);
+  }, [user, authLoading]);
 
   const getSignature = (): string => {
     if (!adminProfile) return '';
