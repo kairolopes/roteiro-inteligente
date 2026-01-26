@@ -16,8 +16,14 @@ interface Message {
   content: string;
 }
 
-// Always use Supabase Edge Functions (Lovable Cloud) - no Netlify dependency
+// Dynamic routing: Netlify Functions in production, Supabase Edge Functions for development
 const getChatUrl = () => {
+  const hostname = window.location.hostname;
+  const isProduction = hostname.includes('viagecomsofia') || hostname.includes('netlify.app');
+  
+  if (isProduction) {
+    return '/.netlify/functions/chat-travel';
+  }
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`;
 };
 
