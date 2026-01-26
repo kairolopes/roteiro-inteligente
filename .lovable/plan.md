@@ -1,47 +1,23 @@
 
 
-## Plano: Assinatura em Negrito e Antes da Mensagem
+## Plano: Deploy da Edge Function send-whatsapp
 
-### Alteração Identificada
+### Problema Identificado
 
-**Arquivo: `supabase/functions/send-whatsapp/index.ts`**
-
-Na linha 62, a ordem está:
-```
-mensagem
-
-assinatura
-```
-
-Precisa ser:
-```
-*assinatura*
-
-mensagem
-```
-
-### Correção Necessária
-
-**Linha 62 - De:**
-```typescript
-const finalMessage = signature ? `${message}\n\n${signature}` : message;
-```
-
-**Para:**
+O código está correto na linha 62:
 ```typescript
 const finalMessage = signature ? `*${signature}*\n\n${message}` : message;
 ```
 
-### Explicação
+Porém, a **Edge Function ainda não foi implantada** após a última alteração. A versão em execução no servidor ainda é a anterior.
 
-| Mudança | Antes | Depois |
-|---------|-------|--------|
-| Ordem | `mensagem + assinatura` | `assinatura + mensagem` |
-| Formatação | texto normal | `*negrito*` (WhatsApp) |
+### Solução
+
+Fazer o **deploy** da Edge Function `send-whatsapp` para que a nova versão com a formatação correta entre em vigor.
 
 ### Resultado Esperado
 
-Quando você enviar "teste", a mensagem no WhatsApp será:
+Após o deploy, quando você enviar "teste", a mensagem aparecerá como:
 
 ```
 *Kairo Lopes - Tecnologia*
@@ -49,15 +25,13 @@ Quando você enviar "teste", a mensagem no WhatsApp será:
 teste
 ```
 
-Que aparecerá como:
+Que será exibida no WhatsApp como:
 
 **Kairo Lopes - Tecnologia**
 
 teste
 
-### Arquivo a Modificar
+### Ação Necessária
 
-1. **`supabase/functions/send-whatsapp/index.ts`** (linha 62)
-   - Inverter ordem: assinatura primeiro
-   - Adicionar asteriscos para negrito: `*${signature}*`
+1. **Deploy** da Edge Function `send-whatsapp`
 
