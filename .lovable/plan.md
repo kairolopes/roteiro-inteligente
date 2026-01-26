@@ -1,119 +1,119 @@
 
-# Plano: Independência Total do Lovable
 
-## Situação Atual
+# Plano: Atualizar migration_completa.sql
 
-O projeto já possui toda a estrutura para funcionar de forma 100% independente:
-- **Netlify Functions** prontas em `netlify/functions/` (chat-travel.ts, generate-itinerary.ts)
-- **Arquivo de migração** completo: `migration_completa.sql`
-- **Guia de deploy** detalhado: `DEPLOY_GUIDE.md`
-
-**Problema**: Minha última alteração apontou o código para o Lovable Cloud ao invés das Netlify Functions, criando dependência.
+## Objetivo
+Atualizar o arquivo `migration_completa.sql` para incluir **todas** as tabelas, funções, triggers, enums e políticas RLS que o projeto utiliza atualmente.
 
 ---
 
-## O Que Vou Fazer
+## Resumo Executivo
 
-### 1. Reverter o código para usar Netlify Functions
+O arquivo `migration_completa.sql` atual contém apenas **7 tabelas** e está desatualizado. O banco de dados completo do projeto possui **18 tabelas**, além de enums, funções de verificação de roles e políticas RLS para administradores.
 
-Vou alterar `src/pages/Chat.tsx` e `src/pages/Itinerary.tsx` para usar as Netlify Functions quando em produção (viagecomsofia.com):
+**Impacto**: Sem esta atualização, o login e outras funcionalidades críticas não funcionarão no projeto Supabase independente.
+
+---
+
+## O que será adicionado
+
+### Novas Tabelas (11 tabelas)
+1. **user_roles** - Sistema de roles (admin, moderator, user)
+2. **admin_users** - Perfis de administradores com departamentos
+3. **admin_activity_logs** - Auditoria de ações administrativas
+4. **affiliate_clicks** - Rastreamento de cliques em links afiliados
+5. **flight_price_cache** - Cache de preços de voos
+6. **landing_leads** - Leads capturados na página de vendas
+7. **notification_logs** - Histórico de notificações enviadas
+8. **integration_settings** - Configurações das integrações (Z-API, Hotmart)
+9. **whatsapp_templates** - Templates de mensagens WhatsApp
+10. **whatsapp_messages** - Histórico de conversas WhatsApp
+11. **customer_tags** e **customer_tag_assignments** - Sistema de tags para CRM
+12. **customer_notes** - Notas sobre clientes
+13. **hotmart_products** - Produtos mapeados do Hotmart
+14. **hotmart_purchases** - Histórico de compras Hotmart
+
+### Enums (3 tipos)
+- `app_role` - Tipos de role (admin, moderator, user)
+- `admin_department` - Departamentos (suporte, vendas, etc.)
+- `signature_type` - Tipo de assinatura (departamento ou pessoal)
+
+### Funções Críticas
+- `has_role(_user_id, _role)` - Função SECURITY DEFINER para verificar roles sem recursão RLS
+
+### Alterações em Tabelas Existentes
+- Adicionar coluna `phone` na tabela `profiles`
+
+### Políticas RLS de Admin
+- Permitir admins visualizar/editar profiles, user_credits e transactions
+
+---
+
+## Estrutura do Arquivo Atualizado
 
 ```text
-Produção (viagecomsofia.com) → Netlify Functions
-Desenvolvimento (Lovable, localhost) → Supabase Edge Functions
-```
-
-### 2. Garantir que todas as URLs estão corretas
-
-O código detectará automaticamente o ambiente:
-- Se hostname contém `viagecomsofia` ou `netlify.app` → usa `/.netlify/functions/`
-- Senão → usa Supabase Edge Functions para testes
-
----
-
-## O Que Você Precisa Fazer no Netlify
-
-Após eu reverter o código, você precisa configurar as variáveis de ambiente no Netlify:
-
-### Passo 1: Acessar o Painel Netlify
-1. Vá em [app.netlify.com](https://app.netlify.com)
-2. Clique no site **viagecomsofia**
-3. No menu lateral, clique em **Site configuration**
-4. Clique em **Environment variables**
-
-### Passo 2: Adicionar as Variáveis
-Clique em "Add a variable" para cada uma:
-
-| Variável | Valor | Para que serve |
-|----------|-------|----------------|
-| `VITE_SUPABASE_URL` | `https://rvmvoogyrafiogxdbisx.supabase.co` | Conectar ao banco de dados |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (chave completa) | Autenticação |
-| `GOOGLE_GEMINI_API_KEY` | Sua chave do Google AI Studio | Fazer a Sofia funcionar |
-
-### Passo 3: Obter a GOOGLE_GEMINI_API_KEY (se não tiver)
-1. Acesse [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
-2. Faça login com sua conta Google
-3. Clique em "Create API Key"
-4. Copie a chave gerada
-
-### Passo 4: Fazer Redeploy
-1. No Netlify, vá em **Deploys**
-2. Clique em **Trigger deploy** → **Clear cache and deploy site**
-
----
-
-## Arquitetura Final (100% Independente)
-
-```text
-┌─────────────────────────────────────────────────────┐
-│              www.viagecomsofia.com                  │
-│                    (Netlify)                        │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  Frontend React (hospedado no Netlify)              │
-│  ├── Login/Cadastro → Supabase Auth                │
-│  ├── Chat Sofia → Netlify Function (chat-travel)   │
-│  └── Roteiros → Netlify Function (generate-itin)   │
-│                                                     │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│  Netlify Functions (suas APIs)                      │
-│  ├── chat-travel.ts → Google Gemini API            │
-│  ├── generate-itinerary.ts → Google Gemini API     │
-│  └── create-payment.ts → Mercado Pago API          │
-│                                                     │
-└─────────────────────────────────────────────────────┘
-                        ↓
-┌─────────────────────────────────────────────────────┐
-│           Supabase (Seu Banco de Dados)             │
-│  ├── Autenticação de usuários                       │
-│  ├── Tabelas: profiles, user_credits, etc.          │
-│  └── Storage: avatares                              │
-└─────────────────────────────────────────────────────┘
+PARTE 1:  Funções Auxiliares (update_updated_at_column)
+PARTE 2:  Enums (app_role, admin_department, signature_type)
+PARTE 3:  Tabela profiles (com coluna phone)
+PARTE 4:  Tabela user_roles + função has_role()
+PARTE 5:  Tabela user_credits
+PARTE 6:  Tabela saved_itineraries
+PARTE 7:  Tabela saved_preferences
+PARTE 8:  Tabela transactions
+PARTE 9:  Tabela places_cache (com Foursquare)
+PARTE 10: Tabela affiliate_clicks
+PARTE 11: Tabela flight_price_cache
+PARTE 12: Tabela landing_leads
+PARTE 13: Tabelas de notificação (notification_logs, integration_settings, whatsapp_templates)
+PARTE 14: Tabela whatsapp_messages (com realtime)
+PARTE 15: Tabelas de CRM (customer_tags, customer_tag_assignments, customer_notes)
+PARTE 16: Tabelas Admin (admin_users, admin_activity_logs)
+PARTE 17: Tabelas Hotmart (hotmart_products, hotmart_purchases)
+PARTE 18: Triggers para novos usuários
+PARTE 19: Storage bucket de avatares
+PARTE 20: Dados iniciais (tags, templates, configurações)
 ```
 
 ---
 
-## Migração Futura para Supabase Próprio
+## Detalhes Relevantes
 
-Quando quiser **total independência** (seu próprio Supabase):
+### Por que o login não funciona?
+O fluxo de autenticação cria automaticamente um registro em `profiles` e `user_credits` via triggers. Se as tabelas não existirem, o trigger falha e o usuário não consegue completar o cadastro.
 
-1. Crie um projeto em [supabase.com](https://supabase.com)
-2. Execute o arquivo `migration_completa.sql` no SQL Editor
-3. Configure autenticação (Email, Google OAuth)
-4. Atualize as variáveis no Netlify com as novas credenciais
-5. Faça redeploy
+### Segurança
+Todas as políticas RLS serão configuradas corretamente:
+- Usuários só acessam seus próprios dados
+- Admins podem acessar dados de todos (para CRM)
+- Service role para webhooks e edge functions
 
-O arquivo `DEPLOY_GUIDE.md` tem todas as instruções detalhadas.
+### Dados Iniciais
+O arquivo incluirá dados iniciais para:
+- Templates de WhatsApp padrão
+- Configurações de integrações (desativadas por padrão)
+- Tags de cliente padrão (VIP, Novo, Suporte, Potencial)
 
 ---
 
-## Resultado Final
+## Passos da Implementação
 
-Depois de aprovar este plano:
-1. Vou reverter o código para usar Netlify Functions em produção
-2. Você configura as 3 variáveis no Netlify
-3. Faz redeploy
-4. O site funciona **100% independente do Lovable**
+1. Criar seção de enums no início do arquivo
+2. Adicionar função `has_role()` antes das políticas que a utilizam
+3. Adicionar todas as 11 tabelas novas com suas estruturas completas
+4. Adicionar coluna `phone` na tabela `profiles`
+5. Incluir todas as políticas RLS (incluindo as de admin)
+6. Habilitar realtime para `whatsapp_messages`
+7. Incluir INSERTs para dados iniciais
+8. Atualizar seção de próximos passos
 
-Se o Lovable desaparecer amanhã, seu site continua funcionando normalmente.
+---
+
+## Resultado Esperado
+
+Após executar o novo `migration_completa.sql` no SQL Editor do Supabase independente:
+- Login funcionará corretamente
+- Painel admin estará funcional
+- Integrações (WhatsApp, Hotmart) estarão prontas para configuração
+- Sistema de créditos e assinaturas funcionará
+- CRM com tags e notas estará disponível
+
