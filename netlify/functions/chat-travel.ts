@@ -89,15 +89,17 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
         gastronomy: "Gastronomia", romantic: "Romântico", family: "Família"
       };
       
+      const travelWithLabels: Record<string, string> = {
+        romantic: "Romântica", family: "Em Família", solo: "Solo", backpacker: "Mochilão"
+      };
+      
       const budgetLabels: Record<string, string> = {
         budget: "Econômico", moderate: "Moderado", luxury: "Luxo"
       };
 
       const destination = quizAnswers.destination ? (destLabels[quizAnswers.destination] || quizAnswers.destination) : null;
-      const styleLabels: Record<string, string> = {
-        romantic: "Romântica", family: "Em Família", solo: "Solo", backpacker: "Mochilão"
-      };
       const style = quizAnswers.travelStyle ? (styleLabels[quizAnswers.travelStyle] || quizAnswers.travelStyle) : null;
+      const travelWith = quizAnswers.travelWith ? (travelWithLabels[quizAnswers.travelWith] || quizAnswers.travelWith) : null;
       const budget = budgetLabels[quizAnswers.budget] || quizAnswers.budget;
       
       contextMessage = `\n\nCONTEXTO DO USUÁRIO (do quiz de preferências):
@@ -105,7 +107,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
 - Estilo de viagem: ${style || "Não especificado"}
 - Orçamento: ${budget || "Não especificado"}
 - Período: ${quizAnswers.dates?.startDate || "Não especificado"} a ${quizAnswers.dates?.endDate || "Não especificado"}
-- Viajando: ${quizAnswers.travelWith || "Não especificado"}
+- Viajando: ${travelWith || "Não especificado"}
 - Acomodação preferida: ${quizAnswers.accommodation || "Não especificado"}
 - Interesses: ${quizAnswers.interests?.join(", ") || "Não especificado"}`;
     }

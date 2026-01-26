@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getFlightPricesUrl, getAuthHeaders } from '@/lib/apiRouting';
 
 export interface FlightPrice {
   origin: string;
@@ -124,13 +125,8 @@ export function useFlightPrices(options: UseFlightPricesOptions = {}): UseFlight
       if (destination) params.append('destination', destination);
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flight-prices?${params.toString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
+        getFlightPricesUrl(params),
+        { headers: getAuthHeaders() }
       );
 
       if (!response.ok) {

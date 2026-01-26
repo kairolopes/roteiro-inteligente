@@ -15,16 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
-// Dynamic routing: Netlify Functions in production, Supabase Edge Functions for development
-const getGenerateUrl = () => {
-  const hostname = window.location.hostname;
-  const isProduction = hostname.includes('viagecomsofia') || hostname.includes('netlify.app');
-  
-  if (isProduction) {
-    return '/.netlify/functions/generate-itinerary';
-  }
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
-};
+import { getGenerateItineraryUrl, getAuthHeaders } from "@/lib/apiRouting";
 
 interface ProgressState {
   step: string;
@@ -86,12 +77,9 @@ const Itinerary = () => {
 
       const conversationSummary = sessionStorage.getItem("chatSummary") || "";
 
-      const response = await fetch(getGenerateUrl(), {
+      const response = await fetch(getGenerateItineraryUrl(), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ quizAnswers, conversationSummary, stream: true }),
       });
 
