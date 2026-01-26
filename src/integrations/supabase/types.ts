@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          created_at: string | null
+          custom_signature: string | null
+          department: Database["public"]["Enums"]["admin_department"]
+          display_name: string | null
+          id: string
+          is_active: boolean | null
+          signature_type: Database["public"]["Enums"]["signature_type"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          custom_signature?: string | null
+          department?: Database["public"]["Enums"]["admin_department"]
+          display_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          signature_type?: Database["public"]["Enums"]["signature_type"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          custom_signature?: string | null
+          department?: Database["public"]["Enums"]["admin_department"]
+          display_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          signature_type?: Database["public"]["Enums"]["signature_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       affiliate_clicks: {
         Row: {
           category: string
@@ -597,7 +660,14 @@ export type Database = {
       }
     }
     Enums: {
+      admin_department:
+        | "suporte"
+        | "vendas"
+        | "administracao"
+        | "financeiro"
+        | "marketing"
       app_role: "admin" | "moderator" | "user"
+      signature_type: "department" | "personal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -725,7 +795,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_department: [
+        "suporte",
+        "vendas",
+        "administracao",
+        "financeiro",
+        "marketing",
+      ],
       app_role: ["admin", "moderator", "user"],
+      signature_type: ["department", "personal"],
     },
   },
 } as const
