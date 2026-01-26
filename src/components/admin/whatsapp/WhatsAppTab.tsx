@@ -240,7 +240,7 @@ export const WhatsAppTab = () => {
               {/* Chat View */}
               <div
                 className={cn(
-                  'h-full',
+                  'h-full overflow-hidden',
                   !selectedPhone && 'hidden lg:flex lg:items-center lg:justify-center'
                 )}
               >
