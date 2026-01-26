@@ -10,6 +10,16 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 
 // Validate place using Google Places API
+// Get the base URL for internal Netlify function calls
+function getInternalBaseUrl(): string {
+  // Use environment variable or construct from context
+  if (process.env.URL) {
+    return process.env.URL;
+  }
+  // Fallback for local development
+  return "http://localhost:8888";
+}
+
 async function validatePlace(
   title: string, 
   city: string
@@ -21,11 +31,12 @@ async function validatePlace(
   photoReference: string | null;
 } | null> {
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/google-places`, {
+    // Call our Netlify google-places function
+    const baseUrl = getInternalBaseUrl();
+    const response = await fetch(`${baseUrl}/.netlify/functions/google-places`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({ query: title, city }),
     });
