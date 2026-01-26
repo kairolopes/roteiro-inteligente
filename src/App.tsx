@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { useVersionCheck } from "@/hooks/useVersionCheck";
 import { useToast } from "@/hooks/use-toast";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Quiz from "./pages/Quiz";
 import Chat from "./pages/Chat";
@@ -37,31 +38,33 @@ const App = () => {
   useVersionCheck();
   
   return (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ToastCleaner />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/passagens" element={<Passagens />} />
-            <Route path="/passagens/:origem/:destino/:data" element={<FlightDetails />} />
-            <Route path="/quiz" element={<Quiz />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/itinerary" element={<Itinerary />} />
-            <Route path="/my-itineraries" element={<MyItineraries />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/vendas" element={<Vendas />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ToastCleaner />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/passagens" element={<Passagens />} />
+              <Route path="/passagens/:origem/:destino/:data" element={<FlightDetails />} />
+              <Route path="/quiz" element={<Quiz />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/itinerary" element={<Itinerary />} />
+              <Route path="/my-itineraries" element={<MyItineraries />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/vendas" element={<Vendas />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
   );
 };
 
