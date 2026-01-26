@@ -1,45 +1,39 @@
 
 
-## Plano: Corrigir Envio de Mensagens WhatsApp
+## Plano: Adicionar Client-Token ao Envio de WhatsApp
 
-### Problema Identificado
+### Resumo
 
-O Z-API retornou erro `"your client-token is not configured"`. Isso significa que a API agora exige um **Client-Token** adicional no header das requisições HTTP.
-
----
-
-### O que é o Client-Token?
-
-O Client-Token é uma chave de segurança adicional do Z-API que você encontra no painel da instância. É diferente do token que já está na URL.
+Agora que você identificou o Client-Token (`CC91F1EC21501AFE9182A3BC`), vou implementar a correção na Edge Function para resolver o erro "your client-token is not configured".
 
 ---
 
-### Etapa 1: Adicionar Novo Secret
+### Etapa 1: Adicionar Secret
 
-Você precisará fornecer o **Client-Token** do Z-API:
-
-1. Acesse seu painel Z-API
-2. Vá na instância conectada
-3. Copie o **Client-Token** (geralmente visível junto com Instance ID e Token)
-4. Vou solicitar para você adicionar esse secret
+Você precisará adicionar o secret `ZAPI_CLIENT_TOKEN` com o valor que você encontrou.
 
 ---
 
 ### Etapa 2: Atualizar Edge Function
 
-Modificar `supabase/functions/send-whatsapp/index.ts` para incluir o Client-Token no header:
+Modificar `supabase/functions/send-whatsapp/index.ts` (linhas 40-50):
 
+**Antes:**
 ```typescript
-// Antes (linhas 41-50)
 const zapiResponse = await fetch(zapiUrl, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
   },
-  body: JSON.stringify({...}),
+  body: JSON.stringify({
+    phone: formattedPhone,
+    message: message,
+  }),
 });
+```
 
-// Depois
+**Depois:**
+```typescript
 const zapiClientToken = Deno.env.get("ZAPI_CLIENT_TOKEN");
 
 const zapiResponse = await fetch(zapiUrl, {
@@ -48,21 +42,18 @@ const zapiResponse = await fetch(zapiUrl, {
     "Content-Type": "application/json",
     "Client-Token": zapiClientToken || "",
   },
-  body: JSON.stringify({...}),
+  body: JSON.stringify({
+    phone: formattedPhone,
+    message: message,
+  }),
 });
 ```
 
 ---
 
-### Sobre a Assinatura
+### Etapa 3: Verificar Assinatura
 
-Você mencionou que deveria aparecer seu nome "Tecnologia" como assinatura. Isso já está implementado no `useAdminAuth` hook, mas preciso verificar:
-
-1. Se você tem um perfil na tabela `admin_users`
-2. Se o `signature_type` está configurado como 'personal' ou 'department'
-3. Se o `display_name` ou `custom_signature` está preenchido
-
-Após aprovar, vou também verificar sua configuração de assinatura.
+Após a correção do envio, vou verificar sua configuração na tabela `admin_users` para garantir que a assinatura "Tecnologia" apareça corretamente nas mensagens.
 
 ---
 
@@ -74,14 +65,14 @@ Após aprovar, vou também verificar sua configuração de assinatura.
 
 ### Secrets a Adicionar
 
-| Secret | Descrição |
-|--------|-----------|
-| `ZAPI_CLIENT_TOKEN` | Token de cliente do Z-API |
+| Secret | Valor |
+|--------|-------|
+| `ZAPI_CLIENT_TOKEN` | `CC91F1EC21501AFE9182A3BC` |
 
 ---
 
-### Resultado
+### Resultado Esperado
 
-1. Mensagens serão enviadas corretamente via Z-API
-2. Assinatura aparecerá conforme seu perfil de admin
+1. ✅ Mensagens WhatsApp serão enviadas com sucesso
+2. ✅ Assinatura do admin aparecerá nas mensagens (após verificação)
 
