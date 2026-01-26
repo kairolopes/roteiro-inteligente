@@ -15,8 +15,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
-// Always use Supabase Edge Functions (Lovable Cloud) - no Netlify dependency
+// Dynamic routing: Netlify Functions in production, Supabase Edge Functions for development
 const getGenerateUrl = () => {
+  const hostname = window.location.hostname;
+  const isProduction = hostname.includes('viagecomsofia') || hostname.includes('netlify.app');
+  
+  if (isProduction) {
+    return '/.netlify/functions/generate-itinerary';
+  }
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
 };
 
