@@ -68,126 +68,128 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     resetForm();
   };
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      >
-        <div className="min-h-full flex items-center justify-center p-4 py-8 sm:py-12">
+      {isOpen && (
+        <>
+          {/* Backdrop - separado do modal */}
           <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md glass-card rounded-2xl p-6 relative"
-          >
-          {/* Close button */}
-          <button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
             onClick={onClose}
-            className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+          />
+
+          {/* Modal - posicionamento direto */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 mx-auto max-w-md"
           >
-            <X className="w-5 h-5" />
-          </button>
+            <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 relative">
+              {/* Close button */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
 
-          {/* Header */}
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold">
-              {mode === "login" ? "Entrar" : "Criar conta"}
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              {mode === "login"
-                ? "Acesse seus roteiros salvos"
-                : "Salve roteiros e preferências"}
-            </p>
-          </div>
+              {/* Header */}
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold">
+                  {mode === "login" ? "Entrar" : "Criar conta"}
+                </h2>
+                <p className="text-muted-foreground mt-1">
+                  {mode === "login"
+                    ? "Acesse seus roteiros salvos"
+                    : "Salve roteiros e preferências"}
+                </p>
+              </div>
 
+              {/* Email Form */}
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
+                {mode === "signup" && (
+                  <div>
+                    <Label htmlFor="fullName">Nome completo</Label>
+                    <div className="relative mt-1">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        placeholder="Seu nome"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="pl-10"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                )}
 
-          {/* Email Form */}
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div>
-                <Label htmlFor="fullName">Nome completo</Label>
-                <div className="relative mt-1">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative mt-1">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Senha</Label>
                   <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Seu nome"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-10"
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
                     disabled={isLoading}
+                    className="mt-1"
                   />
                 </div>
-              </div>
-            )}
 
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <div className="relative mt-1">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
+                <Button
+                  type="submit"
+                  className="w-full gradient-primary text-primary-foreground"
                   disabled={isLoading}
-                />
-              </div>
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : mode === "login" ? (
+                    "Entrar"
+                  ) : (
+                    "Criar conta"
+                  )}
+                </Button>
+              </form>
+
+              {/* Toggle mode */}
+              <p className="text-center text-sm text-muted-foreground mt-4">
+                {mode === "login" ? "Não tem conta? " : "Já tem conta? "}
+                <button
+                  onClick={toggleMode}
+                  className="text-primary font-medium hover:underline"
+                >
+                  {mode === "login" ? "Criar conta" : "Entrar"}
+                </button>
+              </p>
             </div>
-
-            <div>
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                disabled={isLoading}
-                className="mt-1"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full gradient-primary text-primary-foreground"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : mode === "login" ? (
-                "Entrar"
-              ) : (
-                "Criar conta"
-              )}
-            </Button>
-          </form>
-
-          {/* Toggle mode */}
-          <p className="text-center text-sm text-muted-foreground mt-4">
-            {mode === "login" ? "Não tem conta? " : "Já tem conta? "}
-            <button
-              onClick={toggleMode}
-              className="text-primary font-medium hover:underline"
-            >
-              {mode === "login" ? "Criar conta" : "Entrar"}
-            </button>
-          </p>
           </motion.div>
-        </div>
-      </motion.div>
+        </>
+      )}
     </AnimatePresence>
   );
 };
