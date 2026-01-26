@@ -1,86 +1,119 @@
 
-# Plano: Restaurar Login e Chat IA no viagecomsofia.com
+# Plano: Independência Total do Lovable
 
-## Diagnóstico Confirmado
+## Situação Atual
 
-O código está correto e funcionando. O problema é **exclusivamente de configuração no painel do Netlify**. As variáveis de ambiente precisam ser configuradas lá porque:
+O projeto já possui toda a estrutura para funcionar de forma 100% independente:
+- **Netlify Functions** prontas em `netlify/functions/` (chat-travel.ts, generate-itinerary.ts)
+- **Arquivo de migração** completo: `migration_completa.sql`
+- **Guia de deploy** detalhado: `DEPLOY_GUIDE.md`
 
-- O arquivo `.env` local **não é enviado** para produção (está no `.gitignore` por segurança)
-- Cada ambiente (Lovable, localhost, Netlify) precisa de suas próprias variáveis
+**Problema**: Minha última alteração apontou o código para o Lovable Cloud ao invés das Netlify Functions, criando dependência.
 
 ---
 
-## Configuração Necessária no Netlify
+## O Que Vou Fazer
 
-### Passo 1: Acessar Configurações de Ambiente
+### 1. Reverter o código para usar Netlify Functions
 
-1. Acesse [app.netlify.com](https://app.netlify.com)
-2. Selecione o site **viagecomsofia.com**
-3. Vá em **Site configuration** (menu lateral)
+Vou alterar `src/pages/Chat.tsx` e `src/pages/Itinerary.tsx` para usar as Netlify Functions quando em produção (viagecomsofia.com):
+
+```text
+Produção (viagecomsofia.com) → Netlify Functions
+Desenvolvimento (Lovable, localhost) → Supabase Edge Functions
+```
+
+### 2. Garantir que todas as URLs estão corretas
+
+O código detectará automaticamente o ambiente:
+- Se hostname contém `viagecomsofia` ou `netlify.app` → usa `/.netlify/functions/`
+- Senão → usa Supabase Edge Functions para testes
+
+---
+
+## O Que Você Precisa Fazer no Netlify
+
+Após eu reverter o código, você precisa configurar as variáveis de ambiente no Netlify:
+
+### Passo 1: Acessar o Painel Netlify
+1. Vá em [app.netlify.com](https://app.netlify.com)
+2. Clique no site **viagecomsofia**
+3. No menu lateral, clique em **Site configuration**
 4. Clique em **Environment variables**
 
 ### Passo 2: Adicionar as Variáveis
+Clique em "Add a variable" para cada uma:
 
-Adicione **EXATAMENTE** estas 4 variáveis:
+| Variável | Valor | Para que serve |
+|----------|-------|----------------|
+| `VITE_SUPABASE_URL` | `https://rvmvoogyrafiogxdbisx.supabase.co` | Conectar ao banco de dados |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (chave completa) | Autenticação |
+| `GOOGLE_GEMINI_API_KEY` | Sua chave do Google AI Studio | Fazer a Sofia funcionar |
 
-| Nome da Variável | Valor |
-|-----------------|-------|
-| `VITE_SUPABASE_URL` | `https://rvmvoogyrafiogxdbisx.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bXZvb2d5cmFmaW9neGRiaXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNjQ4MjksImV4cCI6MjA4Mzk0MDgyOX0.3ZXQhOP7NJ4JfSr3AFuuIOJKN7SLd-tZ5XpeU6SWagY` |
-| `VITE_SUPABASE_PROJECT_ID` | `rvmvoogyrafiogxdbisx` |
-| `GOOGLE_GEMINI_API_KEY` | *(sua chave do Google AI Studio)* |
+### Passo 3: Obter a GOOGLE_GEMINI_API_KEY (se não tiver)
+1. Acesse [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+2. Faça login com sua conta Google
+3. Clique em "Create API Key"
+4. Copie a chave gerada
 
-**Nota:** A chave `GOOGLE_GEMINI_API_KEY` você obteve anteriormente no [Google AI Studio](https://aistudio.google.com/app/apikey). Se não lembra, pode gerar uma nova.
-
-### Passo 3: Fazer Redeploy
-
-1. Vá em **Deploys** no menu do Netlify
+### Passo 4: Fazer Redeploy
+1. No Netlify, vá em **Deploys**
 2. Clique em **Trigger deploy** → **Clear cache and deploy site**
-3. Aguarde ~2 minutos para o deploy completar
 
 ---
 
-## O que Cada Variável Faz
-
-| Variável | Função |
-|----------|--------|
-| `VITE_SUPABASE_URL` | URL do banco de dados - necessária para login/cadastro |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave de acesso ao banco - necessária para autenticação |
-| `VITE_SUPABASE_PROJECT_ID` | ID do projeto - usada em algumas funções |
-| `GOOGLE_GEMINI_API_KEY` | Chave da IA - necessária para a Sofia responder no chat |
-
----
-
-## Resultado Esperado
-
-Após o redeploy:
-- Login e cadastro funcionarão
-- Chat com a Sofia funcionará
-- Geração de roteiros funcionará
-
----
-
-## Detalhes Técnicos
-
-O sistema foi projetado para ser independente usando variáveis de ambiente. A arquitetura:
+## Arquitetura Final (100% Independente)
 
 ```text
 ┌─────────────────────────────────────────────────────┐
-│                  viagecomsofia.com                  │
+│              www.viagecomsofia.com                  │
 │                    (Netlify)                        │
 ├─────────────────────────────────────────────────────┤
-│  Frontend React                                     │
-│  └── usa VITE_SUPABASE_* para autenticação         │
 │                                                     │
-│  Netlify Functions                                  │
-│  └── chat-travel.ts                                │
-│      └── usa GOOGLE_GEMINI_API_KEY para IA         │
+│  Frontend React (hospedado no Netlify)              │
+│  ├── Login/Cadastro → Supabase Auth                │
+│  ├── Chat Sofia → Netlify Function (chat-travel)   │
+│  └── Roteiros → Netlify Function (generate-itin)   │
+│                                                     │
 ├─────────────────────────────────────────────────────┤
-│                        ↓                            │
-│            Lovable Cloud (Supabase)                 │
-│  └── Banco de dados PostgreSQL                     │
-│  └── Autenticação de usuários                      │
+│                                                     │
+│  Netlify Functions (suas APIs)                      │
+│  ├── chat-travel.ts → Google Gemini API            │
+│  ├── generate-itinerary.ts → Google Gemini API     │
+│  └── create-payment.ts → Mercado Pago API          │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────┐
+│           Supabase (Seu Banco de Dados)             │
+│  ├── Autenticação de usuários                       │
+│  ├── Tabelas: profiles, user_credits, etc.          │
+│  └── Storage: avatares                              │
 └─────────────────────────────────────────────────────┘
 ```
 
-O `.env` local existe apenas para desenvolvimento. Em produção, o Netlify precisa ter suas próprias variáveis configuradas no painel.
+---
+
+## Migração Futura para Supabase Próprio
+
+Quando quiser **total independência** (seu próprio Supabase):
+
+1. Crie um projeto em [supabase.com](https://supabase.com)
+2. Execute o arquivo `migration_completa.sql` no SQL Editor
+3. Configure autenticação (Email, Google OAuth)
+4. Atualize as variáveis no Netlify com as novas credenciais
+5. Faça redeploy
+
+O arquivo `DEPLOY_GUIDE.md` tem todas as instruções detalhadas.
+
+---
+
+## Resultado Final
+
+Depois de aprovar este plano:
+1. Vou reverter o código para usar Netlify Functions em produção
+2. Você configura as 3 variáveis no Netlify
+3. Faz redeploy
+4. O site funciona **100% independente do Lovable**
+
+Se o Lovable desaparecer amanhã, seu site continua funcionando normalmente.
