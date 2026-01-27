@@ -25,9 +25,8 @@ export const getChatUrl = (): string => {
 };
 
 export const getGenerateItineraryUrl = (): string => {
-  if (isProduction()) {
-    return '/.netlify/functions/generate-itinerary';
-  }
+  // Always use Supabase Edge Function for itinerary generation
+  // Netlify Functions have a 10s timeout limit which is too short for AI generation
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
 };
 
