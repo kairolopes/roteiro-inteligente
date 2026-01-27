@@ -1,83 +1,113 @@
 
-# Diagnóstico: Timeout da Netlify Function
+# Correção: Edge Function de Geração de Roteiro Falhando
 
-## O Problema Identificado
+## Problema Identificado
 
-A geração do roteiro está travando porque a **Netlify Function tem um limite de tempo de execução (timeout)**:
+Os logs mostram dois problemas distintos:
 
-| Plano Netlify | Timeout |
-|---------------|---------|
-| Gratuito | 10 segundos |
-| Pro | 26 segundos |
+### 1. Modelo de Fallback Descontinuado
+```
+ERROR AI Gateway error (gemini-1.5-pro): 404
+"models/gemini-1.5-pro is not found for API version v1main"
+```
+O modelo `gemini-1.5-pro` foi descontinuado pela Google e não existe mais.
 
-A função `generate-itinerary` faz várias operações que podem levar **60+ segundos**:
-
-1. **Chamada Gemini** (~15-45s) - Gerar roteiro completo com 5-6 atividades por dia
-2. **Google Places** (~10-30s) - Enriquecer cada atividade com coordenadas reais
-3. **Cache Supabase** (~2-5s) - Salvar dados no cache
-
-**Total potencial: 30-80 segundos** → Muito acima do limite de 10-26s do Netlify
-
-## A Chave Está Correta
-
-Seu print mostra que a chave está no **Google AI Studio** (não no Cloud Console), então ela **é válida** para o endpoint Gemini. O problema não é autenticação.
+### 2. Respostas Mal Formatadas
+```json
+"finish_reason": "function_call_filter: MALFORMED_FUNCTION_CALL"
+```
+O modelo `gemini-2.0-flash` está gerando respostas com tool calls mal formatados. Como o fallback falha, retorna erro 500.
 
 ---
 
-## Soluções Possíveis
+## Solução
 
-### Opção 1: Aumentar Timeout (Mais Simples)
-Fazer upgrade para o plano **Netlify Pro** aumenta o timeout para 26 segundos e permite usar **Background Functions** (até 15 minutos).
+### Fase 1: Atualizar Modelos de IA
 
-**Custo**: ~$19/mês
+Trocar a lista de modelos para usar modelos válidos e atuais:
 
-### Opção 2: Migrar para Supabase Edge Functions (Recomendado)
-As Edge Functions do Lovable Cloud não têm o mesmo limite de timeout rígido e já estão configuradas no projeto.
+```text
+Antes:  ["gemini-2.0-flash", "gemini-1.5-pro"]
+Depois: ["gemini-2.5-flash", "gemini-2.0-flash"]
+```
 
-**Mudança necessária**: Fazer a geração usar sempre a Edge Function em vez da Netlify Function.
+Os modelos válidos em 2026:
+- `gemini-2.5-flash` - Modelo rápido e confiável (primário)
+- `gemini-2.0-flash` - Fallback
 
-### Opção 3: Otimizar a Função Atual
-Remover ou limitar o enriquecimento do Google Places para acelerar a resposta:
-- Limitar a 2-3 atividades por dia (em vez de 5)
-- Fazer enriquecimento em segundo plano (async)
-- Usar apenas coordenadas do Gemini (sem validação)
+### Fase 2: Melhorar Tratamento de Respostas Malformadas
 
----
+Adicionar lógica para fazer retry quando receber `MALFORMED_FUNCTION_CALL`:
+1. Detectar o erro específico na resposta
+2. Tentar novamente com o mesmo modelo (até 2 tentativas)
+3. Só então passar para o próximo modelo
 
-## Plano de Implementação (Opção 2 - Recomendada)
+### Fase 3: Simplificar Schema do Tool Call
 
-### Fase 1: Usar Edge Function do Supabase
-1. Atualizar `src/lib/apiRouting.ts` para **sempre** usar a Edge Function do Supabase para geração de roteiros
-2. A Edge Function já existe em `supabase/functions/generate-itinerary/`
-
-### Fase 2: Adicionar Chave Gemini no Lovable Cloud
-1. Adicionar `GOOGLE_GEMINI_API_KEY` como secret no Lovable Cloud
-2. Isso permitirá que a Edge Function use a mesma chave
-
-### Resultado
-- Sem limite de timeout rígido
-- Mesmo código funcionando
-- Não precisa pagar Netlify Pro
+O schema atual é muito complexo (linhas 496-568). Simplificar pode reduzir erros:
+1. Remover campos opcionais desnecessários
+2. Tornar alguns campos menos restritivos
 
 ---
 
-## Resumo
+## Mudanças Técnicas
 
-| Item | Status |
-|------|--------|
-| Chave Gemini | ✅ Correta (AI Studio) |
-| Chave no Netlify | ✅ Configurada |
-| Código | ✅ Correto |
-| **Problema** | ❌ Timeout da Netlify Function (10s) |
+### Arquivo: `supabase/functions/generate-itinerary/index.ts`
+
+**Linha 205 - Atualizar modelos:**
+```typescript
+// Antes
+const AI_MODELS = ["gemini-2.0-flash", "gemini-1.5-pro"];
+
+// Depois
+const AI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+```
+
+**Função `callAIGateway` (linhas 207-258) - Detectar MALFORMED_FUNCTION_CALL:**
+```typescript
+// Adicionar detecção do erro específico
+const finishReason = data.choices?.[0]?.finish_reason;
+if (finishReason?.includes("MALFORMED_FUNCTION_CALL")) {
+  console.log(`Malformed function call from ${model}, will retry...`);
+  return { success: false, error: "MALFORMED_FUNCTION_CALL", retryable: true };
+}
+```
+
+**Loop de modelos (linhas 590-660) - Adicionar retry interno:**
+```typescript
+// Para cada modelo, tentar até 2 vezes antes de ir para o próximo
+for (const model of AI_MODELS) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = await callAIGateway(...);
+    
+    if (result.success && result.data) {
+      itinerary = extractItineraryFromResponse(result.data);
+      if (itinerary) break;
+    }
+    
+    // Se não for retryable, não tentar de novo
+    if (!result.retryable) break;
+  }
+  if (itinerary) break;
+}
+```
 
 ---
 
-## Próximos Passos
+## Resultado Esperado
 
-Escolha uma das opções:
+| Antes | Depois |
+|-------|--------|
+| gemini-2.0-flash falha com MALFORMED | Tenta gemini-2.5-flash primeiro |
+| gemini-1.5-pro retorna 404 | gemini-2.0-flash como fallback válido |
+| Erro 500 | Retry automático em caso de resposta mal formatada |
 
-1. **Migrar para Edge Functions** - Eu atualizo o código para usar sempre a Edge Function do Supabase (sem custo extra)
+---
 
-2. **Otimizar a função** - Eu removo/limito o enriquecimento do Google Places para acelerar a resposta
+## Sequência de Implementação
 
-3. **Upgrade Netlify** - Você faz upgrade do plano Netlify e habilita Background Functions
+1. Atualizar lista `AI_MODELS` para modelos válidos
+2. Adicionar detecção de `MALFORMED_FUNCTION_CALL` na resposta
+3. Implementar retry interno por modelo (2 tentativas)
+4. Deploy da Edge Function
+5. Testar geração de roteiro
