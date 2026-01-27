@@ -41,7 +41,7 @@ export function getGoogleMapsUrl(
   location?: string
 ): string {
   if (coordinates && coordinates.length === 2) {
-    const [lng, lat] = coordinates;
+    const [lat, lng] = coordinates;
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   }
   
