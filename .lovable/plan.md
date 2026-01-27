@@ -1,113 +1,84 @@
 
-# Correção: Edge Function de Geração de Roteiro Falhando
+
+# Correção: Links do Google Maps Apontando para Locais Errados
 
 ## Problema Identificado
 
-Os logs mostram dois problemas distintos:
+Quando você clica em "Ver no Google Maps" nos cards de atividades do roteiro, o link abre em uma localização errada (geralmente um lugar vazio ou incorreto).
 
-### 1. Modelo de Fallback Descontinuado
-```
-ERROR AI Gateway error (gemini-1.5-pro): 404
-"models/gemini-1.5-pro is not found for API version v1main"
-```
-O modelo `gemini-1.5-pro` foi descontinuado pela Google e não existe mais.
+**Causa raiz**: Existe uma inconsistência na ordem das coordenadas em um dos arquivos do código.
 
-### 2. Respostas Mal Formatadas
-```json
-"finish_reason": "function_call_filter: MALFORMED_FUNCTION_CALL"
+### Formato das Coordenadas no Sistema
+
+O sistema armazena coordenadas no formato padrão geográfico:
+- **Primeiro valor**: Latitude (ex: 41.89 para Roma)
+- **Segundo valor**: Longitude (ex: 12.49 para Roma)
+
+Exemplo do banco de dados:
+- Coliseu: `lat: 41.8902102, lng: 12.4922309`
+
+### O Bug
+
+No arquivo `src/services/qrCodeService.ts` (linha 44), as coordenadas estão sendo interpretadas **ao contrário**:
+
+```typescript
+// INCORRETO - assume [lng, lat]
+const [lng, lat] = coordinates;
+return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 ```
-O modelo `gemini-2.0-flash` está gerando respostas com tool calls mal formatados. Como o fallback falha, retorna erro 500.
+
+Isso inverte latitude e longitude, gerando URLs como:
+- **Errado**: `query=12.49,41.89` (ponto no mar ou lugar vazio)
+- **Correto**: `query=41.89,12.49` (Coliseu, Roma)
+
+### Comparação com Arquivo Correto
+
+O `ActivityCard.tsx` (linha 82) faz corretamente:
+```typescript
+// CORRETO - assume [lat, lng]
+const [lat, lng] = activity.coordinates;
+return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+```
 
 ---
 
 ## Solução
 
-### Fase 1: Atualizar Modelos de IA
+Corrigir o `qrCodeService.ts` para interpretar as coordenadas na ordem correta.
 
-Trocar a lista de modelos para usar modelos válidos e atuais:
+### Mudança
 
-```text
-Antes:  ["gemini-2.0-flash", "gemini-1.5-pro"]
-Depois: ["gemini-2.5-flash", "gemini-2.0-flash"]
-```
+**Arquivo**: `src/services/qrCodeService.ts`
 
-Os modelos válidos em 2026:
-- `gemini-2.5-flash` - Modelo rápido e confiável (primário)
-- `gemini-2.0-flash` - Fallback
+**Linha 44** - Inverter a ordem da desestruturação:
 
-### Fase 2: Melhorar Tratamento de Respostas Malformadas
-
-Adicionar lógica para fazer retry quando receber `MALFORMED_FUNCTION_CALL`:
-1. Detectar o erro específico na resposta
-2. Tentar novamente com o mesmo modelo (até 2 tentativas)
-3. Só então passar para o próximo modelo
-
-### Fase 3: Simplificar Schema do Tool Call
-
-O schema atual é muito complexo (linhas 496-568). Simplificar pode reduzir erros:
-1. Remover campos opcionais desnecessários
-2. Tornar alguns campos menos restritivos
-
----
-
-## Mudanças Técnicas
-
-### Arquivo: `supabase/functions/generate-itinerary/index.ts`
-
-**Linha 205 - Atualizar modelos:**
 ```typescript
-// Antes
-const AI_MODELS = ["gemini-2.0-flash", "gemini-1.5-pro"];
+// Antes (INCORRETO)
+const [lng, lat] = coordinates;
 
-// Depois
-const AI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
-```
-
-**Função `callAIGateway` (linhas 207-258) - Detectar MALFORMED_FUNCTION_CALL:**
-```typescript
-// Adicionar detecção do erro específico
-const finishReason = data.choices?.[0]?.finish_reason;
-if (finishReason?.includes("MALFORMED_FUNCTION_CALL")) {
-  console.log(`Malformed function call from ${model}, will retry...`);
-  return { success: false, error: "MALFORMED_FUNCTION_CALL", retryable: true };
-}
-```
-
-**Loop de modelos (linhas 590-660) - Adicionar retry interno:**
-```typescript
-// Para cada modelo, tentar até 2 vezes antes de ir para o próximo
-for (const model of AI_MODELS) {
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const result = await callAIGateway(...);
-    
-    if (result.success && result.data) {
-      itinerary = extractItineraryFromResponse(result.data);
-      if (itinerary) break;
-    }
-    
-    // Se não for retryable, não tentar de novo
-    if (!result.retryable) break;
-  }
-  if (itinerary) break;
-}
+// Depois (CORRETO)
+const [lat, lng] = coordinates;
 ```
 
 ---
 
-## Resultado Esperado
+## Impacto
 
-| Antes | Depois |
-|-------|--------|
-| gemini-2.0-flash falha com MALFORMED | Tenta gemini-2.5-flash primeiro |
-| gemini-1.5-pro retorna 404 | gemini-2.0-flash como fallback válido |
-| Erro 500 | Retry automático em caso de resposta mal formatada |
+Esta correção afeta:
+
+1. **QR Codes gerados para atividades** - Os QR codes no PDF agora apontarão para os locais corretos
+2. **Função `generateItineraryQRCodes`** - Usada na exportação de PDF
+
+O botão "Ver no Google Maps" nos cards já funciona corretamente pois usa a função local do `ActivityCard.tsx`.
 
 ---
 
-## Sequência de Implementação
+## Resumo Técnico
 
-1. Atualizar lista `AI_MODELS` para modelos válidos
-2. Adicionar detecção de `MALFORMED_FUNCTION_CALL` na resposta
-3. Implementar retry interno por modelo (2 tentativas)
-4. Deploy da Edge Function
-5. Testar geração de roteiro
+| Arquivo | Função | Formato Esperado | Status |
+|---------|--------|------------------|--------|
+| `ActivityCard.tsx` | `getGoogleMapsUrl` | `[lat, lng]` | ✅ Correto |
+| `qrCodeService.ts` | `getGoogleMapsUrl` | `[lng, lat]` ❌ | Precisa correção |
+| `google-places/index.ts` | Retorno da API | `[lat, lng]` | ✅ Correto |
+| `staticMapService.ts` | Renderização do mapa | `{lat, lng}` | ✅ Correto |
+
