@@ -1,4 +1,5 @@
 import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify/functions";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,20 +7,44 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+// Environment variables
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
 
-// Validate place using Google Places API
-// Get the base URL for internal Netlify function calls
-function getInternalBaseUrl(): string {
-  // Use environment variable or construct from context
-  if (process.env.URL) {
-    return process.env.URL;
-  }
-  // Fallback for local development
-  return "http://localhost:8888";
+// ========== Google Places Logic (embedded directly) ==========
+
+// Normalize query for cache lookup (lowercase, remove accents)
+function normalizeQuery(query: string): string {
+  return query
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, "")
+    .trim();
 }
 
+// Resolve photo URL by following redirects
+async function resolvePhotoUrl(photoName: string, apiKey: string): Promise<string | null> {
+  try {
+    const photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}`;
+    
+    const response = await fetch(photoUrl, {
+      method: "GET",
+      redirect: "follow",
+    });
+    
+    if (response.ok) {
+      return response.url; // Final URL after redirects
+    }
+    return null;
+  } catch (error) {
+    console.error("Error resolving photo URL:", error);
+    return null;
+  }
+}
+
+// Validate place using Google Places API (embedded logic, no HTTP call)
 async function validatePlace(
   title: string, 
   city: string
@@ -31,36 +56,142 @@ async function validatePlace(
   photoReference: string | null;
 } | null> {
   try {
-    // Call our Netlify google-places function
-    const baseUrl = getInternalBaseUrl();
-    const response = await fetch(`${baseUrl}/.netlify/functions/google-places`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query: title, city }),
-    });
-
-    if (!response.ok) {
-      console.log(`Google Places validation failed for: ${title}`);
+    // Check if we have the required API key
+    if (!GOOGLE_PLACES_API_KEY) {
+      console.log("GOOGLE_PLACES_API_KEY not configured, skipping validation");
       return null;
     }
 
-    const data = await response.json();
+    // Build search query
+    const searchQuery = city ? `${title} ${city}` : title;
+    const normalizedSearchQuery = normalizeQuery(searchQuery);
     
-    if (data.error || !data.coordinates) {
-      console.log(`Place not found: ${title}`);
+    console.log(`Validating place: "${searchQuery}" (normalized: "${normalizedSearchQuery}")`);
+
+    // Step 1: Check cache first (if Supabase is configured)
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        
+        const { data: cachedPlace, error: cacheError } = await supabase
+          .from("places_cache")
+          .select("*")
+          .eq("search_query", normalizedSearchQuery)
+          .gt("expires_at", new Date().toISOString())
+          .single();
+
+        if (cachedPlace && !cacheError) {
+          console.log(`Cache hit for: ${normalizedSearchQuery}`);
+          return {
+            coordinates: cachedPlace.location_lat && cachedPlace.location_lng 
+              ? [cachedPlace.location_lat, cachedPlace.location_lng] 
+              : null,
+            rating: cachedPlace.rating,
+            googleMapsUrl: cachedPlace.google_maps_url,
+            placeId: cachedPlace.place_id,
+            photoReference: cachedPlace.photo_reference,
+          };
+        }
+      } catch (cacheErr) {
+        console.log("Cache check failed, continuing with API call:", cacheErr);
+      }
+    }
+
+    // Step 2: Call Google Places API directly
+    console.log(`Cache miss, calling Google Places API for: ${searchQuery}`);
+    
+    const placesResponse = await fetch(
+      "https://places.googleapis.com/v1/places:searchText",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+          "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.googleMapsUri,places.photos",
+        },
+        body: JSON.stringify({
+          textQuery: searchQuery,
+          languageCode: "pt-BR",
+        }),
+      }
+    );
+
+    if (!placesResponse.ok) {
+      const errorText = await placesResponse.text();
+      console.error(`Google Places API error: ${placesResponse.status}`, errorText);
       return null;
     }
 
-    console.log(`Place validated: ${title} (cached: ${data.cached})`);
+    const placesData = await placesResponse.json();
+    
+    if (!placesData.places || placesData.places.length === 0) {
+      console.log(`No places found for: ${searchQuery}`);
+      return null;
+    }
+
+    const place = placesData.places[0];
+    console.log(`Found place: ${place.displayName?.text}`);
+
+    // Resolve photo URL if available
+    let photoUrl: string | null = null;
+    if (place.photos && place.photos.length > 0) {
+      const photoName = place.photos[0].name;
+      photoUrl = await resolvePhotoUrl(photoName, GOOGLE_PLACES_API_KEY);
+    }
+
+    // Prepare result
+    const result = {
+      placeId: place.id,
+      name: place.displayName?.text || null,
+      address: place.formattedAddress || null,
+      coordinates: place.location 
+        ? [place.location.latitude, place.location.longitude] as [number, number]
+        : null,
+      rating: place.rating || null,
+      userRatingsTotal: place.userRatingCount || null,
+      googleMapsUrl: place.googleMapsUri || null,
+      photoReference: photoUrl,
+    };
+
+    // Step 3: Save to cache (30 days expiry) if Supabase is configured
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+
+        await supabase
+          .from("places_cache")
+          .upsert({
+            search_query: normalizedSearchQuery,
+            place_id: result.placeId,
+            name: result.name,
+            address: result.address,
+            location_lat: result.coordinates?.[0] || null,
+            location_lng: result.coordinates?.[1] || null,
+            rating: result.rating,
+            user_ratings_total: result.userRatingsTotal,
+            google_maps_url: result.googleMapsUrl,
+            photo_reference: result.photoReference,
+            expires_at: expiresAt.toISOString(),
+          }, {
+            onConflict: "search_query",
+          });
+
+        console.log(`Cached place: ${normalizedSearchQuery}`);
+      } catch (cacheErr) {
+        console.log("Failed to cache place:", cacheErr);
+        // Don't fail the request, just log
+      }
+    }
 
     return {
-      coordinates: data.coordinates,
-      rating: data.rating,
-      googleMapsUrl: data.googleMapsUrl,
-      placeId: data.placeId,
-      photoReference: data.photoReference,
+      coordinates: result.coordinates,
+      rating: result.rating,
+      googleMapsUrl: result.googleMapsUrl,
+      placeId: result.placeId,
+      photoReference: result.photoReference,
     };
   } catch (error) {
     console.error(`Error validating place ${title}:`, error);
