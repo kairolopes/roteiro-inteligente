@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
-import { getGenerateItineraryUrl, getAuthHeaders } from "@/lib/apiRouting";
+import { getGenerateItineraryUrl, getLovableCloudAuthHeaders } from "@/lib/apiRouting";
 
 interface ProgressState {
   step: string;
@@ -79,7 +79,7 @@ const Itinerary = () => {
 
       const response = await fetch(getGenerateItineraryUrl(), {
         method: "POST",
-        headers: getAuthHeaders(),
+        headers: getLovableCloudAuthHeaders(),
         body: JSON.stringify({ quizAnswers, conversationSummary, stream: true }),
       });
 

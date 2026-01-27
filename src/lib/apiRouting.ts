@@ -25,9 +25,10 @@ export const getChatUrl = (): string => {
 };
 
 export const getGenerateItineraryUrl = (): string => {
-  // Always use Supabase Edge Function for itinerary generation
+  // Always use Lovable Cloud Edge Function for itinerary generation
   // Netlify Functions have a 10s timeout limit which is too short for AI generation
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-itinerary`;
+  // Using the Lovable Cloud project directly since the Edge Function is deployed there
+  return 'https://rvmvoogyrafiogxdbisx.supabase.co/functions/v1/generate-itinerary';
 };
 
 export const getCreatePaymentUrl = (): string => {
@@ -41,6 +42,14 @@ export const getCreatePaymentUrl = (): string => {
 export const getAuthHeaders = (): Record<string, string> => {
   return {
     'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+};
+
+// Get auth headers specifically for Lovable Cloud Edge Functions
+export const getLovableCloudAuthHeaders = (): Record<string, string> => {
+  return {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bXZvb2d5cmFmaW9neGRiaXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNjQ4MjksImV4cCI6MjA4Mzk0MDgyOX0.3ZXQhOP7NJ4JfSr3AFuuIOJKN7SLd-tZ5XpeU6SWagY',
     'Content-Type': 'application/json',
   };
 };
