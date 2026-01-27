@@ -201,8 +201,8 @@ DICAS DE QUALIDADE:
 - Considere fuso horário e clima local do destino
 - Dica: mencione nome de pratos típicos para experimentar em restaurantes`;
 
-// Models to try in order (primary, fallback)
-const AI_MODELS = ["gemini-2.0-flash", "gemini-1.5-pro"];
+// Models to try in order (primary, fallback) - Updated 2026
+const AI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
 
 async function callAIGateway(
   apiKey: string,
@@ -211,7 +211,7 @@ async function callAIGateway(
   userPrompt: string,
   tools: any[],
   toolChoice: any
-): Promise<{ success: boolean; data?: any; error?: string; status?: number }> {
+): Promise<{ success: boolean; data?: any; error?: string; status?: number; retryable?: boolean }> {
   console.log(`Calling AI Gateway with model: ${model}`);
   
   try {
@@ -242,13 +242,20 @@ async function callAIGateway(
     console.log(`AI response received from ${model}`);
     console.log("Raw AI response preview:", JSON.stringify(data).substring(0, 1000));
     
+    // Check for malformed function call error - this is retryable
+    const finishReason = data.choices?.[0]?.finish_reason;
+    if (finishReason && finishReason.includes("MALFORMED_FUNCTION_CALL")) {
+      console.log(`Malformed function call from ${model}, will retry...`);
+      return { success: false, error: "MALFORMED_FUNCTION_CALL", retryable: true };
+    }
+    
     // Check if we got a valid response
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     const content = data.choices?.[0]?.message?.content;
     
     if (!toolCall && !content) {
       console.log(`Empty response from ${model}`);
-      return { success: false, error: "Empty response from model" };
+      return { success: false, error: "Empty response from model", retryable: true };
     }
 
     return { success: true, data };
@@ -586,77 +593,108 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
             // Try models in order until one succeeds
             let itinerary = null;
             let modelIndex = 0;
+            const MAX_RETRIES_PER_MODEL = 2;
 
             for (const model of AI_MODELS) {
               modelIndex++;
               const modelName = model.split("/")[1] || model;
               
-              sendEvent({ 
-                type: "progress", 
-                data: { 
-                  step: "ai_generation",
-                  message: `Gerando roteiro com ${modelName}...`,
-                  model: modelName,
-                  attempt: modelIndex,
-                  totalModels: AI_MODELS.length
-                } 
-              });
+              // Try each model up to MAX_RETRIES_PER_MODEL times
+              for (let attempt = 1; attempt <= MAX_RETRIES_PER_MODEL; attempt++) {
+                sendEvent({ 
+                  type: "progress", 
+                  data: { 
+                    step: "ai_generation",
+                    message: attempt > 1 
+                      ? `Tentando ${modelName} novamente (${attempt}/${MAX_RETRIES_PER_MODEL})...`
+                      : `Gerando roteiro com ${modelName}...`,
+                    model: modelName,
+                    attempt: modelIndex,
+                    totalModels: AI_MODELS.length
+                  } 
+                });
 
-              const result = await callAIGateway(
-                GOOGLE_GEMINI_API_KEY,
-                model,
-                ITINERARY_SYSTEM_PROMPT,
-                userPrompt,
-                tools,
-                toolChoice
-              );
+                const result = await callAIGateway(
+                  GOOGLE_GEMINI_API_KEY,
+                  model,
+                  ITINERARY_SYSTEM_PROMPT,
+                  userPrompt,
+                  tools,
+                  toolChoice
+                );
 
-              if (result.status === 429) {
-                sendEvent({ type: "error", data: { error: "Muitas requisições. Por favor, aguarde um momento." } });
-                controller.close();
-                return;
-              }
-              if (result.status === 402) {
-                sendEvent({ type: "error", data: { error: "Créditos insuficientes." } });
-                controller.close();
-                return;
-              }
+                if (result.status === 429) {
+                  sendEvent({ type: "error", data: { error: "Muitas requisições. Por favor, aguarde um momento." } });
+                  controller.close();
+                  return;
+                }
+                if (result.status === 402) {
+                  sendEvent({ type: "error", data: { error: "Créditos insuficientes." } });
+                  controller.close();
+                  return;
+                }
 
-              if (result.success && result.data) {
-                itinerary = extractItineraryFromResponse(result.data);
-                
-                if (itinerary) {
-                  sendEvent({ 
-                    type: "progress", 
-                    data: { 
-                      step: "ai_success",
-                      message: `Roteiro gerado com sucesso!`,
-                      model: modelName
-                    } 
-                  });
-                  break;
+                if (result.success && result.data) {
+                  itinerary = extractItineraryFromResponse(result.data);
+                  
+                  if (itinerary) {
+                    sendEvent({ 
+                      type: "progress", 
+                      data: { 
+                        step: "ai_success",
+                        message: `Roteiro gerado com sucesso!`,
+                        model: modelName
+                      } 
+                    });
+                    break; // Break inner loop
+                  } else {
+                    // Response was valid but couldn't extract itinerary - retry same model
+                    if (attempt < MAX_RETRIES_PER_MODEL) {
+                      sendEvent({ 
+                        type: "progress", 
+                        data: { 
+                          step: "ai_retry",
+                          message: `Resposta inválida, tentando novamente...`,
+                          model: modelName
+                        } 
+                      });
+                    }
+                  }
                 } else {
-                  sendEvent({ 
-                    type: "progress", 
-                    data: { 
-                      step: "ai_retry",
-                      message: `Tentando modelo alternativo...`,
-                      model: modelName
-                    } 
-                  });
-                }
-              } else {
-                if (modelIndex < AI_MODELS.length) {
-                  sendEvent({ 
-                    type: "progress", 
-                    data: { 
-                      step: "ai_retry",
-                      message: `Modelo ${modelName} falhou, tentando alternativo...`,
-                      model: modelName
-                    } 
-                  });
+                  // Check if error is retryable
+                  const isRetryable = (result as any).retryable === true;
+                  
+                  if (isRetryable && attempt < MAX_RETRIES_PER_MODEL) {
+                    sendEvent({ 
+                      type: "progress", 
+                      data: { 
+                        step: "ai_retry",
+                        message: `Erro temporário, tentando novamente...`,
+                        model: modelName
+                      } 
+                    });
+                    // Small delay before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    continue; // Retry same model
+                  }
+                  
+                  // Not retryable or exhausted retries - move to next model
+                  if (modelIndex < AI_MODELS.length) {
+                    sendEvent({ 
+                      type: "progress", 
+                      data: { 
+                        step: "ai_retry",
+                        message: `Modelo ${modelName} falhou, tentando alternativo...`,
+                        model: modelName
+                      } 
+                    });
+                  }
+                  break; // Break inner loop to try next model
                 }
               }
+              
+              // If we got an itinerary, break outer loop
+              if (itinerary) break;
             }
 
             if (!itinerary) {
