@@ -1,77 +1,83 @@
 
-# Plano: Adicionar GOOGLE_GEMINI_API_KEY no Netlify
+# Diagnóstico: Timeout da Netlify Function
 
-## Diagnóstico Final
+## O Problema Identificado
 
-O erro "Falha temporária no servidor" acontece porque a função `generate-itinerary.ts` verifica se `GOOGLE_GEMINI_API_KEY` existe (linha 691-698) e retorna erro 500 se não encontrar:
+A geração do roteiro está travando porque a **Netlify Function tem um limite de tempo de execução (timeout)**:
 
-```typescript
-const GOOGLE_GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-if (!GOOGLE_GEMINI_API_KEY) {
-  console.error("GOOGLE_GEMINI_API_KEY not configured");
-  return {
-    statusCode: 500,  // <-- Aqui está o erro
-    body: JSON.stringify({ error: "API key não configurada" }),
-  };
-}
-```
+| Plano Netlify | Timeout |
+|---------------|---------|
+| Gratuito | 10 segundos |
+| Pro | 26 segundos |
 
-## Solução
+A função `generate-itinerary` faz várias operações que podem levar **60+ segundos**:
 
-Você precisa criar uma chave da **Google AI Studio** (Gemini) e adicioná-la no Netlify.
+1. **Chamada Gemini** (~15-45s) - Gerar roteiro completo com 5-6 atividades por dia
+2. **Google Places** (~10-30s) - Enriquecer cada atividade com coordenadas reais
+3. **Cache Supabase** (~2-5s) - Salvar dados no cache
 
----
+**Total potencial: 30-80 segundos** → Muito acima do limite de 10-26s do Netlify
 
-## Passo a Passo
+## A Chave Está Correta
 
-### 1. Criar chave no Google AI Studio
-
-1. Acesse: https://aistudio.google.com/apikey
-2. Faça login com sua conta Google
-3. Clique em **"Create API Key"**
-4. Copie a chave gerada (começa com `AIza...`)
-
-### 2. Adicionar no Netlify
-
-1. Vá para o painel do Netlify → Seu site
-2. **Site configuration → Environment variables**
-3. Clique em **"Add a variable"**
-4. Nome: `GOOGLE_GEMINI_API_KEY`
-5. Valor: Cole a chave que você copiou do Google AI Studio
-
-### 3. Fazer Redeploy
-
-1. No Netlify, vá em **Deploys**
-2. Clique em **"Trigger deploy"** → **"Deploy site"**
-3. Aguarde o deploy finalizar
+Seu print mostra que a chave está no **Google AI Studio** (não no Cloud Console), então ela **é válida** para o endpoint Gemini. O problema não é autenticação.
 
 ---
 
-## Lista de Verificação Final
+## Soluções Possíveis
 
-Após adicionar, você deve ter estas variáveis no Netlify:
+### Opção 1: Aumentar Timeout (Mais Simples)
+Fazer upgrade para o plano **Netlify Pro** aumenta o timeout para 26 segundos e permite usar **Background Functions** (até 15 minutos).
 
-| Variável | Status |
-|----------|--------|
-| `VITE_SUPABASE_URL` | ✅ Configurado |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ Configurado |
-| `GOOGLE_PLACES_API_KEY` | ✅ Configurado |
-| `GOOGLE_GEMINI_API_KEY` | ❌ **ADICIONAR AGORA** |
+**Custo**: ~$19/mês
+
+### Opção 2: Migrar para Supabase Edge Functions (Recomendado)
+As Edge Functions do Lovable Cloud não têm o mesmo limite de timeout rígido e já estão configuradas no projeto.
+
+**Mudança necessária**: Fazer a geração usar sempre a Edge Function em vez da Netlify Function.
+
+### Opção 3: Otimizar a Função Atual
+Remover ou limitar o enriquecimento do Google Places para acelerar a resposta:
+- Limitar a 2-3 atividades por dia (em vez de 5)
+- Fazer enriquecimento em segundo plano (async)
+- Usar apenas coordenadas do Gemini (sem validação)
 
 ---
 
-## Por que são chaves diferentes?
+## Plano de Implementação (Opção 2 - Recomendada)
 
-- **Google Places API** (Cloud Console) - É uma API de geolocalização para buscar coordenadas, fotos e avaliações de lugares reais.
+### Fase 1: Usar Edge Function do Supabase
+1. Atualizar `src/lib/apiRouting.ts` para **sempre** usar a Edge Function do Supabase para geração de roteiros
+2. A Edge Function já existe em `supabase/functions/generate-itinerary/`
 
-- **Google Gemini API** (AI Studio) - É a API de Inteligência Artificial que gera o roteiro de viagem baseado nas preferências do usuário.
+### Fase 2: Adicionar Chave Gemini no Lovable Cloud
+1. Adicionar `GOOGLE_GEMINI_API_KEY` como secret no Lovable Cloud
+2. Isso permitirá que a Edge Function use a mesma chave
 
-São produtos diferentes do Google, por isso precisam de chaves separadas.
+### Resultado
+- Sem limite de timeout rígido
+- Mesmo código funcionando
+- Não precisa pagar Netlify Pro
 
 ---
 
 ## Resumo
 
-O código está correto. O problema é apenas **configuração**: falta a variável `GOOGLE_GEMINI_API_KEY` no Netlify.
+| Item | Status |
+|------|--------|
+| Chave Gemini | ✅ Correta (AI Studio) |
+| Chave no Netlify | ✅ Configurada |
+| Código | ✅ Correto |
+| **Problema** | ❌ Timeout da Netlify Function (10s) |
 
-Após adicionar e fazer redeploy, o roteiro será gerado normalmente.
+---
+
+## Próximos Passos
+
+Escolha uma das opções:
+
+1. **Migrar para Edge Functions** - Eu atualizo o código para usar sempre a Edge Function do Supabase (sem custo extra)
+
+2. **Otimizar a função** - Eu removo/limito o enriquecimento do Google Places para acelerar a resposta
+
+3. **Upgrade Netlify** - Você faz upgrade do plano Netlify e habilita Background Functions
