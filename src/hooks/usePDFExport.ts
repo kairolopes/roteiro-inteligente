@@ -120,6 +120,36 @@ function drawRoundedRect(
   pdf.roundedRect(x, y, w, h, r, r, stroke ? "FD" : "F");
 }
 
+// Helper: Normalize text for PDF (remove emojis, convert accents to ASCII)
+function normalizeTextForPDF(text: string): string {
+  if (!text) return "";
+  
+  return text
+    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Remove emojis
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Remove misc symbols
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Remove dingbats
+    .replace(/[^\x00-\x7F]/g, (char) => {
+      const map: Record<string, string> = {
+        'á': 'a', 'à': 'a', 'ã': 'a', 'â': 'a', 'ä': 'a',
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+        'ó': 'o', 'ò': 'o', 'õ': 'o', 'ô': 'o', 'ö': 'o',
+        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+        'ç': 'c', 'ñ': 'n',
+        'Á': 'A', 'À': 'A', 'Ã': 'A', 'Â': 'A', 'Ä': 'A',
+        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+        'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+        'Ó': 'O', 'Ò': 'O', 'Õ': 'O', 'Ô': 'O', 'Ö': 'O',
+        'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+        'Ç': 'C', 'Ñ': 'N',
+        '★': '*', '•': '-', '–': '-', '—': '-',
+        '\u201C': '"', '\u201D': '"', '\u2018': "'", '\u2019': "'"
+      };
+      return map[char] || '';
+    })
+    .trim();
+}
+
 // Helper: Draw text with ellipsis if too long
 function drawTextEllipsis(
   pdf: jsPDF,
@@ -128,8 +158,22 @@ function drawTextEllipsis(
   y: number,
   maxWidth: number
 ) {
-  const truncated = pdf.splitTextToSize(text, maxWidth)[0] || "";
-  pdf.text(truncated, x, y);
+  const cleanText = normalizeTextForPDF(text);
+  if (!cleanText) return;
+  
+  // Check if text fits
+  const textWidth = pdf.getTextWidth(cleanText);
+  if (textWidth <= maxWidth) {
+    pdf.text(cleanText, x, y);
+    return;
+  }
+  
+  // Truncate with ellipsis
+  let truncated = cleanText;
+  while (pdf.getTextWidth(truncated + '...') > maxWidth && truncated.length > 0) {
+    truncated = truncated.slice(0, -1);
+  }
+  pdf.text(truncated.trim() + '...', x, y);
 }
 
 // Helper: Convert SVG to image data for PDF
@@ -232,8 +276,18 @@ function renderCoverPage(
       3,
       "#3d3a6b" // Semi-transparent white simulation on dark background
     );
+    // Truncate badge text to fit
+    const badgeTextMaxWidth = badgeWidth - 12;
+    const cleanBadge = normalizeTextForPDF(badge as string);
+    let truncatedBadge = cleanBadge;
+    while (pdf.getTextWidth(truncatedBadge) > badgeTextMaxWidth && truncatedBadge.length > 0) {
+      truncatedBadge = truncatedBadge.slice(0, -1);
+    }
+    if (truncatedBadge.length < cleanBadge.length) {
+      truncatedBadge = truncatedBadge.trim() + '...';
+    }
     pdf.text(
-      badge as string,
+      truncatedBadge,
       MARGIN + i * (badgeWidth + 5) + (badgeWidth - 5) / 2,
       badgeY + 6.5,
       { align: "center" }
@@ -472,9 +526,11 @@ function renderDayPage(
       pdf.text(activity.duration, MARGIN + 10, cardY + 16);
     }
     
-    // Main content
+    // Main content - account for QR code space
     const contentX = MARGIN + 35;
-    const contentWidth = CONTENT_WIDTH - 70;
+    const qrSize = 18;
+    const qrMargin = 8;
+    const contentWidth = CONTENT_WIDTH - 35 - qrSize - qrMargin - 5;
     
     // Category badge - use lighter version of category color
     drawRoundedRect(pdf, contentX, cardY + 4, 22, 6, 2, "#f3f4f6");
@@ -511,16 +567,25 @@ function renderDayPage(
       pdf.setTextColor(COLORS.textLight);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);
-      drawTextEllipsis(pdf, `📍 ${activity.location}`, contentX, cardY + 25, contentWidth);
+      drawTextEllipsis(pdf, `Local: ${activity.location}`, contentX, cardY + 25, contentWidth);
     }
     
     // Description
     if (activity.description) {
       pdf.setTextColor(COLORS.text);
       pdf.setFontSize(8);
-      const descLines = pdf.splitTextToSize(activity.description, contentWidth);
+      const cleanDesc = normalizeTextForPDF(activity.description);
+      const descLines = pdf.splitTextToSize(cleanDesc, contentWidth);
       descLines.slice(0, 2).forEach((line: string, i: number) => {
-        pdf.text(line, contentX, cardY + 32 + i * 4);
+        // Truncate each line individually if needed
+        let truncatedLine = line;
+        while (pdf.getTextWidth(truncatedLine) > contentWidth && truncatedLine.length > 0) {
+          truncatedLine = truncatedLine.slice(0, -1);
+        }
+        if (truncatedLine.length < line.length) {
+          truncatedLine = truncatedLine.trim() + '...';
+        }
+        pdf.text(truncatedLine, contentX, cardY + 32 + i * 4);
       });
     }
     
@@ -531,7 +596,7 @@ function renderDayPage(
       drawRoundedRect(pdf, contentX, tipY, contentWidth - 30, 7, 2, "#fef3c7");
       pdf.setTextColor("#92400e");
       pdf.setFontSize(7);
-      drawTextEllipsis(pdf, `💡 ${activity.tips}`, contentX + 2, tipY + 4.5, contentWidth - 35);
+      drawTextEllipsis(pdf, `Dica: ${activity.tips}`, contentX + 2, tipY + 4.5, contentWidth - 35);
     }
     
     // QR Code
