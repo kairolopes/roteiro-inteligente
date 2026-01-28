@@ -32,7 +32,7 @@ const FREE_DAYS_LOGGED_IN = 3;
 const Itinerary = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits, hasActiveSubscription, isAdmin } = useUserCredits();
+  const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits, hasActiveSubscription, isAdmin, isLoading: creditsLoading } = useUserCredits();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,20 +47,22 @@ const Itinerary = () => {
 
   // Calculate how many free days the user gets
   const freeDaysCount = useMemo(() => {
+    // Still loading credits - show all days temporarily (prevents flash of locked)
+    if (creditsLoading) return Infinity;
     // Admin or subscriber: unlimited
     if (isAdmin || hasActiveSubscription) return Infinity;
     // Logged in without subscription: 3 days
     if (user) return FREE_DAYS_LOGGED_IN;
     // Guest: 2 days
     return FREE_DAYS_GUEST;
-  }, [user, hasActiveSubscription, isAdmin]);
+  }, [user, hasActiveSubscription, isAdmin, creditsLoading]);
 
   const generateItineraryWithStreaming = useCallback(async (skipCreditCheck = false) => {
     // FREEMIUM: Allow generation without login, but show partial result
     // We no longer block here - we generate for everyone
 
-    // Only check credits for logged-in users
-    if (user && !skipCreditCheck && !canGenerateItinerary) {
+    // Only check credits for logged-in users - but skip if still loading
+    if (user && !skipCreditCheck && !creditsLoading && !canGenerateItinerary) {
       setShowPaywall(true);
       setIsLoading(false);
       return;
@@ -222,7 +224,7 @@ const Itinerary = () => {
   };
 
   const handleRegenerate = () => {
-    if (!canGenerateItinerary) {
+    if (!creditsLoading && !canGenerateItinerary) {
       setShowPaywall(true);
       return;
     }
