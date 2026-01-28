@@ -9,10 +9,6 @@ interface DayTimelineProps {
   day: ItineraryDay;
   isSelected: boolean;
   onSelect: () => void;
-  tripDates?: {
-    startDate: string;
-    endDate: string;
-  };
   isLocked?: boolean;
   totalDays?: number;
   onUnlock?: () => void;
@@ -24,20 +20,12 @@ const DayTimeline = ({
   day, 
   isSelected, 
   onSelect, 
-  tripDates,
   isLocked = false,
   totalDays = 1,
   onUnlock,
   onSubscribe,
   isLoggedIn = false
 }: DayTimelineProps) => {
-  // Create day context for affiliate links
-  const dayContext = {
-    city: day.city,
-    country: day.country,
-    date: day.date,
-    dayNumber: day.day,
-  };
 
   // Handle click on locked day
   const handleClick = () => {
@@ -125,8 +113,6 @@ const DayTimeline = ({
               key={activity.id} 
               activity={activity} 
               index={idx}
-              dayContext={dayContext}
-              tripDates={tripDates}
             />
           ))}
         </motion.div>
