@@ -1,16 +1,9 @@
 import { useState, useCallback } from "react";
 import { jsPDF } from "jspdf";
 import {
-  fetchItineraryImages,
-} from "@/services/pdfImageService";
-import {
   generateItineraryQRCodes,
   generateQRCode,
 } from "@/services/qrCodeService";
-import {
-  generateSvgRouteMap,
-  generateRealMapImage,
-} from "@/services/staticMapService";
 
 // Progress step type matching PDFProgressModal
 export type PDFProgressStep =
@@ -82,20 +75,30 @@ function truncateBudget(budget: string): string {
   return match ? match[0] : normalized.slice(0, 20) + (normalized.length > 20 ? '...' : '');
 }
 
+// Count days spent in a specific city
+function countDaysInCity(itinerary: ItineraryData, city: string): number {
+  return itinerary.days.filter(d => d.city === city).length;
+}
+
 // PDF Layout Constants (in mm)
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
 const MARGIN = 15;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-const CONTENT_HEIGHT = PAGE_HEIGHT - MARGIN * 2;
 
 // Colors
 const COLORS = {
   primary: "#4f46e5",
   primaryDark: "#1e1b4b",
+  primaryLight: "#6366f1",
+  accent: "#818cf8",
+  accentLight: "#a5b4fc",
   text: "#1f2937",
   textLight: "#6b7280",
   white: "#ffffff",
+  bgLight: "#f0f9ff",
+  bgCard: "#f3f4f6",
+  border: "#e0e7ff",
   categories: {
     restaurant: "#ea580c",
     attraction: "#8b5cf6",
@@ -185,140 +188,285 @@ function drawTextEllipsis(
   pdf.text(truncated.trim() + '...', x, y);
 }
 
-// Helper: Convert SVG to image data for PDF
-async function svgToImageData(svgString: string, width: number, height: number): Promise<string | null> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = width * 2;
-      canvas.height = height * 2;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.scale(2, 2);
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/png"));
-      } else {
-        resolve(null);
-      }
-      URL.revokeObjectURL(url);
-    };
-    
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    
-    img.src = url;
+// Draw geometric decoration for cover page
+function drawCoverDecoration(pdf: jsPDF) {
+  // Decorative circles (top area)
+  pdf.setDrawColor(COLORS.primaryLight);
+  pdf.setLineWidth(0.5);
+  
+  // Concentric circles at top center
+  const centerX = PAGE_WIDTH / 2;
+  const centerY = 55;
+  pdf.circle(centerX, centerY, 45, "S");
+  pdf.circle(centerX, centerY, 35, "S");
+  pdf.circle(centerX, centerY, 25, "S");
+  pdf.circle(centerX, centerY, 15, "S");
+  
+  // Diagonal lines (top left corner)
+  pdf.setDrawColor(COLORS.accent);
+  pdf.setLineWidth(0.3);
+  for (let i = 0; i < 6; i++) {
+    pdf.line(0, 15 + i * 12, 40 + i * 15, 0);
+  }
+  
+  // Diagonal lines (top right corner)
+  for (let i = 0; i < 6; i++) {
+    pdf.line(PAGE_WIDTH, 15 + i * 12, PAGE_WIDTH - 40 - i * 15, 0);
+  }
+  
+  // Small decorative dots
+  pdf.setFillColor(COLORS.accentLight);
+  const dotPositions = [
+    { x: 30, y: 80 },
+    { x: PAGE_WIDTH - 30, y: 80 },
+    { x: 45, y: 100 },
+    { x: PAGE_WIDTH - 45, y: 100 },
+  ];
+  dotPositions.forEach(pos => {
+    pdf.circle(pos.x, pos.y, 2, "F");
   });
+  
+  // Airplane icon (simplified geometric)
+  pdf.setFillColor(COLORS.accent);
+  const planeX = centerX;
+  const planeY = centerY;
+  
+  // Simple plane shape using triangles
+  pdf.setFillColor(COLORS.white);
+  // Body
+  pdf.triangle(planeX - 8, planeY, planeX + 8, planeY, planeX, planeY - 12, "F");
+  // Wings
+  pdf.triangle(planeX - 15, planeY + 2, planeX + 15, planeY + 2, planeX, planeY - 4, "F");
+  // Tail
+  pdf.triangle(planeX - 4, planeY + 8, planeX + 4, planeY + 8, planeX, planeY, "F");
 }
 
-// Render Cover Page
+// Draw schematic map with cities connected by dashed lines
+function drawSchematicMap(pdf: jsPDF, itinerary: ItineraryData) {
+  const mapY = 50;
+  const mapHeight = 110;
+  const mapWidth = CONTENT_WIDTH;
+  
+  // Container with light background
+  drawRoundedRect(pdf, MARGIN, mapY, mapWidth, mapHeight, 8, COLORS.bgLight, COLORS.border);
+  
+  // Get unique cities in order
+  const uniqueCities: { city: string; country: string; coordinates: [number, number] }[] = [];
+  itinerary.days.forEach((day, i) => {
+    if (i === 0 || day.city !== itinerary.days[i - 1].city) {
+      uniqueCities.push({
+        city: day.city,
+        country: day.country,
+        coordinates: day.coordinates,
+      });
+    }
+  });
+  
+  if (uniqueCities.length === 0) return;
+  
+  // Convert coordinates
+  const coords = uniqueCities.map(c => toCoordinate(c.coordinates));
+  
+  // Calculate bounds
+  const lats = coords.map(c => c.lat);
+  const lngs = coords.map(c => c.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  
+  // Map padding
+  const padding = 30;
+  const innerWidth = mapWidth - padding * 2;
+  const innerHeight = mapHeight - padding * 2;
+  
+  // Handle single city case
+  const latRange = maxLat - minLat || 1;
+  const lngRange = maxLng - minLng || 1;
+  
+  // Convert to PDF positions
+  const points = coords.map((c, i) => {
+    let x: number, y: number;
+    
+    if (uniqueCities.length === 1) {
+      // Single city: center it
+      x = MARGIN + mapWidth / 2;
+      y = mapY + mapHeight / 2;
+    } else {
+      // Multiple cities: distribute based on coordinates
+      x = MARGIN + padding + ((c.lng - minLng) / lngRange) * innerWidth;
+      y = mapY + padding + ((maxLat - c.lat) / latRange) * innerHeight;
+    }
+    
+    return {
+      x,
+      y,
+      city: uniqueCities[i].city,
+      country: uniqueCities[i].country,
+      days: countDaysInCity(itinerary, uniqueCities[i].city),
+    };
+  });
+  
+  // Draw dashed connection lines
+  if (points.length > 1) {
+    pdf.setDrawColor("#3b82f6");
+    pdf.setLineWidth(2);
+    pdf.setLineDashPattern([5, 3], 0);
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      pdf.line(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    }
+    
+    pdf.setLineDashPattern([], 0);
+  }
+  
+  // Draw city markers
+  points.forEach((p, i) => {
+    const markerRadius = 12;
+    
+    // Shadow
+    pdf.setFillColor("#1e40af");
+    pdf.circle(p.x + 1.5, p.y + 1.5, markerRadius, "F");
+    
+    // Main circle (blue)
+    pdf.setFillColor("#3b82f6");
+    pdf.circle(p.x, p.y, markerRadius, "F");
+    
+    // Inner white circle
+    pdf.setFillColor(COLORS.white);
+    pdf.circle(p.x, p.y, markerRadius - 3, "F");
+    
+    // Number
+    pdf.setTextColor("#3b82f6");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.text(String(i + 1), p.x, p.y + 4, { align: "center" });
+    
+    // City name (below marker)
+    pdf.setTextColor(COLORS.text);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.text(normalizeTextForPDF(p.city), p.x, p.y + markerRadius + 8, { align: "center" });
+    
+    // Days count (smaller, below city name)
+    pdf.setTextColor(COLORS.textLight);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7);
+    const dayText = p.days === 1 ? "1 dia" : `${p.days} dias`;
+    pdf.text(dayText, p.x, p.y + markerRadius + 14, { align: "center" });
+  });
+  
+  // Legend (bottom left of map)
+  const legendY = mapY + mapHeight - 10;
+  pdf.setFillColor(COLORS.white);
+  pdf.roundedRect(MARGIN + 5, legendY - 6, 55, 10, 2, 2, "F");
+  
+  // Legend line
+  pdf.setDrawColor("#3b82f6");
+  pdf.setLineWidth(1.5);
+  pdf.setLineDashPattern([3, 2], 0);
+  pdf.line(MARGIN + 10, legendY, MARGIN + 25, legendY);
+  pdf.setLineDashPattern([], 0);
+  
+  // Legend text
+  pdf.setTextColor(COLORS.textLight);
+  pdf.setFontSize(7);
+  pdf.text("Rota do roteiro", MARGIN + 28, legendY + 2);
+}
+
+// Render Cover Page - Minimalist design without external images
 function renderCoverPage(
   pdf: jsPDF,
   itinerary: ItineraryData,
-  coverImage: string | null,
   webQR: string | null
 ) {
-  // Background gradient (simulated with rectangles)
-  pdf.setFillColor("#1e1b4b");
+  // Solid dark background
+  pdf.setFillColor(COLORS.primaryDark);
   pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
   
-  // Cover image - only use top portion to avoid text overlay issues
-  if (coverImage) {
-    try {
-      // Draw image only on top 40% of page
-      pdf.addImage(coverImage, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT * 0.4);
-      // Strong gradient overlay from image to solid background
-      pdf.setFillColor(30, 27, 75); // #1e1b4b in RGB
-      pdf.rect(0, PAGE_HEIGHT * 0.35, PAGE_WIDTH, PAGE_HEIGHT * 0.1, "F");
-    } catch (e) {
-      console.error("Failed to add cover image:", e);
-    }
-  }
+  // Geometric decoration
+  drawCoverDecoration(pdf);
   
-  // Title section
-  const titleY = coverImage ? PAGE_HEIGHT * 0.55 : PAGE_HEIGHT * 0.35;
+  // Title section (centered, below decoration)
+  const titleY = PAGE_HEIGHT * 0.40;
   
   pdf.setTextColor(COLORS.white);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(28);
+  pdf.setFontSize(26);
   
-  const titleLines = pdf.splitTextToSize(itinerary.title, CONTENT_WIDTH);
-  titleLines.forEach((line: string, i: number) => {
-    pdf.text(line, PAGE_WIDTH / 2, titleY + i * 12, { align: "center" });
+  const normalizedTitle = normalizeTextForPDF(itinerary.title);
+  const titleLines = pdf.splitTextToSize(normalizedTitle, CONTENT_WIDTH - 20);
+  titleLines.slice(0, 2).forEach((line: string, i: number) => {
+    pdf.text(line, PAGE_WIDTH / 2, titleY + i * 11, { align: "center" });
   });
   
   // Summary
   if (itinerary.summary) {
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(12);
-    pdf.setTextColor("#e0e7ff");
-    const summaryLines = pdf.splitTextToSize(itinerary.summary, CONTENT_WIDTH - 20);
-    const summaryY = titleY + titleLines.length * 12 + 15;
+    pdf.setFontSize(11);
+    pdf.setTextColor(COLORS.accentLight);
+    const cleanSummary = normalizeTextForPDF(itinerary.summary);
+    const summaryLines = pdf.splitTextToSize(cleanSummary, CONTENT_WIDTH - 30);
+    const summaryY = titleY + titleLines.length * 11 + 12;
     summaryLines.slice(0, 3).forEach((line: string, i: number) => {
-      pdf.text(line, PAGE_WIDTH / 2, summaryY + i * 6, { align: "center" });
+      pdf.text(line, PAGE_WIDTH / 2, summaryY + i * 5, { align: "center" });
     });
   }
   
-  // Info badges
-  const badgeY = PAGE_HEIGHT * 0.75;
+  // Info badges (3 columns)
+  const badgeY = PAGE_HEIGHT * 0.68;
+  const badgeHeight = 22;
+  const badgeWidth = (CONTENT_WIDTH - 10) / 3;
+  
   const badges = [
-    itinerary.duration && `Duracao: ${itinerary.duration}`,
-    itinerary.totalBudget && `Orcamento: ${itinerary.totalBudget}`,
-    itinerary.destinations?.length > 0 && itinerary.destinations.slice(0, 3).join(" - "),
-  ].filter(Boolean);
+    { label: "Duracao", value: normalizeTextForPDF(itinerary.duration) || "-" },
+    { label: "Orcamento", value: truncateBudget(itinerary.totalBudget) },
+    { label: "Destinos", value: itinerary.destinations?.length?.toString() || "0" },
+  ];
   
-  pdf.setFontSize(11);
-  pdf.setTextColor(COLORS.white);
-  
-  const badgeWidth = (CONTENT_WIDTH - 10) / badges.length;
   badges.forEach((badge, i) => {
-    drawRoundedRect(
-      pdf,
-      MARGIN + i * (badgeWidth + 5),
-      badgeY,
-      badgeWidth - 5,
-      10,
-      3,
-      "#3d3a6b" // Semi-transparent white simulation on dark background
-    );
-    // Truncate badge text to fit
-    const badgeTextMaxWidth = badgeWidth - 12;
-    const cleanBadge = normalizeTextForPDF(badge as string);
-    let truncatedBadge = cleanBadge;
-    while (pdf.getTextWidth(truncatedBadge) > badgeTextMaxWidth && truncatedBadge.length > 0) {
-      truncatedBadge = truncatedBadge.slice(0, -1);
+    const x = MARGIN + i * (badgeWidth + 5);
+    
+    // Badge background
+    drawRoundedRect(pdf, x, badgeY, badgeWidth - 5, badgeHeight, 4, "#3d3a6b");
+    
+    // Label
+    pdf.setTextColor(COLORS.accentLight);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.text(badge.label, x + (badgeWidth - 5) / 2, badgeY + 8, { align: "center" });
+    
+    // Value
+    pdf.setTextColor(COLORS.white);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    const maxBadgeValueWidth = badgeWidth - 12;
+    let displayValue = badge.value;
+    while (pdf.getTextWidth(displayValue) > maxBadgeValueWidth && displayValue.length > 0) {
+      displayValue = displayValue.slice(0, -1);
     }
-    if (truncatedBadge.length < cleanBadge.length) {
-      truncatedBadge = truncatedBadge.trim() + '...';
+    if (displayValue.length < badge.value.length) {
+      displayValue = displayValue.trim() + '...';
     }
-    pdf.text(
-      truncatedBadge,
-      MARGIN + i * (badgeWidth + 5) + (badgeWidth - 5) / 2,
-      badgeY + 6.5,
-      { align: "center" }
-    );
+    pdf.text(displayValue, x + (badgeWidth - 5) / 2, badgeY + 17, { align: "center" });
   });
   
   // QR Code for web version
   if (webQR) {
     try {
-      const qrSize = 25;
+      const qrSize = 28;
+      const qrY = PAGE_HEIGHT - MARGIN - qrSize - 18;
       pdf.addImage(
         webQR,
         "PNG",
         PAGE_WIDTH / 2 - qrSize / 2,
-        PAGE_HEIGHT - MARGIN - qrSize - 10,
+        qrY,
         qrSize,
         qrSize
       );
       pdf.setFontSize(8);
-      pdf.setTextColor("#a5b4fc");
-      pdf.text("Escaneie para ver online", PAGE_WIDTH / 2, PAGE_HEIGHT - MARGIN - 5, {
+      pdf.setTextColor(COLORS.accentLight);
+      pdf.text("Escaneie para ver online", PAGE_WIDTH / 2, qrY + qrSize + 6, {
         align: "center",
       });
     } catch (e) {
@@ -327,12 +475,13 @@ function renderCoverPage(
   }
   
   // Footer branding
-  pdf.setFontSize(9);
-  pdf.setTextColor("#6366f1");
-  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
+  pdf.setFontSize(10);
+  pdf.setTextColor(COLORS.primaryLight);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
 }
 
-// Render Map Page
+// Render Map Page with schematic design
 async function renderMapPage(
   pdf: jsPDF,
   itinerary: ItineraryData
@@ -348,45 +497,11 @@ async function renderMapPage(
   pdf.setFontSize(20);
   pdf.text("Mapa da Viagem", PAGE_WIDTH / 2, 25, { align: "center" });
   
-  // Generate route map
-  const coordinates = itinerary.days
-    .filter((d) => d.coordinates)
-    .map((d) => toCoordinate(d.coordinates));
+  // Draw schematic map
+  drawSchematicMap(pdf, itinerary);
   
-  const cities = itinerary.days.map((d) => d.city);
-  
-  if (coordinates.length >= 1) {
-    const mapWidth = CONTENT_WIDTH;
-    const mapHeight = 120;
-    
-    // Try to generate real OSM map first
-    let mapImage: string | null = null;
-    
-    try {
-      mapImage = await generateRealMapImage(coordinates, cities, mapWidth * 2, mapHeight * 2);
-    } catch (e) {
-      console.warn("Failed to generate real map, falling back to SVG:", e);
-    }
-    
-    // Fallback to SVG if real map fails
-    if (!mapImage) {
-      const svgMap = generateSvgRouteMap(coordinates, cities, mapWidth * 3, mapHeight * 3);
-      mapImage = await svgToImageData(svgMap, mapWidth * 3, mapHeight * 3);
-    }
-    
-    if (mapImage) {
-      try {
-        // Map container
-        drawRoundedRect(pdf, MARGIN, 50, CONTENT_WIDTH, mapHeight + 10, 5, "#f3f4f6");
-        pdf.addImage(mapImage, "PNG", MARGIN + 5, 55, mapWidth - 10, mapHeight);
-      } catch (e) {
-        console.error("Failed to add map image:", e);
-      }
-    }
-  }
-  
-  // Days summary
-  const summaryY = 180;
+  // Days summary section
+  const summaryY = 175;
   pdf.setTextColor(COLORS.text);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
@@ -396,32 +511,35 @@ async function renderMapPage(
   pdf.setFontSize(10);
   
   itinerary.days.forEach((day, i) => {
-    const y = summaryY + 10 + i * 18;
-    if (y < PAGE_HEIGHT - MARGIN) {
+    const y = summaryY + 12 + i * 18;
+    if (y < PAGE_HEIGHT - MARGIN - 10) {
       // Day number badge
       const color = COLORS.categories.attraction;
       pdf.setFillColor(color);
-      pdf.circle(MARGIN + 4, y - 2, 4, "F");
+      pdf.circle(MARGIN + 5, y - 2, 5, "F");
       pdf.setTextColor(COLORS.white);
-      pdf.setFontSize(8);
-      pdf.text(String(day.day), MARGIN + 4, y - 0.5, { align: "center" });
+      pdf.setFontSize(9);
+      pdf.text(String(day.day), MARGIN + 5, y, { align: "center" });
       
-      // City name (left)
+      // City name
       pdf.setTextColor(COLORS.text);
+      pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10);
-      pdf.text(`${day.city}, ${day.country}`, MARGIN + 12, y);
+      pdf.text(normalizeTextForPDF(`${day.city}, ${day.country}`), MARGIN + 14, y);
       
       // Date (right aligned)
       if (day.date) {
         pdf.setTextColor(COLORS.textLight);
+        pdf.setFont("helvetica", "normal");
         pdf.setFontSize(9);
-        pdf.text(day.date, CONTENT_WIDTH + MARGIN, y, { align: "right" });
+        pdf.text(normalizeTextForPDF(day.date), PAGE_WIDTH - MARGIN, y, { align: "right" });
       }
       
-      // Activities count (below city, smaller font)
+      // Activities count
       pdf.setTextColor(COLORS.textLight);
+      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);
-      pdf.text(`${day.activities.length} atividades`, MARGIN + 12, y + 5);
+      pdf.text(`${day.activities.length} atividades`, MARGIN + 14, y + 6);
     }
   });
 }
@@ -430,7 +548,6 @@ async function renderMapPage(
 function renderDayPage(
   pdf: jsPDF,
   day: DayData,
-  dayImage: string | null,
   activityQRs: Record<string, string>,
   startY: number = 0
 ): number {
@@ -440,23 +557,11 @@ function renderDayPage(
   if (y === 0) {
     pdf.addPage();
     
-    // Day header with image
-    const headerHeight = dayImage ? 70 : 45;
+    // Day header (solid color, no image)
+    const headerHeight = 45;
     
-    if (dayImage) {
-      try {
-        pdf.addImage(dayImage, "JPEG", 0, 0, PAGE_WIDTH, headerHeight);
-        // Overlay - darker gradient effect
-        pdf.setFillColor(30, 27, 75); // #1e1b4b in RGB
-        pdf.rect(0, headerHeight - 30, PAGE_WIDTH, 30, "F");
-      } catch (e) {
-        pdf.setFillColor(30, 27, 75);
-        pdf.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
-      }
-    } else {
-      pdf.setFillColor(30, 27, 75);
-      pdf.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
-    }
+    pdf.setFillColor(COLORS.primaryDark);
+    pdf.rect(0, 0, PAGE_WIDTH, headerHeight, "F");
     
     // Day title
     pdf.setTextColor(COLORS.white);
@@ -465,12 +570,12 @@ function renderDayPage(
     pdf.text(`Dia ${day.day}`, MARGIN, headerHeight - 20);
     
     pdf.setFontSize(14);
-    pdf.text(`${day.city}, ${day.country}`, MARGIN, headerHeight - 10);
+    pdf.text(normalizeTextForPDF(`${day.city}, ${day.country}`), MARGIN, headerHeight - 10);
     
     if (day.date) {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(10);
-      pdf.text(day.date, PAGE_WIDTH - MARGIN, headerHeight - 12, { align: "right" });
+      pdf.text(normalizeTextForPDF(day.date), PAGE_WIDTH - MARGIN, headerHeight - 12, { align: "right" });
     }
     
     y = headerHeight + 10;
@@ -487,7 +592,7 @@ function renderDayPage(
     pdf.text("Destaques: ", MARGIN + 5, y + 9);
     
     pdf.setFont("helvetica", "normal");
-    const highlightsText = day.highlights.slice(0, 4).join(" • ");
+    const highlightsText = day.highlights.slice(0, 4).join(" - ");
     drawTextEllipsis(pdf, highlightsText, MARGIN + 28, y + 9, CONTENT_WIDTH - 35);
     
     y += 22;
@@ -502,12 +607,12 @@ function renderDayPage(
       pdf.addPage();
       
       // Continuation header
-      pdf.setFillColor("#f3f4f6");
+      pdf.setFillColor(COLORS.bgCard);
       pdf.rect(0, 0, PAGE_WIDTH, 25, "F");
       pdf.setTextColor(COLORS.text);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(12);
-      pdf.text(`Dia ${day.day} - ${day.city} (continuacao)`, MARGIN, 16);
+      pdf.text(normalizeTextForPDF(`Dia ${day.day} - ${day.city} (continuacao)`), MARGIN, 16);
       
       y = 35;
     }
@@ -533,7 +638,7 @@ function renderDayPage(
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);
       pdf.setTextColor(COLORS.textLight);
-      pdf.text(activity.duration, MARGIN + 10, cardY + 16);
+      pdf.text(normalizeTextForPDF(activity.duration), MARGIN + 10, cardY + 16);
     }
     
     // Main content - account for QR code space
@@ -542,8 +647,8 @@ function renderDayPage(
     const qrMargin = 8;
     const contentWidth = CONTENT_WIDTH - 35 - qrSize - qrMargin - 5;
     
-    // Category badge - use lighter version of category color
-    drawRoundedRect(pdf, contentX, cardY + 4, 22, 6, 2, "#f3f4f6");
+    // Category badge
+    drawRoundedRect(pdf, contentX, cardY + 4, 22, 6, 2, COLORS.bgCard);
     
     pdf.setTextColor(catColor);
     pdf.setFont("helvetica", "bold");
@@ -556,14 +661,14 @@ function renderDayPage(
       pdf.setTextColor(COLORS.textLight);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(7);
-      pdf.text(activity.cost, infoX, cardY + 8.5);
-      infoX += pdf.getTextWidth(activity.cost) + 5;
+      pdf.text(normalizeTextForPDF(activity.cost), infoX, cardY + 8.5);
+      infoX += pdf.getTextWidth(normalizeTextForPDF(activity.cost)) + 5;
     }
     
     const rating = activity.estimatedRating || activity.rating;
     if (rating) {
       pdf.setTextColor("#fbbf24");
-      pdf.text(`★ ${rating.toFixed(1)}`, infoX, cardY + 8.5);
+      pdf.text(`* ${rating.toFixed(1)}`, infoX, cardY + 8.5);
     }
     
     // Title
@@ -587,7 +692,6 @@ function renderDayPage(
       const cleanDesc = normalizeTextForPDF(activity.description);
       const descLines = pdf.splitTextToSize(cleanDesc, contentWidth);
       descLines.slice(0, 2).forEach((line: string, i: number) => {
-        // Truncate each line individually if needed
         let truncatedLine = line;
         while (pdf.getTextWidth(truncatedLine) > contentWidth && truncatedLine.length > 0) {
           truncatedLine = truncatedLine.slice(0, -1);
@@ -613,7 +717,6 @@ function renderDayPage(
     const qrCode = activityQRs[activity.id];
     if (qrCode) {
       try {
-        const qrSize = 18;
         pdf.addImage(
           qrCode,
           "PNG",
@@ -663,7 +766,7 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
     const x = MARGIN + (i % 2) * (cardWidth + 5);
     const cardY = y + Math.floor(i / 2) * 30;
     
-    drawRoundedRect(pdf, x, cardY, cardWidth, 25, 4, "#f3f4f6");
+    drawRoundedRect(pdf, x, cardY, cardWidth, 25, 4, COLORS.bgCard);
     
     pdf.setTextColor(COLORS.textLight);
     pdf.setFont("helvetica", "normal");
@@ -711,7 +814,7 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
   });
   
   // Footer
-  pdf.setFillColor("#f3f4f6");
+  pdf.setFillColor(COLORS.bgCard);
   pdf.rect(0, PAGE_HEIGHT - 35, PAGE_WIDTH, 35, "F");
   
   pdf.setTextColor(COLORS.primary);
@@ -744,19 +847,14 @@ export function usePDFExport() {
       setState({ isExporting: true, currentStep: "fetching-images", progress: 0 });
 
       try {
-        // Step 1: Fetch images
-        updateProgress("fetching-images", 5);
-        
-        const images = await fetchItineraryImages(itinerary, (p) => {
-          updateProgress("fetching-images", p);
-        });
-        
-        // Step 2: Generate map
-        updateProgress("generating-map", 30);
+        // Step 1: Generate QR codes (no more external image fetching)
+        updateProgress("fetching-images", 10);
         
         const activityQRs = await generateItineraryQRCodes(itinerary.days, (p) => {
-          updateProgress("generating-map", p);
+          updateProgress("fetching-images", 10 + p * 0.3);
         });
+        
+        updateProgress("generating-map", 40);
         
         // Generate web QR
         const webQR = await generateQRCode(
@@ -766,27 +864,26 @@ export function usePDFExport() {
         
         updateProgress("creating-pdf", 50);
         
-        // Step 3: Create PDF
+        // Step 2: Create PDF
         const pdf = new jsPDF({
           orientation: "portrait",
           unit: "mm",
           format: "a4",
         });
         
-        // Cover page
-        renderCoverPage(pdf, itinerary, images.cover?.base64 || null, webQR);
+        // Cover page (minimalist design, no external images)
+        renderCoverPage(pdf, itinerary, webQR);
         updateProgress("creating-pdf", 55);
         
-        // Map page
+        // Map page (schematic design)
         await renderMapPage(pdf, itinerary);
         updateProgress("creating-pdf", 60);
         
-        // Day pages
+        // Day pages (no external images for headers)
         const totalDays = itinerary.days.length;
         for (let i = 0; i < totalDays; i++) {
           const day = itinerary.days[i];
-          const dayImage = images.days[day.day]?.base64 || null;
-          renderDayPage(pdf, day, dayImage, activityQRs);
+          renderDayPage(pdf, day, activityQRs);
           updateProgress("creating-pdf", 60 + ((i + 1) / totalDays) * 30);
         }
         
