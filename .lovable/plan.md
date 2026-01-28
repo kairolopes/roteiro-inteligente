@@ -1,137 +1,188 @@
 
-# Correção: Erro ao Gerar Roteiro Sem Login
 
-## Problema Identificado
+# Experiência Freemium: "Experimente Antes de Assinar"
 
-Quando você tenta criar o roteiro completo **sem fazer login**, a tela mostra "Ops! Algo deu errado" em vez de apenas o modal de login.
+## Conceito
 
-### Causa Raiz
+Em vez de bloquear o usuário imediatamente, vamos deixá-lo **experimentar o valor do produto** antes de pedir login:
 
-O fluxo atual tem uma falha de lógica:
+1. **Chat livre** - Usuários podem conversar com a Sofia sem login (limite de 3-5 mensagens)
+2. **Roteiro parcial** - Geramos o roteiro COMPLETO, mas mostramos apenas **2 dias completos**
+3. **Dias esfumaçados** - Os demais dias aparecem com **blur + overlay** pedindo login/assinatura
+4. **Gatilho de conversão** - Quando tenta clicar em dia bloqueado, abre o modal de login
 
-1. Página carrega → `isLoading = true`, `itinerary = null`
-2. Função `generateItineraryWithStreaming()` é chamada
-3. Detecta `!user` (não logado)
-4. Define `setIsLoading(false)` e `setShowAuthModal(true)`
-5. **Retorna sem definir itinerary**
+## Mudanças Necessárias
 
-**Problema:** A condição de erro no render é:
-```tsx
-if (error || !itinerary) {
-  // Mostra tela de erro "Ops! Algo deu errado"
-}
+### 1. Permitir Chat Sem Login (Chat.tsx)
+
+Atualmente o chat exige login após a mensagem inicial. Vamos permitir **3-5 mensagens gratuitas** antes de exigir login:
+
+**Comportamento atual:**
+- Mensagem inicial (automática): ✅ funciona sem login
+- Segunda mensagem do usuário: ❌ pede login
+
+**Novo comportamento:**
+- Mensagens 1-3: ✅ funcionam sem login  
+- Mensagem 4+: 💳 pede login/assinatura
+- Mostrar contador: "2 de 3 mensagens gratuitas"
+
+### 2. Permitir Geração de Roteiro Sem Login (Itinerary.tsx)
+
+Atualmente exige login para gerar. Vamos gerar para todos, mas com restrição visual:
+
+**Novo fluxo:**
+1. Usuário completa quiz e chat → vai para /itinerary
+2. Sistema gera roteiro COMPLETO (todos os dias)
+3. Frontend mostra:
+   - **Dias 1-2**: Totalmente visíveis e interativos
+   - **Dias 3+**: Com efeito blur + overlay de CTA
+
+### 3. Novo Componente: LockedDayOverlay
+
+Criar um overlay atrativo para os dias bloqueados:
+
+```
+┌─────────────────────────────────────┐
+│  Dia 3 - Roma (blur effect)         │
+│                                     │
+│     🔒 Desbloqueie seu roteiro     │
+│         completo!                   │
+│                                     │
+│  ✓ Acesso a todos os 7 dias        │
+│  ✓ Coordenadas e mapas precisos    │
+│  ✓ Exportar para PDF               │
+│                                     │
+│  [🔓 Fazer Login Grátis]           │
+│                                     │
+│  ou                                 │
+│                                     │
+│  [⭐ Assinar Premium]              │
+│                                     │
+└─────────────────────────────────────┘
 ```
 
-Como `itinerary` ainda é `null` e `isLoading` é `false`, a tela de erro é exibida por baixo do modal de login.
+### 4. Modificar DayTimeline para Suportar Blur
 
-Quando logado:
-- `canGenerateItinerary` é `true`
-- A função continua e eventualmente define `itinerary`
-- Não há erro
+Adicionar prop `isLocked` que aplica:
+- `filter: blur(8px)` no conteúdo
+- `pointer-events: none` para impedir cliques
+- Overlay absoluto com CTA
+
+### 5. Modificar DaySelector para Indicar Dias Bloqueados
+
+Os botões de dias bloqueados mostram um 🔒 e ao clicar, abrem o modal de login em vez de expandir.
 
 ---
 
-## Solução
+## Arquivos a Modificar
 
-Criar um novo estado para distinguir "esperando login" de "erro real".
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/Chat.tsx` | Permitir 3 mensagens sem login, mostrar contador |
+| `src/pages/Itinerary.tsx` | Gerar roteiro para não logados, controlar quais dias estão bloqueados |
+| `src/components/itinerary/DayTimeline.tsx` | Adicionar prop `isLocked` com blur e overlay |
+| `src/components/itinerary/DaySelector.tsx` | Mostrar 🔒 em dias bloqueados |
+| `src/hooks/useUserCredits.ts` | Adicionar lógica para usuários não logados |
 
-### Mudanças Técnicas
+---
 
-**Arquivo:** `src/pages/Itinerary.tsx`
+## Lógica de Dias Liberados
 
-**1. Adicionar novo estado (linha ~38):**
-```tsx
-const [waitingForAuth, setWaitingForAuth] = useState(false);
+```typescript
+const getFreeDaysCount = (user, credits) => {
+  // Não logado: 2 dias grátis
+  if (!user) return 2;
+  
+  // Logado sem assinatura: 3 dias grátis
+  if (!hasActiveSubscription(credits)) return 3;
+  
+  // Assinante: todos os dias
+  return Infinity;
+};
 ```
 
-**2. Modificar `generateItineraryWithStreaming` (linhas 44-50):**
+---
+
+## Novo Componente: LockedDayOverlay
+
 ```tsx
-// Check if user needs to login
-if (!user) {
-  setWaitingForAuth(true);  // NOVO: Marcar que está esperando auth
-  setShowAuthModal(true);
-  setIsLoading(false);
-  return;
+interface LockedDayOverlayProps {
+  dayNumber: number;
+  totalDays: number;
+  onLogin: () => void;
+  onSubscribe: () => void;
 }
-```
 
-**3. Resetar estado quando AuthModal fecha (após linha 399):**
-```tsx
-<AuthModal
-  isOpen={showAuthModal}
-  onClose={() => {
-    setShowAuthModal(false);
-    // Se usuário fechou sem logar, redirecionar para quiz
-    if (!user) {
-      navigate("/quiz");
-    }
-  }}
-/>
-```
-
-**4. Modificar condição de erro (linhas 283-284):**
-```tsx
-// Error state - mas NÃO se estamos esperando login
-if (!waitingForAuth && (error || !itinerary)) {
-  // Mostra tela de erro
-}
-```
-
-**5. Adicionar estado de "esperando login":**
-Mostrar uma tela mais amigável enquanto espera o login:
-```tsx
-// Waiting for auth state
-if (waitingForAuth && !user) {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <motion.div className="text-center max-w-md px-4">
-        <Lock className="w-16 h-16 text-primary mx-auto mb-6" />
-        <h2 className="text-2xl font-bold mb-4">Login Necessário</h2>
-        <p className="text-muted-foreground mb-6">
-          Faça login para criar seu roteiro personalizado.
-        </p>
-        <Button onClick={() => navigate("/quiz")} variant="outline">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar ao Quiz
+const LockedDayOverlay = ({ dayNumber, totalDays, onLogin, onSubscribe }) => (
+  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl">
+    <div className="text-center p-6 max-w-sm">
+      <Lock className="w-12 h-12 text-primary mx-auto mb-4" />
+      <h3 className="text-xl font-bold mb-2">
+        Desbloqueie {totalDays - dayNumber + 1} dias restantes
+      </h3>
+      <p className="text-muted-foreground mb-4">
+        Faça login ou assine para ver o roteiro completo
+      </p>
+      <div className="space-y-2">
+        <Button onClick={onLogin} className="w-full">
+          Fazer Login Grátis
         </Button>
-      </motion.div>
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+        <Button onClick={onSubscribe} variant="outline" className="w-full">
+          Ver Planos Premium
+        </Button>
+      </div>
     </div>
-  );
-}
-```
-
-**6. Re-chamar geração após login bem-sucedido:**
-Adicionar effect para detectar quando o usuário loga:
-```tsx
-useEffect(() => {
-  // Se estava esperando auth e agora tem usuário, tentar gerar novamente
-  if (waitingForAuth && user) {
-    setWaitingForAuth(false);
-    generateItineraryWithStreaming();
-  }
-}, [user, waitingForAuth]);
+  </div>
+);
 ```
 
 ---
 
-## Fluxo Corrigido
+## Fluxo Completo do Usuário
 
-| Antes | Depois |
-|-------|--------|
-| Sem login → Modal aparece sobre tela de erro | Sem login → Tela amigável de "Login Necessário" com modal |
-| Fechar modal → Vê "Algo deu errado" | Fechar modal → Volta para o quiz |
-| Fazer login → Precisa navegar manualmente | Fazer login → Roteiro começa a gerar automaticamente |
+```
+Quiz → Chat (3 msgs grátis) → Criar Roteiro
+                                    ↓
+                    ┌───────────────────────────┐
+                    │  Roteiro: 7 dias na Itália │
+                    ├───────────────────────────┤
+                    │  ✅ Dia 1 - Roma (visível) │
+                    │  ✅ Dia 2 - Roma (visível) │
+                    │  🔒 Dia 3 - Florença (blur)│
+                    │  🔒 Dia 4 - Florença (blur)│
+                    │  🔒 Dia 5 - Veneza (blur)  │
+                    │  🔒 Dia 6 - Veneza (blur)  │
+                    │  🔒 Dia 7 - Veneza (blur)  │
+                    └───────────────────────────┘
+                              ↓
+                    Clica em dia bloqueado
+                              ↓
+                    Modal: "Faça login ou assine"
+                              ↓
+                    Login/Signup ou Compra
+                              ↓
+                    🎉 Roteiro completo liberado!
+```
 
 ---
 
-## Resumo das Alterações
+## Benefícios dessa Abordagem
 
-1. Novo estado `waitingForAuth` para distinguir "esperando login" de "erro"
-2. Tela amigável quando aguardando autenticação
-3. Redirecionamento automático ao quiz se fechar modal sem logar
-4. Geração automática do roteiro após login bem-sucedido
-5. Condição de erro não é mais acionada durante espera por auth
+1. **Experiência completa antes do paywall** - Usuário vê o valor real do produto
+2. **Menor fricção inicial** - Não precisa criar conta para testar
+3. **Gatilho de FOMO** - "Você já tem 2 dias prontos, quer ver os outros 5?"
+4. **Dados coletados antes** - Quiz e chat salvos, facilitam re-engajamento
+5. **Conversão maior** - Usuário já investiu tempo, mais propenso a converter
+
+---
+
+## Resumo Técnico
+
+| Item | Antes | Depois |
+|------|-------|--------|
+| Chat sem login | Apenas msg inicial | 3 mensagens |
+| Gerar roteiro | Bloqueado | Gera para todos |
+| Visualização | Tudo ou nada | 2 dias grátis + blur |
+| Ação de bloqueio | Modal genérico | Overlay contextual |
+| Conversão | Antes de ver valor | Depois de experimentar |
+
