@@ -1,84 +1,106 @@
 
 
-# Correção: Links do Google Maps Apontando para Locais Errados
+# Correção: Links do Google Maps Apontando para Locais Genéricos
 
 ## Problema Identificado
 
-Quando você clica em "Ver no Google Maps" nos cards de atividades do roteiro, o link abre em uma localização errada (geralmente um lugar vazio ou incorreto).
+O botão "Ver no Google Maps" abre uma localização genérica (no meio do Rio Arno) em vez do ponto turístico exato, mesmo quando os dados do Google Places foram validados corretamente.
 
-**Causa raiz**: Existe uma inconsistência na ordem das coordenadas em um dos arquivos do código.
+### Causa Raiz
 
-### Formato das Coordenadas no Sistema
+O sistema já busca e armazena URLs precisas do Google Maps via API (formato `https://maps.google.com/?cid=123456`), mas o código do `ActivityCard.tsx` **ignora essa URL** e constrói uma URL genérica baseada apenas em coordenadas.
 
-O sistema armazena coordenadas no formato padrão geográfico:
-- **Primeiro valor**: Latitude (ex: 41.89 para Roma)
-- **Segundo valor**: Longitude (ex: 12.49 para Roma)
-
-Exemplo do banco de dados:
-- Coliseu: `lat: 41.8902102, lng: 12.4922309`
-
-### O Bug
-
-No arquivo `src/services/qrCodeService.ts` (linha 44), as coordenadas estão sendo interpretadas **ao contrário**:
-
-```typescript
-// INCORRETO - assume [lng, lat]
-const [lng, lat] = coordinates;
-return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+**Dado no banco de dados:**
+```text
+Galleria degli Uffizi
+├── google_maps_url: https://maps.google.com/?cid=14834496294842582221 ← URL PRECISA
+├── location_lat: 43.7677856
+└── location_lng: 11.2553108
 ```
 
-Isso inverte latitude e longitude, gerando URLs como:
-- **Errado**: `query=12.49,41.89` (ponto no mar ou lugar vazio)
-- **Correto**: `query=41.89,12.49` (Coliseu, Roma)
-
-### Comparação com Arquivo Correto
-
-O `ActivityCard.tsx` (linha 82) faz corretamente:
+**Comportamento atual (ERRADO):**
 ```typescript
-// CORRETO - assume [lat, lng]
-const [lat, lng] = activity.coordinates;
-return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+// ActivityCard.tsx - ignora googleMapsUrl!
+if (activity.coordinates) {
+  const [lat, lng] = activity.coordinates;
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  // Resultado: URL genérica que abre no meio do rio
+}
 ```
+
+**Resultado:** 
+- URL com `?cid=` → Abre diretamente na página do estabelecimento (fotos, avaliações, horários)
+- URL com `?query=lat,lng` → Abre um pin genérico nas coordenadas (pode ser impreciso)
 
 ---
 
 ## Solução
 
-Corrigir o `qrCodeService.ts` para interpretar as coordenadas na ordem correta.
+Alterar a função `getGoogleMapsUrl` no `ActivityCard.tsx` para **priorizar** a URL do Google Places quando disponível.
 
-### Mudança
+### Mudança no Arquivo
 
-**Arquivo**: `src/services/qrCodeService.ts`
+**Arquivo:** `src/components/itinerary/ActivityCard.tsx`
 
-**Linha 44** - Inverter a ordem da desestruturação:
+**Linhas 79-90** - Atualizar a função:
 
 ```typescript
-// Antes (INCORRETO)
-const [lng, lat] = coordinates;
+// ANTES (ignora googleMapsUrl)
+function getGoogleMapsUrl(activity: Activity): string | null {
+  if (activity.coordinates && activity.coordinates.length === 2) {
+    const [lat, lng] = activity.coordinates;
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  }
+  if (activity.location) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location)}`;
+  }
+  return null;
+}
 
-// Depois (CORRETO)
-const [lat, lng] = coordinates;
+// DEPOIS (prioriza googleMapsUrl validada)
+function getGoogleMapsUrl(activity: Activity): string | null {
+  // Prioridade 1: URL direta do Google Places (mais precisa)
+  if (activity.googleMapsUrl) {
+    return activity.googleMapsUrl;
+  }
+  
+  // Prioridade 2: Coordenadas validadas
+  if (activity.coordinates && activity.coordinates.length === 2) {
+    const [lat, lng] = activity.coordinates;
+    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  }
+  
+  // Prioridade 3: Busca por nome do local
+  if (activity.location) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location)}`;
+  }
+  
+  return null;
+}
 ```
+
+---
+
+## Comparação de URLs
+
+| Tipo | Formato | Resultado |
+|------|---------|-----------|
+| `cid=` (Google Places) | `maps.google.com/?cid=14834496294842582221` | Abre página da Galleria degli Uffizi com fotos, avaliações, horários |
+| `query=coords` (atual) | `maps.google.com/search/?api=1&query=43.77,11.25` | Abre pin genérico nas coordenadas |
+| `query=nome` (fallback) | `maps.google.com/search/?api=1&query=Galleria%20Uffizi` | Faz busca pelo nome |
 
 ---
 
 ## Impacto
 
-Esta correção afeta:
-
-1. **QR Codes gerados para atividades** - Os QR codes no PDF agora apontarão para os locais corretos
-2. **Função `generateItineraryQRCodes`** - Usada na exportação de PDF
-
-O botão "Ver no Google Maps" nos cards já funciona corretamente pois usa a função local do `ActivityCard.tsx`.
+- **Atividades validadas** (com selo "Verificado") → Abrirão diretamente na página do estabelecimento no Google Maps
+- **Atividades não validadas** → Continuarão usando coordenadas ou nome como fallback
+- **QR Codes no PDF** → Também podem ser atualizados para usar a mesma lógica no `qrCodeService.ts`
 
 ---
 
-## Resumo Técnico
+## Arquivos Afetados
 
-| Arquivo | Função | Formato Esperado | Status |
-|---------|--------|------------------|--------|
-| `ActivityCard.tsx` | `getGoogleMapsUrl` | `[lat, lng]` | ✅ Correto |
-| `qrCodeService.ts` | `getGoogleMapsUrl` | `[lng, lat]` ❌ | Precisa correção |
-| `google-places/index.ts` | Retorno da API | `[lat, lng]` | ✅ Correto |
-| `staticMapService.ts` | Renderização do mapa | `{lat, lng}` | ✅ Correto |
+1. `src/components/itinerary/ActivityCard.tsx` - Função `getGoogleMapsUrl`
+2. `src/services/qrCodeService.ts` - Função `getGoogleMapsUrl` (opcional, para consistência nos PDFs)
 
