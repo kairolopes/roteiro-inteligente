@@ -37,6 +37,7 @@ const Itinerary = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isPartialItinerary, setIsPartialItinerary] = useState(false);
+  const [waitingForAuth, setWaitingForAuth] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const { toast } = useToast();
   const { exportToPDF, isExporting, currentStep: pdfStep, progress: pdfProgress } = usePDFExport();
@@ -44,6 +45,7 @@ const Itinerary = () => {
   const generateItineraryWithStreaming = useCallback(async (skipCreditCheck = false) => {
     // Check if user needs to login
     if (!user) {
+      setWaitingForAuth(true);
       setShowAuthModal(true);
       setIsLoading(false);
       return;
@@ -155,6 +157,14 @@ const Itinerary = () => {
       setIsLoading(false);
     }
   }, [toast, user, canGenerateItinerary, consumeItineraryCredit, refetchCredits]);
+
+  // Effect to trigger generation after successful login
+  useEffect(() => {
+    if (waitingForAuth && user) {
+      setWaitingForAuth(false);
+      generateItineraryWithStreaming();
+    }
+  }, [user, waitingForAuth, generateItineraryWithStreaming]);
 
   useEffect(() => {
     // Load startDate from quiz answers
@@ -280,7 +290,41 @@ const Itinerary = () => {
     );
   }
 
-  // Error state
+  // Waiting for auth state - show friendly screen with login modal
+  if (waitingForAuth && !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md px-4"
+        >
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Login Necessário</h2>
+          <p className="text-muted-foreground mb-6">
+            Faça login para criar seu roteiro personalizado.
+          </p>
+          <Button variant="outline" onClick={() => navigate("/quiz")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Quiz
+          </Button>
+        </motion.div>
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => {
+            setShowAuthModal(false);
+            if (!user) {
+              navigate("/quiz");
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Error state - but NOT if we're waiting for auth
   if (error || !itinerary) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -396,7 +440,12 @@ const Itinerary = () => {
       {/* Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
+        onClose={() => {
+          setShowAuthModal(false);
+          if (!user) {
+            navigate("/quiz");
+          }
+        }}
       />
     </div>
   );
