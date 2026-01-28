@@ -12,6 +12,7 @@ import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
 import { getChatUrl, getAuthHeaders } from "@/lib/apiRouting";
+import ChatMessageContent from "@/components/chat/ChatMessageContent";
 
 interface Message {
   role: "user" | "assistant";
@@ -20,6 +21,9 @@ interface Message {
 
 // Free messages for guests (without login)
 const FREE_GUEST_MESSAGES = 3;
+// Free days to show in pre-itinerary (same as itinerary page)
+const FREE_DAYS_GUEST = 2;
+const FREE_DAYS_LOGGED_IN = 3;
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -491,9 +495,20 @@ ${chatHistory}
                           : "glass-card"
                       )}
                     >
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
-                      </div>
+                      {message.role === "user" ? (
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {message.content}
+                        </div>
+                      ) : (
+                        <ChatMessageContent
+                          content={message.content}
+                          freeDays={user ? FREE_DAYS_LOGGED_IN : FREE_DAYS_GUEST}
+                          isLoggedIn={!!user}
+                          hasSubscription={hasActiveSubscription}
+                          onLogin={() => setShowAuthModal(true)}
+                          onSubscribe={() => setShowPaywall(true)}
+                        />
+                      )}
                       
                       {/* Show itinerary button after substantial AI response */}
                       {message.role === "assistant" && 
