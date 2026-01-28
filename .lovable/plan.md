@@ -1,166 +1,128 @@
 
-
-# Correção: Texto Estourando Margens no PDF
+# Correção: PDF com Erros de Layout e Mapa Errado
 
 ## Problemas Identificados
 
-Analisando o PDF gerado, encontrei **5 problemas** de estouro:
+### 1. Mapa mostrando região errada (Eritréia ao invés de Itália)
+**Causa raiz**: A função `toCoordinate` está invertendo latitude e longitude!
 
-| Local | Problema | Exemplo no PDF |
-|-------|----------|----------------|
-| Localização | Emoji + texto muito longo | `Ø=ÜÍ Hotel de Russie, Via del Babuino, 9...` |
-| Dicas | Emoji + texto muito longo | `Ø=Ü¡ Para um toque extra de luxo...` |
-| Descrição | Linhas continuam além da margem | Descrição cortando QR Code |
-| Badge orçamento | Texto não truncado | `R$5.000 - R$8.000 (estimado por pessoa...)` |
-| Título atividade | Títulos longos sem truncamento adequado | Varia |
+```typescript
+// ATUAL (ERRADO):
+function toCoordinate(tuple: [number, number]): Coordinate {
+  return { lng: tuple[0], lat: tuple[1] };  // Trata [lat, lng] como [lng, lat]
+}
+```
+
+O formato de coordenadas no sistema é `[lat, lng]` (ex: `[41.9028, 12.4964]` = Roma), mas o código assume `[lng, lat]`. Isso faz:
+- Roma (41.9°N, 12.5°E) → ser interpretado como (12.5°N, 41.9°E) = Eritréia/Etiópia!
+
+### 2. Imagem de capa com texto sobreposto
+A imagem do Unsplash às vezes contém elementos visuais (texto de mapa, legendas) que aparecem atrás do título do roteiro.
+
+### 3. Orçamento ultrapassando margem na página final
+O valor de `totalBudget` como "R$5.000 - R$8.000 (estimado por pessoa...)" é muito longo e não está sendo truncado na página de resumo.
 
 ---
 
-## Soluções Propostas
+## Mudanças Técnicas
 
-### 1. Substituir Emojis por Texto (Linha 514, 534)
+### Arquivo: `src/hooks/usePDFExport.ts`
 
-```tsx
-// Antes:
-drawTextEllipsis(pdf, `📍 ${activity.location}`, contentX, cardY + 25, contentWidth);
-drawTextEllipsis(pdf, `💡 ${activity.tips}`, contentX + 2, tipY + 4.5, contentWidth - 35);
+**Correção 1 - Inverter coordenadas (linhas 71-74):**
+```typescript
+// ANTES (errado):
+function toCoordinate(tuple: [number, number]): Coordinate {
+  return { lng: tuple[0], lat: tuple[1] };
+}
 
-// Depois:
-drawTextEllipsis(pdf, `Local: ${activity.location}`, contentX, cardY + 25, contentWidth);
-drawTextEllipsis(pdf, `Dica: ${activity.tips}`, contentX + 2, tipY + 4.5, contentWidth - 35);
-```
-
-### 2. Criar Função de Truncamento Mais Robusta
-
-O `drawTextEllipsis` atual não adiciona "..." quando corta. Vou melhorar:
-
-```tsx
-function drawTextEllipsis(
-  pdf: jsPDF,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number
-) {
-  if (!text) return;
-  
-  // Normalize text: remove emojis and special unicode
-  const cleanText = text
-    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Remove emojis
-    .replace(/[^\x00-\x7F]/g, (char) => {
-      // Convert accented chars to ASCII
-      const map: Record<string, string> = {
-        'á': 'a', 'à': 'a', 'ã': 'a', 'â': 'a', 'ä': 'a',
-        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
-        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
-        'ó': 'o', 'ò': 'o', 'õ': 'o', 'ô': 'o', 'ö': 'o',
-        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
-        'ç': 'c', 'ñ': 'n',
-        'Á': 'A', 'À': 'A', 'Ã': 'A', 'Â': 'A', 'Ä': 'A',
-        'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
-        'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
-        'Ó': 'O', 'Ò': 'O', 'Õ': 'O', 'Ô': 'O', 'Ö': 'O',
-        'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
-        'Ç': 'C', 'Ñ': 'N',
-        '★': '*', '•': '-'
-      };
-      return map[char] || char;
-    })
-    .trim();
-  
-  if (!cleanText) return;
-  
-  // Check if text fits
-  const textWidth = pdf.getTextWidth(cleanText);
-  if (textWidth <= maxWidth) {
-    pdf.text(cleanText, x, y);
-    return;
-  }
-  
-  // Truncate with ellipsis
-  let truncated = cleanText;
-  while (pdf.getTextWidth(truncated + '...') > maxWidth && truncated.length > 0) {
-    truncated = truncated.slice(0, -1);
-  }
-  pdf.text(truncated + '...', x, y);
+// DEPOIS (correto):
+function toCoordinate(tuple: [number, number]): Coordinate {
+  return { lat: tuple[0], lng: tuple[1] };  // [lat, lng] é o formato do sistema
 }
 ```
 
-### 3. Ajustar Largura de Conteúdo para Atividades
-
-O problema é que `contentWidth = CONTENT_WIDTH - 70` não considera o QR code adequadamente:
-
-```tsx
-// Linha 477 - Ajustar para considerar QR code
-const qrSize = 18;
-const qrMargin = 8; // espaço entre conteúdo e QR
-const contentWidth = CONTENT_WIDTH - 35 - qrSize - qrMargin; // ~60mm menos que antes
-```
-
-### 4. Truncar Texto dos Badges (Capa)
-
-```tsx
-// Linhas 235-240 - Usar drawTextEllipsis para badges
-const badgeTextMaxWidth = badgeWidth - 10;
-const badgeText = badge as string;
-const truncatedBadge = pdf.splitTextToSize(badgeText, badgeTextMaxWidth)[0] || badgeText;
-pdf.text(truncatedBadge, MARGIN + i * (badgeWidth + 5) + (badgeWidth - 5) / 2, badgeY + 6.5, { align: "center" });
-```
-
-### 5. Limitar Descrição a 2 Linhas Truncadas
-
-```tsx
-// Linhas 518-524 - Garantir truncamento nas linhas de descrição
-if (activity.description) {
-  pdf.setTextColor(COLORS.text);
-  pdf.setFontSize(8);
-  const descLines = pdf.splitTextToSize(activity.description, contentWidth);
-  descLines.slice(0, 2).forEach((line: string, i: number) => {
-    // Truncar cada linha individualmente
-    const truncatedLine = line.length > 80 ? line.substring(0, 77) + '...' : line;
-    pdf.text(truncatedLine, contentX, cardY + 32 + i * 4);
-  });
+**Correção 2 - Adicionar overlay mais forte na imagem de capa (linhas 222-231):**
+```typescript
+// Cover image
+if (coverImage) {
+  try {
+    pdf.addImage(coverImage, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT * 0.6);
+    // Overlay mais forte para esconder texto da imagem
+    pdf.setFillColor(30, 27, 75);
+    pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT * 0.6, "F"); // Cobre TODA a imagem
+    // Definir opacidade via GState (jsPDF 2.x)
+    // Alternativa: usar imagem menor ou sem texto
+  } catch (e) {
+    console.error("Failed to add cover image:", e);
+  }
 }
+```
+
+**Alternativa mais elegante para capa**: Não usar imagem de fundo na área do texto, apenas no topo.
+
+**Correção 3 - Truncar orçamento na página final (linhas 641-664):**
+```typescript
+const stats = [
+  { label: "Duracao", value: normalizeTextForPDF(itinerary.duration) || "-" },
+  { label: "Orcamento", value: truncateBudget(itinerary.totalBudget) },
+  { label: "Destinos", value: itinerary.destinations?.length?.toString() || "0" },
+  { label: "Atividades", value: itinerary.days.reduce((a, d) => a + d.activities.length, 0).toString() },
+];
+
+// Nova função auxiliar:
+function truncateBudget(budget: string): string {
+  if (!budget) return "-";
+  const normalized = normalizeTextForPDF(budget);
+  // Extrair apenas o valor principal (ex: "R$5.000 - R$8.000")
+  const match = normalized.match(/R\$[\d\.,]+ - R\$[\d\.,]+|R\$[\d\.,]+/);
+  return match ? match[0] : normalized.slice(0, 25) + (normalized.length > 25 ? '...' : '');
+}
+```
+
+Além disso, usar `drawTextEllipsis` para o valor:
+```typescript
+// Em vez de pdf.text direto, usar truncamento:
+const maxValueWidth = cardWidth - 15;
+drawTextEllipsis(pdf, stat.value, x + 10, cardY + 20, maxValueWidth);
 ```
 
 ---
 
 ## Resumo das Mudanças
 
-| Arquivo | Linha(s) | Mudança |
-|---------|----------|---------|
-| `src/hooks/usePDFExport.ts` | 124-133 | Melhorar função `drawTextEllipsis` com normalização de texto e truncamento com "..." |
-| `src/hooks/usePDFExport.ts` | 477 | Ajustar `contentWidth` para considerar QR code |
-| `src/hooks/usePDFExport.ts` | 514 | Trocar `📍` por `Local:` |
-| `src/hooks/usePDFExport.ts` | 534 | Trocar `💡` por `Dica:` |
-| `src/hooks/usePDFExport.ts` | 235-240 | Truncar texto dos badges na capa |
-| `src/hooks/usePDFExport.ts` | 518-524 | Garantir truncamento das linhas de descrição |
+| Problema | Arquivo | Linha(s) | Solução |
+|----------|---------|----------|---------|
+| Mapa errado (Eritréia) | `usePDFExport.ts` | 72-74 | Inverter `lat`/`lng` na função `toCoordinate` |
+| Imagem sobre texto | `usePDFExport.ts` | 222-231 | Usar overlay sólido ou reduzir área da imagem |
+| Orçamento cortado | `usePDFExport.ts` | 641-664 | Truncar `totalBudget` e usar `drawTextEllipsis` |
 
 ---
 
-## Resultado Esperado
+## Fluxo Visual
 
-**Antes:**
-```
-Ø=ÜÍ Hotel de Russie, Via del Babuino, 9, 00187 Roma RM Chegue ao Aeroporto Fiumicino...
-```
-
-**Depois:**
-```
-Local: Hotel de Russie, Via del Babuino, 9, 00187...
-```
-
-**Antes (badges):**
-```
+```text
+Antes:
 ┌─────────────────────────────────────┐
-│ R$5.000 - R$8.000 (estimado por pessoa, excluindo passagens aéreas) │ ← ESTOURA
+│ toCoordinate([41.9, 12.5])          │
+│   → { lng: 41.9, lat: 12.5 }        │
+│   → Mapa mostra: 12.5°N, 41.9°E     │
+│   → ERITRÉIA!                       │
+└─────────────────────────────────────┘
+
+Depois:
+┌─────────────────────────────────────┐
+│ toCoordinate([41.9, 12.5])          │
+│   → { lat: 41.9, lng: 12.5 }        │
+│   → Mapa mostra: 41.9°N, 12.5°E     │
+│   → ROMA, ITÁLIA ✓                  │
 └─────────────────────────────────────┘
 ```
 
-**Depois (badges):**
-```
-┌─────────────────────────────────────┐
-│ R$5.000 - R$8.000 (esti...          │ ← TRUNCADO
-└─────────────────────────────────────┘
-```
+---
 
+## Impacto
+
+- Mapa do PDF mostrará corretamente Roma e Florença (Itália)
+- Capa terá texto legível sem interferência da imagem
+- Orçamento na página de resumo não ultrapassará a margem
+- Todos os textos longos serão truncados adequadamente
