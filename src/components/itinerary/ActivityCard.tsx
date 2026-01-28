@@ -10,24 +10,15 @@ import {
   Lightbulb,
   Coins,
   Star,
-  ExternalLink,
-  Navigation,
   CheckCircle2
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
 import { cn } from "@/lib/utils";
-import { DayContext } from "@/lib/affiliateLinks";
-import AffiliateButtons from "./AffiliateButtons";
 import { Badge } from "@/components/ui/badge";
 
 interface ActivityCardProps {
   activity: Activity;
   index: number;
-  dayContext?: DayContext;
-  tripDates?: {
-    startDate: string;
-    endDate: string;
-  };
 }
 
 const categoryConfig: Record<string, { icon: typeof Camera; bgClass: string; textClass: string; borderClass: string; imageQuery: string }> = {
@@ -76,31 +67,9 @@ const defaultConfig = {
   imageQuery: "travel"
 };
 
-// Generate Google Maps URL - prioritizes validated Google Places URL
-function getGoogleMapsUrl(activity: Activity): string | null {
-  // Priority 1: Direct URL from Google Places API (most precise)
-  if (activity.googleMapsUrl) {
-    return activity.googleMapsUrl;
-  }
-  
-  // Priority 2: Validated coordinates
-  if (activity.coordinates && activity.coordinates.length === 2) {
-    const [lat, lng] = activity.coordinates;
-    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  }
-  
-  // Priority 3: Search by location name
-  if (activity.location) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location)}`;
-  }
-  
-  return null;
-}
-
-const ActivityCard = ({ activity, index, dayContext, tripDates }: ActivityCardProps) => {
+const ActivityCard = ({ activity, index }: ActivityCardProps) => {
   const config = categoryConfig[activity.category] || defaultConfig;
   const CategoryIcon = config.icon;
-  const googleMapsUrl = getGoogleMapsUrl(activity);
   
   // Use Google Places rating if validated, otherwise use AI estimate
   const rating = activity.rating || activity.estimatedRating;
@@ -161,20 +130,7 @@ const ActivityCard = ({ activity, index, dayContext, tripDates }: ActivityCardPr
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="font-semibold text-sm lg:text-base leading-tight">{activity.title}</h4>
-              {googleMapsUrl && (
-                <a 
-                  href={googleMapsUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0 touch-target p-1"
-                  title="Abrir no Google Maps"
-                >
-                  <Navigation className="w-4 h-4" />
-                </a>
-              )}
-            </div>
+            <h4 className="font-semibold text-sm lg:text-base leading-tight">{activity.title}</h4>
             <p className="text-xs lg:text-sm text-muted-foreground mt-1 line-clamp-2 lg:line-clamp-3">
               {activity.description}
             </p>
@@ -206,31 +162,6 @@ const ActivityCard = ({ activity, index, dayContext, tripDates }: ActivityCardPr
                 <span className="text-yellow-700 dark:text-yellow-300 line-clamp-2 lg:line-clamp-none">{activity.tips}</span>
               </div>
             )}
-
-            {/* Action Buttons */}
-            <div className="mt-3 flex flex-col gap-2">
-              {/* Google Maps Button */}
-              {googleMapsUrl && (
-                <a 
-                  href={googleMapsUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors text-xs lg:text-sm font-medium text-primary"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-                  <span>Ver no Google Maps</span>
-                </a>
-              )}
-
-              {/* Affiliate Booking Buttons - Contextual */}
-              {dayContext && (
-                <AffiliateButtons 
-                  activity={activity} 
-                  dayContext={dayContext}
-                  tripDates={tripDates}
-                />
-              )}
-            </div>
           </div>
         </div>
       </div>
