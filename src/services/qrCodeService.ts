@@ -34,17 +34,25 @@ export async function generateQRCode(
 }
 
 /**
- * Generates a Google Maps URL for an activity
+ * Generates a Google Maps URL for an activity - prioritizes validated Google Places URL
  */
 export function getGoogleMapsUrl(
   coordinates?: [number, number],
-  location?: string
+  location?: string,
+  googleMapsUrl?: string
 ): string {
+  // Priority 1: Direct URL from Google Places API (most precise)
+  if (googleMapsUrl) {
+    return googleMapsUrl;
+  }
+  
+  // Priority 2: Validated coordinates
   if (coordinates && coordinates.length === 2) {
     const [lat, lng] = coordinates;
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   }
   
+  // Priority 3: Search by location name
   if (location) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
   }
@@ -64,6 +72,7 @@ export async function generateItineraryQRCodes(
       title: string;
       location?: string;
       coordinates?: [number, number];
+      googleMapsUrl?: string;
     }>;
   }>,
   onProgress?: (percent: number) => void
@@ -75,7 +84,7 @@ export async function generateItineraryQRCodes(
   
   for (let i = 0; i < totalActivities; i++) {
     const activity = allActivities[i];
-    const mapsUrl = getGoogleMapsUrl(activity.coordinates, activity.location);
+    const mapsUrl = getGoogleMapsUrl(activity.coordinates, activity.location, activity.googleMapsUrl);
     
     if (mapsUrl) {
       const qr = await generateQRCode(mapsUrl, { width: 80 });

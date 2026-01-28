@@ -76,16 +76,24 @@ const defaultConfig = {
   imageQuery: "travel"
 };
 
-// Generate Google Maps URL from coordinates
+// Generate Google Maps URL - prioritizes validated Google Places URL
 function getGoogleMapsUrl(activity: Activity): string | null {
+  // Priority 1: Direct URL from Google Places API (most precise)
+  if (activity.googleMapsUrl) {
+    return activity.googleMapsUrl;
+  }
+  
+  // Priority 2: Validated coordinates
   if (activity.coordinates && activity.coordinates.length === 2) {
     const [lat, lng] = activity.coordinates;
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   }
-  // Fallback: search by location name
+  
+  // Priority 3: Search by location name
   if (activity.location) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location)}`;
   }
+  
   return null;
 }
 
