@@ -29,7 +29,7 @@ const Chat = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { canSendChatMessage, consumeChatMessage, remainingChatMessages, hasActiveSubscription } = useUserCredits();
+  const { canSendChatMessage, consumeChatMessage, remainingChatMessages, hasActiveSubscription, isAdmin } = useUserCredits();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -504,7 +504,7 @@ ${chatHistory}
                           content={message.content}
                           freeDays={user ? FREE_DAYS_LOGGED_IN : FREE_DAYS_GUEST}
                           isLoggedIn={!!user}
-                          hasSubscription={hasActiveSubscription}
+                          hasSubscription={hasActiveSubscription || isAdmin}
                           onLogin={() => setShowAuthModal(true)}
                           onSubscribe={() => setShowPaywall(true)}
                         />
