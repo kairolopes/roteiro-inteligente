@@ -68,9 +68,18 @@ interface Coordinate {
   lng: number;
 }
 
-// Convert [lng, lat] tuple to Coordinate object
+// Convert [lat, lng] tuple to Coordinate object (system uses [lat, lng] format)
 function toCoordinate(tuple: [number, number]): Coordinate {
-  return { lng: tuple[0], lat: tuple[1] };
+  return { lat: tuple[0], lng: tuple[1] };
+}
+
+// Extract only the price value from budget string (e.g., "R$5.000 - R$8.000")
+function truncateBudget(budget: string): string {
+  if (!budget) return "-";
+  const normalized = normalizeTextForPDF(budget);
+  // Extract just the price range
+  const match = normalized.match(/R\$[\d\.,]+ - R\$[\d\.,]+|R\$[\d\.,]+/);
+  return match ? match[0] : normalized.slice(0, 20) + (normalized.length > 20 ? '...' : '');
 }
 
 // PDF Layout Constants (in mm)
@@ -218,13 +227,14 @@ function renderCoverPage(
   pdf.setFillColor("#1e1b4b");
   pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
   
-  // Cover image
+  // Cover image - only use top portion to avoid text overlay issues
   if (coverImage) {
     try {
-      pdf.addImage(coverImage, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT * 0.6);
-      // Gradient overlay - use semi-transparent rectangle
+      // Draw image only on top 40% of page
+      pdf.addImage(coverImage, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT * 0.4);
+      // Strong gradient overlay from image to solid background
       pdf.setFillColor(30, 27, 75); // #1e1b4b in RGB
-      pdf.rect(0, PAGE_HEIGHT * 0.4, PAGE_WIDTH, PAGE_HEIGHT * 0.2, "F");
+      pdf.rect(0, PAGE_HEIGHT * 0.35, PAGE_WIDTH, PAGE_HEIGHT * 0.1, "F");
     } catch (e) {
       console.error("Failed to add cover image:", e);
     }
@@ -640,13 +650,15 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
   
   // Stats cards
   const stats = [
-    { label: "Duracao", value: itinerary.duration || "-" },
-    { label: "Orcamento", value: itinerary.totalBudget || "-" },
+    { label: "Duracao", value: normalizeTextForPDF(itinerary.duration) || "-" },
+    { label: "Orcamento", value: truncateBudget(itinerary.totalBudget) },
     { label: "Destinos", value: itinerary.destinations?.length?.toString() || "0" },
     { label: "Atividades", value: itinerary.days.reduce((a, d) => a + d.activities.length, 0).toString() },
   ];
   
   const cardWidth = (CONTENT_WIDTH - 15) / 2;
+  const maxValueWidth = cardWidth - 20;
+  
   stats.forEach((stat, i) => {
     const x = MARGIN + (i % 2) * (cardWidth + 5);
     const cardY = y + Math.floor(i / 2) * 30;
@@ -661,7 +673,7 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
     pdf.setTextColor(COLORS.text);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(14);
-    pdf.text(stat.value, x + 10, cardY + 20);
+    drawTextEllipsis(pdf, stat.value, x + 10, cardY + 20, maxValueWidth);
   });
   
   y += 75;
