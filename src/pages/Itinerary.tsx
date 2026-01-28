@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2, Lock, CreditCard } from "lucide-react";
@@ -25,10 +25,14 @@ interface ProgressState {
   totalModels?: number;
 }
 
+// Free days logic based on user state
+const FREE_DAYS_GUEST = 2;
+const FREE_DAYS_LOGGED_IN = 3;
+
 const Itinerary = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits } = useUserCredits();
+  const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits, hasActiveSubscription, isAdmin } = useUserCredits();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,22 +41,26 @@ const Itinerary = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isPartialItinerary, setIsPartialItinerary] = useState(false);
-  const [waitingForAuth, setWaitingForAuth] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const { toast } = useToast();
   const { exportToPDF, isExporting, currentStep: pdfStep, progress: pdfProgress } = usePDFExport();
 
-  const generateItineraryWithStreaming = useCallback(async (skipCreditCheck = false) => {
-    // Check if user needs to login
-    if (!user) {
-      setWaitingForAuth(true);
-      setShowAuthModal(true);
-      setIsLoading(false);
-      return;
-    }
+  // Calculate how many free days the user gets
+  const freeDaysCount = useMemo(() => {
+    // Admin or subscriber: unlimited
+    if (isAdmin || hasActiveSubscription) return Infinity;
+    // Logged in without subscription: 3 days
+    if (user) return FREE_DAYS_LOGGED_IN;
+    // Guest: 2 days
+    return FREE_DAYS_GUEST;
+  }, [user, hasActiveSubscription, isAdmin]);
 
-    // Check credits (unless skipping for regeneration with existing credit)
-    if (!skipCreditCheck && !canGenerateItinerary) {
+  const generateItineraryWithStreaming = useCallback(async (skipCreditCheck = false) => {
+    // FREEMIUM: Allow generation without login, but show partial result
+    // We no longer block here - we generate for everyone
+
+    // Only check credits for logged-in users
+    if (user && !skipCreditCheck && !canGenerateItinerary) {
       setShowPaywall(true);
       setIsLoading(false);
       return;
@@ -124,18 +132,20 @@ const Itinerary = () => {
             if (event.type === "progress") {
               setProgress(event.data);
             } else if (event.type === "complete") {
-              // Consume credit on successful generation
-              if (!skipCreditCheck) {
+              // Only consume credit for logged-in users
+              if (user && !skipCreditCheck) {
                 await consumeItineraryCredit();
                 await refetchCredits();
               }
               sessionStorage.setItem("generatedItinerary", JSON.stringify(event.data.itinerary));
               setItinerary(event.data.itinerary);
-              setIsPartialItinerary(false);
+              setIsPartialItinerary(!user || !hasActiveSubscription);
               setProgress({ step: "done", message: "Roteiro pronto!" });
               toast({
                 title: "Roteiro criado! 🎉",
-                description: "Seu roteiro personalizado está pronto.",
+                description: user 
+                  ? "Seu roteiro personalizado está pronto."
+                  : `Mostrando ${FREE_DAYS_GUEST} dias grátis. Faça login para ver mais!`,
               });
             } else if (event.type === "error") {
               throw new Error(event.data.error);
@@ -156,15 +166,15 @@ const Itinerary = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, user, canGenerateItinerary, consumeItineraryCredit, refetchCredits]);
+  }, [toast, user, canGenerateItinerary, consumeItineraryCredit, refetchCredits, hasActiveSubscription]);
 
-  // Effect to trigger generation after successful login
+  // Effect to trigger refetch when user logs in (to unlock more days)
   useEffect(() => {
-    if (waitingForAuth && user) {
-      setWaitingForAuth(false);
-      generateItineraryWithStreaming();
+    if (user && itinerary) {
+      // User just logged in with existing itinerary - update partial state
+      setIsPartialItinerary(!hasActiveSubscription && !isAdmin);
     }
-  }, [user, waitingForAuth, generateItineraryWithStreaming]);
+  }, [user, itinerary, hasActiveSubscription, isAdmin]);
 
   useEffect(() => {
     // Load startDate from quiz answers
@@ -290,39 +300,6 @@ const Itinerary = () => {
     );
   }
 
-  // Waiting for auth state - show friendly screen with login modal
-  if (waitingForAuth && !user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center max-w-md px-4"
-        >
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">Login Necessário</h2>
-          <p className="text-muted-foreground mb-6">
-            Faça login para criar seu roteiro personalizado.
-          </p>
-          <Button variant="outline" onClick={() => navigate("/quiz")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Quiz
-          </Button>
-        </motion.div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => {
-            setShowAuthModal(false);
-            if (!user) {
-              navigate("/quiz");
-            }
-          }}
-        />
-      </div>
-    );
-  }
 
   // Error state - but NOT if we're waiting for auth
   if (error || !itinerary) {
@@ -374,6 +351,14 @@ const Itinerary = () => {
         selectedDay={selectedDay}
         onSelectDay={setSelectedDay}
         startDate={startDate}
+        freeDaysCount={freeDaysCount}
+        onLockedDayClick={() => {
+          if (!user) {
+            setShowAuthModal(true);
+          } else {
+            setShowPaywall(true);
+          }
+        }}
       />
 
       <main className="container mx-auto px-3 lg:px-8 py-4 lg:py-6">
@@ -405,6 +390,11 @@ const Itinerary = () => {
                   day={day}
                   isSelected={selectedDay === day.day || selectedDay === null}
                   onSelect={() => setSelectedDay(selectedDay === day.day ? null : day.day)}
+                  isLocked={day.day > freeDaysCount}
+                  totalDays={itinerary.days.length}
+                  onUnlock={() => setShowAuthModal(true)}
+                  onSubscribe={() => setShowPaywall(true)}
+                  isLoggedIn={!!user}
                 />
               ))}
             </div>

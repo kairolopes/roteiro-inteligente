@@ -18,6 +18,9 @@ interface Message {
   content: string;
 }
 
+// Free messages for guests (without login)
+const FREE_GUEST_MESSAGES = 3;
+
 const Chat = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -30,6 +33,7 @@ const Chat = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [rateLimitError, setRateLimitError] = useState(false);
+  const [guestMessagesUsed, setGuestMessagesUsed] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -233,17 +237,21 @@ const Chat = () => {
   const sendMessage = async (messageText: string, answers?: QuizAnswers | null, isInitial = false) => {
     if (!messageText.trim() || isLoading) return;
 
-    // Check if user needs to login (skip for initial auto-message)
+    // FREEMIUM: Allow guests to send up to FREE_GUEST_MESSAGES before requiring login
     if (!isInitial && !user) {
-      setShowAuthModal(true);
-      return;
+      if (guestMessagesUsed >= FREE_GUEST_MESSAGES) {
+        setShowAuthModal(true);
+        return;
+      }
     }
 
-    // Check chat message limit (skip for initial auto-message)
-    if (!isInitial && !canSendChatMessage) {
+    // Check chat message limit for logged-in users (skip for initial auto-message and guests)
+    if (!isInitial && user && !canSendChatMessage) {
       setShowPaywall(true);
       return;
     }
+    
+    
     const userMessage: Message = { role: "user", content: messageText.trim() };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
@@ -273,8 +281,12 @@ const Chat = () => {
         updateAssistant,
         async () => {
           setIsLoading(false);
-          // Consume chat message credit after successful response (skip for initial)
-          if (!isInitial) {
+          // Track guest message usage
+          if (!isInitial && !user) {
+            setGuestMessagesUsed(prev => prev + 1);
+          }
+          // Consume chat message credit after successful response (skip for initial and guests)
+          if (!isInitial && user) {
             await consumeChatMessage();
           }
         }
@@ -592,6 +604,13 @@ ${chatHistory}
             <p className="text-xs text-muted-foreground">
               Sofia pode cometer erros. Verifique informações importantes.
             </p>
+            {/* Guest message counter */}
+            {!user && (
+              <p className="text-xs text-muted-foreground">
+                {FREE_GUEST_MESSAGES - guestMessagesUsed} de {FREE_GUEST_MESSAGES} mensagens grátis
+              </p>
+            )}
+            {/* Logged-in user message counter */}
             {user && !hasActiveSubscription && (
               <p className="text-xs text-muted-foreground">
                 {remainingChatMessages === Infinity

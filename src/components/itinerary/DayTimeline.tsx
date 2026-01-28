@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { Calendar, MapPin, Star } from "lucide-react";
+import { Calendar, MapPin, Star, Lock } from "lucide-react";
 import { ItineraryDay } from "@/types/itinerary";
 import ActivityCard from "./ActivityCard";
+import LockedDayOverlay from "./LockedDayOverlay";
 import { cn } from "@/lib/utils";
 
 interface DayTimelineProps {
@@ -12,9 +13,24 @@ interface DayTimelineProps {
     startDate: string;
     endDate: string;
   };
+  isLocked?: boolean;
+  totalDays?: number;
+  onUnlock?: () => void;
+  onSubscribe?: () => void;
+  isLoggedIn?: boolean;
 }
 
-const DayTimeline = ({ day, isSelected, onSelect, tripDates }: DayTimelineProps) => {
+const DayTimeline = ({ 
+  day, 
+  isSelected, 
+  onSelect, 
+  tripDates,
+  isLocked = false,
+  totalDays = 1,
+  onUnlock,
+  onSubscribe,
+  isLoggedIn = false
+}: DayTimelineProps) => {
   // Create day context for affiliate links
   const dayContext = {
     city: day.city,
@@ -22,27 +38,49 @@ const DayTimeline = ({ day, isSelected, onSelect, tripDates }: DayTimelineProps)
     date: day.date,
     dayNumber: day.day,
   };
+
+  // Handle click on locked day
+  const handleClick = () => {
+    if (isLocked && onUnlock) {
+      onUnlock();
+    } else {
+      onSelect();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-4 lg:mb-6"
+      className={cn("mb-4 lg:mb-6 relative", isLocked && "overflow-hidden rounded-xl")}
     >
+      {/* Locked Overlay */}
+      {isLocked && onUnlock && onSubscribe && (
+        <LockedDayOverlay
+          dayNumber={day.day}
+          totalDays={totalDays}
+          onLogin={onUnlock}
+          onSubscribe={onSubscribe}
+          isLoggedIn={isLoggedIn}
+        />
+      )}
+
       {/* Day Header */}
       <button
-        onClick={onSelect}
+        onClick={handleClick}
         className={cn(
           "w-full flex items-center gap-3 lg:gap-4 p-3 lg:p-4 rounded-lg lg:rounded-xl transition-all touch-active",
           isSelected
             ? "gradient-primary text-primary-foreground"
-            : "glass-card hover:border-primary"
+            : "glass-card hover:border-primary",
+          isLocked && "filter blur-[6px] pointer-events-none select-none"
         )}
       >
         <div className={cn(
           "w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl flex items-center justify-center text-lg lg:text-xl font-bold flex-shrink-0",
           isSelected ? "bg-white/20" : "bg-primary/10 text-primary"
         )}>
-          {day.day}
+          {isLocked ? <Lock className="w-5 h-5 lg:w-6 lg:h-6" /> : day.day}
         </div>
         <div className="flex-1 text-left min-w-0">
           <h3 className="font-bold text-base lg:text-lg">{day.date}</h3>
@@ -61,7 +99,7 @@ const DayTimeline = ({ day, isSelected, onSelect, tripDates }: DayTimelineProps)
       </button>
 
       {/* Activities */}
-      {isSelected && (
+      {isSelected && !isLocked && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
