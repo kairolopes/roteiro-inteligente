@@ -1,102 +1,98 @@
 
-# Remover Links Inválidos do ActivityCard
+# Correção: Admin Vê Paywall na Página de Itinerário
 
-## Objetivo
+## Diagnóstico
 
-Remover os links que não estão funcionando corretamente no painel esquerdo do itinerário, mantendo apenas o mapa interativo do lado direito.
+O problema ocorre porque:
 
-## O Que Será Removido
+1. O hook `useUserCredits` faz uma query assíncrona ao banco para verificar se o usuário é admin
+2. Durante esse carregamento, `isAdmin` é `false` por padrão
+3. A página `Itinerary.tsx` calcula `freeDaysCount` baseado em `isAdmin`, mas como ainda está `false` no momento da renderização inicial, os dias aparecem bloqueados
+4. Quando o usuário clica em um dia "bloqueado", o paywall é exibido antes de o estado de admin carregar
 
-### 1. Ícone de Navegação no Título
-- O pequeno ícone de bússola (Navigation) ao lado do título da atividade
-- Localizado nas linhas 166-176 do `ActivityCard.tsx`
+## Solução
 
-### 2. Botão "Ver no Google Maps"
-- O botão grande azul com ícone de link externo
-- Localizado nas linhas 212-223 do `ActivityCard.tsx`
-
-### 3. Botões de Afiliados (Hotéis, Voos, Tours)
-- Componente `AffiliateButtons` que mostra links para reservar hotel, buscar voos, etc.
-- Localizado nas linhas 225-232 do `ActivityCard.tsx`
-
-## O Que Será Mantido
-
-- **Mapa interativo** no lado direito (funciona corretamente)
-- **Localização textual** com ícone de MapPin (apenas informativo, sem link)
-- **Todas as outras informações** da atividade (título, descrição, duração, custo, dicas)
+Aguardar o carregamento completo do hook antes de determinar se dias estão bloqueados.
 
 ---
 
 ## Mudanças Técnicas
 
-### Arquivo: `src/components/itinerary/ActivityCard.tsx`
+### Arquivo: `src/pages/Itinerary.tsx`
 
-**1. Remover imports não utilizados:**
+**1. Importar `isLoading` do hook (linha 35):**
 ```tsx
-// Remover: ExternalLink, Navigation
-import { 
-  MapPin, Clock, Utensils, Train, Building, Camera, 
-  Sparkles, Lightbulb, Coins, Star, CheckCircle2
-} from "lucide-react";
-
-// Remover: import AffiliateButtons
-// Remover: import { DayContext } from "@/lib/affiliateLinks";
+const { 
+  canGenerateItinerary, 
+  consumeItineraryCredit, 
+  refetch: refetchCredits, 
+  hasActiveSubscription, 
+  isAdmin,
+  isLoading: creditsLoading  // ← Adicionar
+} = useUserCredits();
 ```
 
-**2. Simplificar interface (remover props não usadas):**
+**2. Atualizar cálculo de `freeDaysCount` (linhas 49-56):**
 ```tsx
-interface ActivityCardProps {
-  activity: Activity;
-  index: number;
-  // Remover: dayContext?: DayContext;
-  // Remover: tripDates?: {...};
+const freeDaysCount = useMemo(() => {
+  // Still loading credits - show all days temporarily (prevents flash of locked)
+  if (creditsLoading) return Infinity;
+  
+  // Admin or subscriber: unlimited
+  if (isAdmin || hasActiveSubscription) return Infinity;
+  // Logged in without subscription: 3 days
+  if (user) return FREE_DAYS_LOGGED_IN;
+  // Guest: 2 days
+  return FREE_DAYS_GUEST;
+}, [user, hasActiveSubscription, isAdmin, creditsLoading]);
+```
+
+**3. Prevenir paywall durante loading (linhas 63-67):**
+```tsx
+// Only check credits for logged-in users - but skip if still loading
+if (user && !skipCreditCheck && !creditsLoading && !canGenerateItinerary) {
+  setShowPaywall(true);
+  setIsLoading(false);
+  return;
 }
 ```
 
-**3. Remover função `getGoogleMapsUrl`:**
-- Linhas 79-98 serão removidas (função não mais necessária)
-
-**4. Remover variável `googleMapsUrl`:**
-- Linha 103 será removida
-
-**5. Remover ícone Navigation do título:**
-- Linhas 166-176 serão removidas
-
-**6. Remover toda a seção "Action Buttons":**
-- Linhas 210-233 serão removidas (botão Google Maps + AffiliateButtons)
+**4. Prevenir paywall no regenerar (linhas 225-228):**
+```tsx
+const handleRegenerate = () => {
+  if (!creditsLoading && !canGenerateItinerary) {
+    setShowPaywall(true);
+    return;
+  }
+  // ...rest
+};
+```
 
 ---
 
-## Resultado Visual
+## Fluxo Corrigido
 
-**Antes:**
-```
-┌─────────────────────────────────────┐
-│ 🏛️ Atração                    ⭐ 4.8 │
-├─────────────────────────────────────┤
-│ 09:00  Coliseu de Roma         🧭   │ ← Remove ícone
-│        Descrição da atividade...    │
-│        📍 Via del Colosseo, Roma    │
-│        ⏱️ 2h  💰 R$ 50              │
-│        💡 Dica: Chegue cedo...      │
-│                                     │
-│  [🔗 Ver no Google Maps]            │ ← Remove botão
-│  [🏨 Reservar Hotel]                │ ← Remove botões
-│  [✈️ Buscar Voos]                   │ ← Remove botões
-└─────────────────────────────────────┘
-```
+```text
+Antes (problema):
+┌─────────────────────────────────────────────────────────┐
+│ 1. Admin abre /itinerary                                │
+│ 2. isAdmin = false (ainda carregando)                   │
+│ 3. freeDaysCount = 3 (como usuário logado comum)       │
+│ 4. Dias 4+ aparecem bloqueados                         │
+│ 5. Admin clica no dia 4 → Paywall exibido!             │
+│ 6. isAdmin = true (carregou tarde demais)              │
+└─────────────────────────────────────────────────────────┘
 
-**Depois:**
-```
-┌─────────────────────────────────────┐
-│ 🏛️ Atração                    ⭐ 4.8 │
-├─────────────────────────────────────┤
-│ 09:00  Coliseu de Roma              │
-│        Descrição da atividade...    │
-│        📍 Via del Colosseo, Roma    │
-│        ⏱️ 2h  💰 R$ 50              │
-│        💡 Dica: Chegue cedo...      │
-└─────────────────────────────────────┘
+Depois (corrigido):
+┌─────────────────────────────────────────────────────────┐
+│ 1. Admin abre /itinerary                                │
+│ 2. creditsLoading = true                                │
+│ 3. freeDaysCount = Infinity (mostra tudo durante load) │
+│ 4. Todos os dias visíveis                               │
+│ 5. isAdmin = true (carrega)                             │
+│ 6. freeDaysCount recalcula = Infinity (admin confirmado)│
+│ 7. Nenhum paywall exibido                               │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -105,11 +101,10 @@ interface ActivityCardProps {
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/itinerary/ActivityCard.tsx` | Remover links e simplificar componente |
+| `src/pages/Itinerary.tsx` | Importar `isLoading`, aguardar carregamento antes de bloquear dias ou exibir paywall |
 
 ## Impacto
 
-- Cards de atividades ficam mais limpos e focados
-- Usuários usam o mapa interativo do lado direito para navegação
-- Menos confusão com links que não funcionam
-- Menos código para manter
+- Admin nunca verá paywall ou dias bloqueados
+- Durante o breve carregamento, todos os dias ficam visíveis (experiência melhor que mostrar bloqueado e depois desbloquear)
+- Usuários normais continuam com comportamento correto após loading
