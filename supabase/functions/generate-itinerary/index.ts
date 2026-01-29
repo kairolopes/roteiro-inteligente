@@ -42,15 +42,20 @@ async function validatePlace(
       return null;
     }
 
+    // Protect sendEvent with try/catch - stream may have been closed
     if (sendEvent) {
-      sendEvent({
-        type: "progress",
-        data: {
-          step: "place_validated",
-          message: `${title} validado ✓`,
-          cached: data.cached,
-        },
-      });
+      try {
+        sendEvent({
+          type: "progress",
+          data: {
+            step: "place_validated",
+            message: `${title} validado ✓`,
+            cached: data.cached,
+          },
+        });
+      } catch (e) {
+        console.log("Could not send progress event (stream may be closed)");
+      }
     }
 
     return {
@@ -585,8 +590,32 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
       
       const readable = new ReadableStream({
         async start(controller) {
+          // Flag to track if stream is closed - prevents "cannot close or enqueue" errors
+          let streamClosed = false;
+          
           const sendEvent = (event: { type: string; data: any }) => {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+            if (streamClosed) {
+              console.log("Stream closed, skipping event:", event.type);
+              return;
+            }
+            try {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+            } catch (e) {
+              console.warn("Failed to enqueue event:", e);
+              streamClosed = true;
+            }
+          };
+          
+          // Safe close function that is idempotent
+          const closeStream = () => {
+            if (!streamClosed) {
+              streamClosed = true;
+              try {
+                controller.close();
+              } catch (e) {
+                // Already closed, ignore
+              }
+            }
           };
 
           try {
@@ -625,12 +654,12 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
                 if (result.status === 429) {
                   sendEvent({ type: "error", data: { error: "Muitas requisições. Por favor, aguarde um momento." } });
-                  controller.close();
+                  closeStream();
                   return;
                 }
                 if (result.status === 402) {
                   sendEvent({ type: "error", data: { error: "Créditos insuficientes." } });
-                  controller.close();
+                  closeStream();
                   return;
                 }
 
@@ -699,7 +728,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
             if (!itinerary) {
               sendEvent({ type: "error", data: { error: "Não foi possível gerar o roteiro. Tente novamente." } });
-              controller.close();
+              closeStream();
               return;
             }
 
@@ -736,11 +765,11 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
             });
 
             sendEvent({ type: "complete", data: { itinerary } });
-            controller.close();
+            closeStream();
           } catch (error) {
             console.error("Streaming error:", error);
             sendEvent({ type: "error", data: { error: error instanceof Error ? error.message : "Erro desconhecido" } });
-            controller.close();
+            closeStream();
           }
         }
       });
