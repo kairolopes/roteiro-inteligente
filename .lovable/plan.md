@@ -1,33 +1,27 @@
 
 
-# Trocar Gemini por ChatGPT 4o Mini
+# Usar OpenAI Diretamente (Sem Lovable AI Gateway)
 
-## Resposta Curta
+## O Que Você Precisa
 
-**SIM, é possível!** As APIs do Google Places, Google Maps e outras integrações de mapeamento usam uma chave diferente (`GOOGLE_PLACES_API_KEY`) e não serão afetadas. A IA de chat/geração de roteiros usa `GOOGLE_GEMINI_API_KEY`, que pode ser substituída.
-
----
-
-## O Que Muda vs O Que Permanece
-
-| Componente | API Key Atual | Ação |
-|------------|---------------|------|
-| Chat com Sofia | `GOOGLE_GEMINI_API_KEY` | Trocar para OpenAI |
-| Geração de Roteiros | `GOOGLE_GEMINI_API_KEY` | Trocar para OpenAI |
-| Google Places (validação de lugares) | `GOOGLE_PLACES_API_KEY` | Manter igual |
-| Mapas/Coordenadas | `GOOGLE_PLACES_API_KEY` | Manter igual |
+1. **Conta na OpenAI**: https://platform.openai.com/signup
+2. **API Key da OpenAI**: Gerar em https://platform.openai.com/api-keys
+3. **Créditos**: A OpenAI cobra por uso (aproximadamente $0.15 por 1M tokens de input)
 
 ---
 
-## Opção Recomendada: Usar Lovable AI Gateway
+## Configuração
 
-O projeto já tem o `LOVABLE_API_KEY` configurado. Esse gateway dá acesso a modelos OpenAI **sem precisar de uma chave da OpenAI separada**.
+### 1. Adicionar Secret no Lovable Cloud
 
-### Modelos Disponíveis via Lovable AI
+Para as Edge Functions (chat-travel e generate-itinerary):
+- Ir em **Settings > Cloud > Secrets**
+- Adicionar: `OPENAI_API_KEY` = sua chave da OpenAI (começa com `sk-...`)
 
-- `openai/gpt-5-mini` - Equivalente melhorado do GPT-4o mini
-- `openai/gpt-5-nano` - Mais rápido e econômico
-- `openai/gpt-5` - Mais capaz (equivalente ao GPT-4)
+### 2. Adicionar no Netlify (Produção)
+
+- Ir em **Site configuration > Environment variables**
+- Adicionar: `OPENAI_API_KEY` = mesma chave
 
 ---
 
@@ -35,114 +29,84 @@ O projeto já tem o `LOVABLE_API_KEY` configurado. Esse gateway dá acesso a mod
 
 ### 1. `supabase/functions/chat-travel/index.ts`
 
-**Antes (Gemini):**
+**Mudanças:**
 ```typescript
-const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-
-const response = await fetchWithFallback(
-  "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-  ...
-);
-```
-
-**Depois (OpenAI via Lovable AI):**
-```typescript
+// Trocar de:
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", ...);
+body: { model: "openai/gpt-5-mini", ... }
 
-const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${LOVABLE_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    model: "openai/gpt-5-mini", // ou gpt-5-nano
-    messages: [...],
-    stream: true,
-  }),
-});
+// Para:
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const response = await fetch("https://api.openai.com/v1/chat/completions", ...);
+body: { model: "gpt-4o-mini", ... }
 ```
 
 ### 2. `supabase/functions/generate-itinerary/index.ts`
 
-Mesma mudança:
-- Substituir `GOOGLE_GEMINI_API_KEY` por `LOVABLE_API_KEY`
-- Mudar URL para `https://ai.gateway.lovable.dev/v1/chat/completions`
-- Usar modelo `openai/gpt-5-mini`
+**Mudanças:**
+```typescript
+// Trocar AI_MODELS de:
+const AI_MODELS = ["openai/gpt-5-mini", "openai/gpt-5-nano"];
 
-### 3. `netlify/functions/chat-travel.ts` (Produção)
+// Para:
+const AI_MODELS = ["gpt-4o-mini", "gpt-4o-mini"]; // fallback igual
 
-Se o site de produção usa Netlify Functions, também precisará atualizar essa função.
+// Trocar endpoint de:
+"https://ai.gateway.lovable.dev/v1/chat/completions"
 
----
+// Para:
+"https://api.openai.com/v1/chat/completions"
 
-## Mudanças Técnicas Detalhadas
+// Trocar variável de:
+LOVABLE_API_KEY
 
-### A. Atualizar `chat-travel/index.ts`
+// Para:
+OPENAI_API_KEY
+```
 
-1. Trocar variável de ambiente:
-   ```typescript
-   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-   if (!LOVABLE_API_KEY) {
-     throw new Error("LOVABLE_API_KEY is not configured");
-   }
-   ```
+### 3. `netlify/functions/chat-travel.ts`
 
-2. Simplificar `fetchWithFallback` para usar um único modelo:
-   ```typescript
-   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-     method: "POST",
-     headers: {
-       Authorization: `Bearer ${LOVABLE_API_KEY}`,
-       "Content-Type": "application/json",
-     },
-     body: JSON.stringify({
-       model: "openai/gpt-5-mini",
-       messages: [
-         { role: "system", content: systemPrompt },
-         ...messages,
-       ],
-       stream: true,
-     }),
-   });
-   ```
+**Mudanças:**
+```typescript
+// Trocar de:
+const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", ...);
+body: { model: "openai/gpt-5-mini", ... }
 
-3. O tratamento de streaming SSE já é compatível (OpenAI e Gemini usam o mesmo formato)
-
-### B. Atualizar `generate-itinerary/index.ts`
-
-1. Mesma troca de API key e endpoint
-2. Atualizar array `AI_MODELS`:
-   ```typescript
-   const AI_MODELS = ["openai/gpt-5-mini", "openai/gpt-5-nano"];
-   ```
-3. Atualizar `callAIGateway` para usar novo endpoint
-
-### C. Netlify Functions (Produção)
-
-Para o site de produção no Netlify:
-- Adicionar `LOVABLE_API_KEY` nas variáveis de ambiente do Netlify
-- Atualizar os arquivos em `netlify/functions/`
+// Para:
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const response = await fetch("https://api.openai.com/v1/chat/completions", ...);
+body: { model: "gpt-4o-mini", ... }
+```
 
 ---
 
-## Impacto
+## Comparação: Lovable AI vs OpenAI Direto
 
-| Aspecto | Resultado |
-|---------|-----------|
-| Google Places | Sem mudança, continua funcionando |
-| Google Maps/Coordenadas | Sem mudança, continua funcionando |
-| Qualidade das respostas | Similar ou melhor (GPT-5-mini é bem capaz) |
-| Custo | Usa créditos do Lovable AI (já incluídos) |
-| Latência | Geralmente mais rápido que Gemini |
+| Aspecto | Lovable AI Gateway | OpenAI Direto |
+|---------|-------------------|---------------|
+| API Key | Automática (LOVABLE_API_KEY) | Sua própria (OPENAI_API_KEY) |
+| Cobrança | Créditos Lovable | Sua conta OpenAI |
+| Modelos | openai/gpt-5-mini | gpt-4o-mini |
+| Endpoint | ai.gateway.lovable.dev | api.openai.com |
+| Controle | Limitado | Total |
 
 ---
 
-## Resumo
+## Passos de Implementação
 
-A migração é simples porque:
-1. As APIs do Google (Places, Maps) usam uma chave separada
-2. O projeto já tem `LOVABLE_API_KEY` configurado
-3. O formato de resposta streaming é compatível entre Gemini e OpenAI
-4. Só precisamos mudar 2-3 arquivos de Edge Functions
+1. **Você cria a API Key na OpenAI** (preciso que você faça isso)
+2. **Adiciona como secret** via ferramenta do Lovable
+3. **Eu modifico os 3 arquivos** para usar OpenAI direto
+4. **Deploy automático** das Edge Functions
+5. **Você adiciona no Netlify** para produção
+
+---
+
+## Próximo Passo
+
+Quando você tiver a API Key da OpenAI (formato `sk-proj-...` ou `sk-...`), me avise e eu:
+1. Peço para você adicionar como secret
+2. Modifico o código para usar OpenAI diretamente
 
