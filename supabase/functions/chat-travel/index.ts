@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const TRAVEL_SYSTEM_PROMPT = `Você é a Sofia, uma agente de viagens simpática, conhecedora e apaixonada por viagens.
@@ -47,82 +47,6 @@ PRIORIDADES:
 4. Estilo e orçamento selecionados
 5. Interesses marcados`;
 
-// Helper para delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Função de fetch com retry automático para rate limits e sobrecarga
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  maxRetries = 5
-): Promise<Response | null> {
-  const waitTimes = [5000, 10000, 20000, 30000, 60000]; // 5s, 10s, 20s, 30s, 60s
-  const retryableStatuses = [429, 503]; // Rate limit e Model Overloaded
-  
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const response = await fetch(url, options);
-    
-    if (retryableStatuses.includes(response.status)) {
-      const waitTime = waitTimes[attempt] || 60000;
-      console.log(`Error ${response.status}, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
-      await delay(waitTime);
-      continue;
-    }
-    
-    return response;
-  }
-  
-  // Retorna null para indicar que todas as tentativas falharam
-  return null;
-}
-
-// Função para fazer a chamada com fallback de modelo
-async function fetchWithFallback(
-  url: string,
-  baseOptions: RequestInit,
-  systemPrompt: string,
-  messages: Array<{ role: string; content: string }>,
-  apiKey: string
-): Promise<Response> {
-  const models = ["gemini-3-flash-preview", "gemini-1.5-flash"];
-  const retryableStatuses = [429, 503];
-  
-  for (const model of models) {
-    console.log(`Trying model: ${model}`);
-    
-    const options: RequestInit = {
-      ...baseOptions,
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        stream: true,
-      }),
-    };
-    
-    const response = await fetchWithRetry(url, options);
-    
-    // Se response é null ou status é retryável, tentar próximo modelo
-    if (!response || retryableStatuses.includes(response.status)) {
-      console.log(`Model ${model} failed, trying next model...`);
-      continue;
-    }
-    
-    // Resposta válida (sucesso ou erro não-retryável)
-    console.log(`Model ${model} responded with status ${response.status}`);
-    return response;
-  }
-  
-  // Todos os modelos falharam
-  console.log("All models failed");
-  return new Response(
-    JSON.stringify({ error: "Todos os modelos estão sobrecarregados. Tente novamente em alguns minutos." }),
-    { status: 503, headers: { "Content-Type": "application/json" } }
-  );
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -130,10 +54,10 @@ serve(async (req) => {
 
   try {
     const { messages, quizAnswers } = await req.json();
-    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!GOOGLE_GEMINI_API_KEY) {
-      throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     // Build context from quiz answers
@@ -248,25 +172,28 @@ serve(async (req) => {
 
     const systemPrompt = TRAVEL_SYSTEM_PROMPT + contextMessage;
 
-    const response = await fetchWithFallback(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+    // Call Lovable AI Gateway with OpenAI model
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
-      systemPrompt,
-      messages,
-      GOOGLE_GEMINI_API_KEY
-    );
+      body: JSON.stringify({
+        model: "openai/gpt-5-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        stream: true,
+      }),
+    });
 
     if (!response.ok) {
-      if (response.status === 429 || response.status === 503) {
+      if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "O serviço está sobrecarregado. Por favor, aguarde um momento e tente novamente." }),
-          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
