@@ -1,5 +1,4 @@
 import { Handler, HandlerEvent, HandlerContext, HandlerResponse } from "@netlify/functions";
-import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,9 +67,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
   }
 
   try {
-    const GOOGLE_GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!GOOGLE_GEMINI_API_KEY) {
-      console.error("GOOGLE_GEMINI_API_KEY not configured");
+    // Use LOVABLE_API_KEY for Lovable AI Gateway
+    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return {
         statusCode: 500,
         headers: corsHeaders,
@@ -125,48 +125,40 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
 - Interesses: ${quizAnswers.interests?.join(", ") || "Não especificado"}`;
     }
 
-    const geminiMessages = messages.map((msg: { role: string; content: string }) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    }));
-
-    // Add system prompt as first message
-    geminiMessages.unshift({
-      role: "user",
-      parts: [{ text: SYSTEM_PROMPT + contextMessage + "\n\nResponda como a Sofia, a assistente de viagens." }],
+    // Call Lovable AI Gateway with OpenAI model
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-5-mini",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT + contextMessage },
+          ...messages,
+        ],
+        stream: true,
+      }),
     });
-    geminiMessages.splice(1, 0, {
-      role: "model",
-      parts: [{ text: "Entendido! Sou a Sofia, sua assistente de viagens especializada em Europa. Estou pronta para ajudar! 🌍✈️" }],
-    });
 
-    // Call Gemini API with streaming
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${GOOGLE_GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          generationConfig: {
-            temperature: 0.8,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
-          },
-        }),
-      }
-    );
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error("Gemini API error:", geminiResponse.status, errorText);
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("Lovable AI Gateway error:", aiResponse.status, errorText);
       
-      if (geminiResponse.status === 429) {
+      if (aiResponse.status === 429) {
         return {
           statusCode: 429,
           headers: corsHeaders,
           body: JSON.stringify({ error: "Limite de requisições atingido. Aguarde um momento." }),
+        };
+      }
+      
+      if (aiResponse.status === 402) {
+        return {
+          statusCode: 402,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: "Créditos insuficientes. Entre em contato com o suporte." }),
         };
       }
       
@@ -178,29 +170,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
     }
 
     // Stream the response
-    const responseText = await geminiResponse.text();
-    const lines = responseText.split("\n");
-    let fullContent = "";
-
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (content) {
-            fullContent += content;
-          }
-        } catch (e) {
-          // Skip invalid JSON lines
-        }
-      }
-    }
-
-    // Return as SSE format for compatibility
-    const sseResponse = `data: ${JSON.stringify({
-      choices: [{ delta: { content: fullContent } }]
-    })}\n\ndata: [DONE]\n\n`;
-
+    const responseText = await aiResponse.text();
+    
     return {
       statusCode: 200,
       headers: {
@@ -209,7 +180,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
       },
-      body: sseResponse,
+      body: responseText,
     };
   } catch (error) {
     console.error("Error in chat-travel:", error);
