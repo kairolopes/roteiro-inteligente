@@ -67,10 +67,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
   }
 
   try {
-    // Use LOVABLE_API_KEY for Lovable AI Gateway
-    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    // Use OPENAI_API_KEY for direct OpenAI API calls
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY not configured");
       return {
         statusCode: 500,
         headers: corsHeaders,
@@ -125,15 +125,15 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
 - Interesses: ${quizAnswers.interests?.join(", ") || "Não especificado"}`;
     }
 
-    // Call Lovable AI Gateway with OpenAI model
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call OpenAI API directly
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-mini",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT + contextMessage },
           ...messages,
@@ -144,7 +144,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext): P
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("Lovable AI Gateway error:", aiResponse.status, errorText);
+      console.error("OpenAI API error:", aiResponse.status, errorText);
       
       if (aiResponse.status === 429) {
         return {

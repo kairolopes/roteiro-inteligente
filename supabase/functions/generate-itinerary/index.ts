@@ -206,8 +206,8 @@ DICAS DE QUALIDADE:
 - Considere fuso horário e clima local do destino
 - Dica: mencione nome de pratos típicos para experimentar em restaurantes`;
 
-// Models to try in order (primary, fallback) - Using OpenAI via Lovable AI Gateway
-const AI_MODELS = ["openai/gpt-5-mini", "openai/gpt-5-nano"];
+// Models to try in order (primary, fallback) - Using OpenAI API directly
+const AI_MODELS = ["gpt-4o-mini", "gpt-4o-mini"];
 
 async function callAIGateway(
   apiKey: string,
@@ -217,10 +217,10 @@ async function callAIGateway(
   tools: any[],
   toolChoice: any
 ): Promise<{ success: boolean; data?: any; error?: string; status?: number; retryable?: boolean }> {
-  console.log(`Calling Lovable AI Gateway with model: ${model}`);
+  console.log(`Calling OpenAI API with model: ${model}`);
   
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -239,7 +239,7 @@ async function callAIGateway(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Lovable AI Gateway error (${model}):`, response.status, errorText);
+      console.error(`OpenAI API error (${model}):`, response.status, errorText);
       return { success: false, error: errorText, status: response.status };
     }
 
@@ -265,7 +265,7 @@ async function callAIGateway(
 
     return { success: true, data };
   } catch (error) {
-    console.error(`Error calling Lovable AI Gateway with ${model}:`, error);
+    console.error(`Error calling OpenAI API with ${model}:`, error);
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
@@ -313,10 +313,10 @@ serve(async (req) => {
 
   try {
     const { quizAnswers, conversationSummary, stream = false } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     // Build context from quiz answers
@@ -644,7 +644,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
                 });
 
                 const result = await callAIGateway(
-                  LOVABLE_API_KEY,
+                  OPENAI_API_KEY,
                   model,
                   ITINERARY_SYSTEM_PROMPT,
                   userPrompt,
@@ -791,7 +791,7 @@ Use a função generate_itinerary para retornar o roteiro estruturado.`;
 
     for (const model of AI_MODELS) {
       const result = await callAIGateway(
-        LOVABLE_API_KEY,
+        OPENAI_API_KEY,
         model,
         ITINERARY_SYSTEM_PROMPT,
         userPrompt,
