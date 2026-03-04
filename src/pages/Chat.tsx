@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Plane, ArrowLeft, Sparkles, Loader2, User, Bot, Map, Eye } from "lucide-react";
+import { Send, Plane, ArrowLeft, Sparkles, Loader2, User, Bot, Map, Eye, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,33 @@ const Chat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // If no quiz answers, show friendly prompt instead of empty chat
+  const hasNoQuizData = !quizAnswers && messages.length === 0 && !isLoading && !sessionStorage.getItem("quizAnswers");
+
+  if (hasNoQuizData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md"
+        >
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <ClipboardList className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Você ainda não completou o quiz</h2>
+          <p className="text-muted-foreground mb-6">
+            Para a Sofia te ajudar a planejar sua viagem, primeiro responda algumas perguntas rápidas sobre suas preferências.
+          </p>
+          <Button onClick={() => navigate("/quiz")} className="gradient-primary text-primary-foreground">
+            <ClipboardList className="w-4 h-4 mr-2" />
+            Fazer o Quiz
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   const sendInitialMessage = async (answers: QuizAnswers) => {
     const destLabels: Record<string, string> = {

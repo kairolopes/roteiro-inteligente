@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2, Lock, CreditCard } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2, Lock, CreditCard, ClipboardList, MessageCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Itinerary as ItineraryType } from "@/types/itinerary";
@@ -77,7 +77,7 @@ const Itinerary = () => {
       const quizAnswers: QuizAnswers | null = quizData ? JSON.parse(quizData) : null;
 
       if (!quizAnswers) {
-        setError("Nenhuma preferência encontrada. Por favor, refaça o quiz.");
+        setError("__MISSING_QUIZ__");
         setIsLoading(false);
         return;
       }
@@ -303,7 +303,38 @@ const Itinerary = () => {
   }
 
 
-  // Error state - but NOT if we're waiting for auth
+  // Missing quiz data - show friendly guided state
+  if (error === "__MISSING_QUIZ__") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md"
+        >
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Info className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Complete os passos anteriores</h2>
+          <p className="text-muted-foreground mb-6">
+            Para gerar seu roteiro personalizado, primeiro responda ao quiz de preferências e converse com a Sofia.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={() => navigate("/quiz")} className="gradient-primary text-primary-foreground">
+              <ClipboardList className="w-4 h-4 mr-2" />
+              Fazer o Quiz
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/chat")}>
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Conversar com Sofia
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Error state - API/runtime errors
   if (error || !itinerary) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
