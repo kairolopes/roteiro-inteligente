@@ -31,10 +31,10 @@ const UserMenu = () => {
           variant="outline"
           size="sm"
           onClick={() => setShowModal(true)}
-          className="gap-2"
+          className="gap-2 font-medium"
         >
           <User className="w-4 h-4" />
-          <span className="hidden sm:inline">Entrar</span>
+          <span>Entrar</span>
         </Button>
         <AuthModal isOpen={showModal} onClose={() => setShowModal(false)} />
       </>
