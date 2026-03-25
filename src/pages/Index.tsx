@@ -1,5 +1,4 @@
 import { Navbar } from "@/components/layout/Navbar";
-import UserMenu from "@/components/auth/UserMenu";
 import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
@@ -13,7 +12,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="pb-24 lg:pb-0">
+      <main>
         <HeroSection />
         <HowItWorksSection />
         <FeaturesSection />
@@ -22,9 +21,6 @@ const Index = () => {
         <FAQSection />
         <CTASection />
       </main>
-      <div className="fixed inset-x-4 bottom-4 z-50 lg:hidden safe-area-bottom safe-area-x">
-        <UserMenu mobileFloating />
-      </div>
       <Footer />
     </div>
   );

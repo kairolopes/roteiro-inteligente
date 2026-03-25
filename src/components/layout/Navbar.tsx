@@ -95,6 +95,9 @@ export function Navbar() {
                   </a>
                 ))}
                 <div className="px-4 pt-4 space-y-3 border-t border-border">
+                  <div className="flex justify-center">
+                    <UserMenu />
+                  </div>
                   <Button 
                     onClick={() => {
                       navigate("/quiz");
