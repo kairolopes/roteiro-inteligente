@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { useVersionCheck } from "@/hooks/useVersionCheck";
 import { useToast } from "@/hooks/use-toast";
@@ -23,45 +23,44 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-// Component to clear toasts when navigating between pages
 const ToastCleaner = () => {
   const location = useLocation();
   const { dismiss } = useToast();
-  
+
   useEffect(() => {
-    dismiss(); // Clear all toasts when route changes
+    dismiss();
   }, [location.pathname, dismiss]);
-  
+
   return null;
 };
 
 const App = () => {
   useVersionCheck();
-  
+
   return (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ToastCleaner />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/passagens" element={<Passagens />} />
-              <Route path="/passagens/:origem/:destino/:data" element={<FlightDetails />} />
-              <Route path="/quiz" element={<Quiz />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/itinerary" element={<Itinerary />} />
-              <Route path="/my-itineraries" element={<MyItineraries />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/vendas" element={<Vendas />} />
-              <Route path="/admin" element={<Admin />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <ToastCleaner />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/index" element={<Navigate to="/" replace />} />
+                <Route path="/passagens" element={<Passagens />} />
+                <Route path="/passagens/:origem/:destino/:data" element={<FlightDetails />} />
+                <Route path="/quiz" element={<Quiz />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/itinerary" element={<Itinerary />} />
+                <Route path="/my-itineraries" element={<MyItineraries />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/vendas" element={<Vendas />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
