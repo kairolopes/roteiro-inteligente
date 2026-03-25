@@ -60,14 +60,17 @@ export function Navbar() {
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden p-3 -mr-2 text-foreground touch-target touch-active"
-            aria-label="Toggle menu"
-          >
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          {/* Mobile: UserMenu + Menu Button */}
+          <div className="lg:hidden flex items-center gap-2">
+            <UserMenu />
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-3 -mr-2 text-foreground touch-target touch-active"
+              aria-label="Toggle menu"
+            >
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
