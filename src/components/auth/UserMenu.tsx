@@ -45,7 +45,7 @@ const UserMenu = () => {
   const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url;
 
   return (
-    <div className="relative">
+    <div className="relative flex items-center gap-2">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
         className="flex items-center gap-2 p-1 pr-2 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
@@ -68,6 +68,16 @@ const UserMenu = () => {
         </span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
       </button>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleSignOut}
+        className="gap-2 font-medium"
+      >
+        <LogOut className="w-4 h-4" />
+        <span>Sair</span>
+      </Button>
 
       <AnimatePresence>
         {showDropdown && (
@@ -110,16 +120,6 @@ const UserMenu = () => {
                 >
                   <Settings className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm">Configurações</span>
-                </button>
-              </div>
-
-              <div className="p-2 border-t border-border">
-                <button
-                  onClick={handleSignOut}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-destructive/10 transition-colors text-left text-destructive"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="text-sm">Sair</span>
                 </button>
               </div>
             </motion.div>
