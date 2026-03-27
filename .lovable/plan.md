@@ -1,32 +1,28 @@
 
 
-# Melhorar Mensagens de Transição Entre Páginas
-
 ## Problema
-Quando o usuário navega para `/chat` ou `/itinerary` sem ter completado os passos anteriores (quiz, chat), vê erros genéricos ("Ops! Algo deu errado") em vez de mensagens orientadoras.
 
-## Mudanças
+Os toasts (mensagens de erro/aviso) desaparecem rápido demais para o usuário conseguir ler. O projeto usa dois sistemas de toast:
 
-### 1. `src/pages/Chat.tsx` — Sem quiz answers
-Quando `sessionStorage` não tem `quizAnswers`, em vez de mostrar chat vazio, exibir uma tela amigável:
-- Ícone de quiz/checklist
-- Mensagem: "Você ainda não completou o quiz de preferências"
-- Descrição: "Para a Sofia te ajudar, primeiro responda algumas perguntas rápidas sobre sua viagem."
-- Botão: "Fazer o Quiz" → navega para `/quiz`
+1. **shadcn `use-toast`** — configurado com `TOAST_REMOVE_DELAY = 5000` (5s), usado pela maioria dos componentes
+2. **Sonner** — sem `duration` configurado (padrão da lib é ~4s), usado em Profile e admin/hotmart
 
-### 2. `src/pages/Itinerary.tsx` — Sem quiz answers
-Linha 79-82: em vez de `setError("Nenhuma preferência encontrada...")`, mostrar tela dedicada com:
-- Ícone informativo (não de erro)
-- Mensagem: "Complete os passos anteriores para gerar seu roteiro"
-- Dois botões: "Fazer o Quiz" e "Conversar com Sofia"
-- Sem ícone de erro vermelho — usar ícone azul/primário informativo
+Além disso, o `ToastCleaner` em `App.tsx` remove todos os toasts ao navegar entre páginas, o que pode causar toasts desaparecerem instantaneamente se houver redirecionamento logo após o erro.
 
-### 3. `src/pages/Itinerary.tsx` — Sem chat summary (opcional)
-Quando tem quiz mas não tem conversa, gerar normalmente (já funciona assim). Sem mudança.
+## Solução
 
-### 4. Melhorar o error state geral do Itinerary
-Linha 307-332: Diferenciar entre erro de API (manter como está) e falta de dados (mostrar mensagem orientadora com tom amigável em vez de destrutivo).
+### 1. Aumentar duração do shadcn toast
+**Arquivo**: `src/hooks/use-toast.ts`
+- Alterar `TOAST_REMOVE_DELAY` de `5000` para `8000` (8 segundos)
+
+### 2. Configurar duração do Sonner
+**Arquivo**: `src/components/ui/sonner.tsx`
+- Adicionar `duration={8000}` no componente `<Sonner>` para que os toasts do Sonner também durem 8 segundos
+
+### 3. Ajustar ToastCleaner (opcional)
+**Arquivo**: `src/App.tsx`
+- Adicionar um pequeno delay (ex: 500ms) antes de limpar os toasts na mudança de rota, para que o usuário tenha tempo de ler mensagens que apareceram logo antes de uma navegação
 
 ## Resultado
-O usuário nunca verá "Ops! Algo deu errado" por navegar fora de ordem — verá instruções claras de qual passo completar.
+Todas as mensagens de erro/aviso ficarão visíveis por 8 segundos, tempo suficiente para leitura.
 
