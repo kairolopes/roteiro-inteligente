@@ -28,7 +28,10 @@ const ToastCleaner = () => {
   const { dismiss } = useToast();
 
   useEffect(() => {
-    dismiss();
+    const timer = setTimeout(() => {
+      dismiss();
+    }, 500);
+    return () => clearTimeout(timer);
   }, [location.pathname, dismiss]);
 
   return null;
