@@ -354,17 +354,20 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-xl p-4 lg:p-6 space-y-4"
+          className="rounded-xl p-4 lg:p-6 space-y-4 border-2 border-primary/30 bg-primary/5 shadow-lg shadow-primary/10"
         >
           <div className="flex items-center gap-2 text-primary">
             <MapPin className="w-5 h-5" />
-            <h3 className="font-semibold">Quer focar em alguma região ou cidade? (opcional)</h3>
+            <h3 className="font-semibold text-base">📍 Tem uma cidade ou região específica em mente?</h3>
           </div>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Digite abaixo para personalizar ainda mais o seu roteiro
+          </p>
           <Input
-            placeholder="Ex: Toscana, Costa Amalfitana, Nordeste brasileiro..."
+            placeholder="Ex: Roma, Toscana, Costa Amalfitana, Nordeste brasileiro..."
             value={answers.destinationDetails || ""}
             onChange={(e) => onUpdate("destinationDetails", e.target.value)}
-            className="bg-background/50"
+            className="bg-background border-primary/20 focus:border-primary text-base h-12"
           />
         </motion.div>
       )}
