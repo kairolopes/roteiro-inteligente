@@ -18,10 +18,9 @@ export const getFlightPricesUrl = (params: URLSearchParams): string => {
 };
 
 export const getChatUrl = (): string => {
-  if (isProduction()) {
-    return '/.netlify/functions/chat-travel';
-  }
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-travel`;
+  // Always use Lovable Cloud Edge Function for chat
+  // This ensures consistent behavior across all domains and avoids Netlify timeout limits
+  return 'https://rvmvoogyrafiogxdbisx.supabase.co/functions/v1/chat-travel';
 };
 
 export const getGenerateItineraryUrl = (): string => {
