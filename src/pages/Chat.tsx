@@ -207,7 +207,7 @@ const Chat = () => {
     
     const resp = await fetch(chatUrl, {
       method: "POST",
-      headers: getAuthHeaders(),
+      headers: getLovableCloudAuthHeaders(),
       body: JSON.stringify({ messages: messagesToSend, quizAnswers: answers }),
     });
     
