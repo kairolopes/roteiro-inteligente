@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
-import { getChatUrl, getAuthHeaders } from "@/lib/apiRouting";
+import { getChatUrl, getLovableCloudAuthHeaders } from "@/lib/apiRouting";
 import ChatMessageContent from "@/components/chat/ChatMessageContent";
 
 interface Message {
