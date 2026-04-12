@@ -4,8 +4,8 @@ import {
   generateItineraryQRCodes,
   generateQRCode,
 } from "@/services/qrCodeService";
-import { fetchItineraryImages, ImageCache, imageUrlToBase64 } from "@/services/pdfImageService";
-import { AgencySettings } from "@/hooks/useAgencySettings";
+import { fetchItineraryImages, type ImageCache, imageUrlToBase64 } from "@/services/pdfImageService";
+import type { AgencySettings } from "@/hooks/useAgencySettings";
 
 // Progress step type matching PDFProgressModal
 export type PDFProgressStep =
