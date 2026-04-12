@@ -459,6 +459,14 @@ const Itinerary = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* Adjustment Chat */}
+        <div className="mt-6">
+          <ItineraryAdjustChat
+            itinerary={itinerary}
+            onItineraryUpdated={handleItineraryUpdated}
+          />
+        </div>
       </main>
 
       {/* Paywall Modal */}
