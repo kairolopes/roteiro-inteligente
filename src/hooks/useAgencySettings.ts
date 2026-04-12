@@ -27,8 +27,8 @@ export function useAgencySettings() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("agency_settings" as any)
+      const { data, error } = await (supabase as any)
+        .from("agency_settings")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
@@ -54,15 +54,15 @@ export function useAgencySettings() {
 
     try {
       if (settings) {
-        const { error } = await supabase
-          .from("agency_settings" as any)
-          .update(updates as any)
+        const { error } = await (supabase as any)
+          .from("agency_settings")
+          .update(updates)
           .eq("user_id", user.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("agency_settings" as any)
-          .insert({ ...updates, user_id: user.id } as any);
+        const { error } = await (supabase as any)
+          .from("agency_settings")
+          .insert({ ...updates, user_id: user.id });
         if (error) throw error;
       }
       await fetchSettings();
