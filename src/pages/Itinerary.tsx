@@ -35,7 +35,7 @@ const Itinerary = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits, hasActiveSubscription, isAdmin, isLoading: creditsLoading } = useUserCredits();
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const { settings: agencySettings } = useAgencySettings();
   const [itinerary, setItinerary] = useState<ItineraryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -211,18 +211,23 @@ const Itinerary = () => {
   const handleExportPDF = async () => {
     if (!itinerary) return;
     try {
-      await exportToPDF(itinerary);
+      await exportToPDF(itinerary, agencySettings);
       toast({
         title: "PDF exportado! 📄",
         description: "Seu roteiro foi baixado com sucesso.",
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Erro ao exportar",
         description: "Não foi possível gerar o PDF. Tente novamente.",
       });
     }
+  };
+
+  const handleItineraryUpdated = (updated: ItineraryType) => {
+    setItinerary(updated);
+    sessionStorage.setItem("generatedItinerary", JSON.stringify(updated));
   };
 
   const handleRegenerate = () => {
