@@ -768,7 +768,7 @@ function renderDayPage(
 }
 
 // Render Final Page
-function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
+function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData, agency?: AgencySettings | null) {
   pdf.addPage();
   
   // Header
@@ -844,19 +844,30 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
     pdf.text(`${label}: ${count}`, MARGIN + barWidth + 5, barY + 6);
   });
   
-  // Footer
+  // Footer - agency branding
   pdf.setFillColor(COLORS.bgCard);
-  pdf.rect(0, PAGE_HEIGHT - 35, PAGE_WIDTH, 35, "F");
+  pdf.rect(0, PAGE_HEIGHT - 40, PAGE_WIDTH, 40, "F");
+  
+  const footerName = agency?.agency_name || "Viaje com Sofia";
+  const footerContact = agency?.agency_phone || agency?.agency_email || "";
+  const footerWeb = agency?.agency_website || "viagecomsofia.com";
   
   pdf.setTextColor(COLORS.primary);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
-  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 20, { align: "center" });
+  pdf.text(normalizeTextForPDF(footerName), PAGE_WIDTH / 2, PAGE_HEIGHT - 25, { align: "center" });
+  
+  if (footerContact) {
+    pdf.setTextColor(COLORS.textLight);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.text(normalizeTextForPDF(footerContact), PAGE_WIDTH / 2, PAGE_HEIGHT - 17, { align: "center" });
+  }
   
   pdf.setTextColor(COLORS.textLight);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8);
-  pdf.text("viagecomsofia.com", PAGE_WIDTH / 2, PAGE_HEIGHT - 12, { align: "center" });
+  pdf.text(normalizeTextForPDF(footerWeb), PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
 }
 
 export function usePDFExport() {
