@@ -386,7 +386,7 @@ async function renderCoverPage(
   agencyLogoBase64?: string | null
 ) {
   const primaryColor = agency?.primary_color || COLORS.primaryDark;
-  const secondaryColor = agency?.secondary_color || COLORS.primary;
+  const _secondaryColor = agency?.secondary_color || COLORS.primary;
 
   // Background - try cover image first
   if (imageCache.cover?.base64) {
@@ -409,13 +409,13 @@ async function renderCoverPage(
   }
 
   // Agency logo (top center)
-  let logoBottomY = 30;
+  let _logoBottomY = 30;
   if (agencyLogoBase64) {
     try {
       const logoH = 25;
       const logoW = 50;
       pdf.addImage(agencyLogoBase64, "PNG", PAGE_WIDTH / 2 - logoW / 2, 15, logoW, logoH);
-      logoBottomY = 15 + logoH + 8;
+      _logoBottomY = 15 + logoH + 8;
     } catch {
       // logo failed
     }
@@ -424,7 +424,7 @@ async function renderCoverPage(
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(12);
     pdf.text(normalizeTextForPDF(agency.agency_name), PAGE_WIDTH / 2, 25, { align: "center" });
-    logoBottomY = 35;
+    _logoBottomY = 35;
   }
   
   // Title section
