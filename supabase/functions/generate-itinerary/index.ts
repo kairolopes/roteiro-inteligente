@@ -206,8 +206,8 @@ DICAS DE QUALIDADE:
 - Considere fuso horário e clima local do destino
 - Dica: mencione nome de pratos típicos para experimentar em restaurantes`;
 
-// Models to try in order (primary, fallback) - Using OpenAI API directly
-const AI_MODELS = ["gpt-4o-mini", "gpt-4o-mini"];
+// Models to try in order (primary, fallback) - Using Lovable AI Gateway
+const AI_MODELS = ["google/gemini-2.5-flash", "openai/gpt-5-mini"];
 
 async function callAIGateway(
   apiKey: string,
@@ -217,10 +217,10 @@ async function callAIGateway(
   tools: any[],
   toolChoice: any
 ): Promise<{ success: boolean; data?: any; error?: string; status?: number; retryable?: boolean }> {
-  console.log(`Calling OpenAI API with model: ${model}`);
+  console.log(`Calling Lovable AI Gateway with model: ${model}`);
   
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -239,7 +239,7 @@ async function callAIGateway(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`OpenAI API error (${model}):`, response.status, errorText);
+      console.error(`AI Gateway error (${model}):`, response.status, errorText);
       return { success: false, error: errorText, status: response.status };
     }
 
@@ -265,7 +265,7 @@ async function callAIGateway(
 
     return { success: true, data };
   } catch (error) {
-    console.error(`Error calling OpenAI API with ${model}:`, error);
+    console.error(`Error calling AI Gateway with ${model}:`, error);
     return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
@@ -313,11 +313,12 @@ serve(async (req) => {
 
   try {
     const { quizAnswers, conversationSummary, stream = false } = await req.json();
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
+    const OPENAI_API_KEY = LOVABLE_API_KEY; // Alias for compatibility
 
     // Build context from quiz answers
     let contextParts: string[] = [];
