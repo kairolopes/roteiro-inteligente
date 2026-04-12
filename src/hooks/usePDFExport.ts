@@ -376,20 +376,58 @@ function drawSchematicMap(pdf: jsPDF, itinerary: ItineraryData) {
   pdf.text("Rota do roteiro", MARGIN + 28, legendY + 2);
 }
 
-// Render Cover Page - Minimalist design without external images
-function renderCoverPage(
+// Render Cover Page with agency branding and destination photo
+async function renderCoverPage(
   pdf: jsPDF,
   itinerary: ItineraryData,
-  webQR: string | null
+  webQR: string | null,
+  imageCache: ImageCache,
+  agency?: AgencySettings | null,
+  agencyLogoBase64?: string | null
 ) {
-  // Solid dark background
-  pdf.setFillColor(COLORS.primaryDark);
-  pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+  const primaryColor = agency?.primary_color || COLORS.primaryDark;
+  const secondaryColor = agency?.secondary_color || COLORS.primary;
+
+  // Background - try cover image first
+  if (imageCache.cover?.base64) {
+    try {
+      pdf.addImage(imageCache.cover.base64, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+      // Dark overlay for text readability
+      pdf.setGState(new (pdf as any).GState({ opacity: 0.55 }));
+      pdf.setFillColor("#000000");
+      pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+      pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+    } catch {
+      pdf.setFillColor(primaryColor);
+      pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+      drawCoverDecoration(pdf);
+    }
+  } else {
+    pdf.setFillColor(primaryColor);
+    pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+    drawCoverDecoration(pdf);
+  }
+
+  // Agency logo (top center)
+  let logoBottomY = 30;
+  if (agencyLogoBase64) {
+    try {
+      const logoH = 25;
+      const logoW = 50;
+      pdf.addImage(agencyLogoBase64, "PNG", PAGE_WIDTH / 2 - logoW / 2, 15, logoW, logoH);
+      logoBottomY = 15 + logoH + 8;
+    } catch {
+      // logo failed
+    }
+  } else if (agency?.agency_name) {
+    pdf.setTextColor(COLORS.white);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.text(normalizeTextForPDF(agency.agency_name), PAGE_WIDTH / 2, 25, { align: "center" });
+    logoBottomY = 35;
+  }
   
-  // Geometric decoration
-  drawCoverDecoration(pdf);
-  
-  // Title section (centered, below decoration)
+  // Title section
   const titleY = PAGE_HEIGHT * 0.40;
   
   pdf.setTextColor(COLORS.white);
@@ -415,7 +453,7 @@ function renderCoverPage(
     });
   }
   
-  // Info badges (3 columns)
+  // Info badges
   const badgeY = PAGE_HEIGHT * 0.68;
   const badgeHeight = 22;
   const badgeWidth = (CONTENT_WIDTH - 10) / 3;
@@ -428,17 +466,13 @@ function renderCoverPage(
   
   badges.forEach((badge, i) => {
     const x = MARGIN + i * (badgeWidth + 5);
+    drawRoundedRect(pdf, x, badgeY, badgeWidth - 5, badgeHeight, 4, "rgba(30,27,75,0.7)");
     
-    // Badge background
-    drawRoundedRect(pdf, x, badgeY, badgeWidth - 5, badgeHeight, 4, "#3d3a6b");
-    
-    // Label
     pdf.setTextColor(COLORS.accentLight);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
     pdf.text(badge.label, x + (badgeWidth - 5) / 2, badgeY + 8, { align: "center" });
     
-    // Value
     pdf.setTextColor(COLORS.white);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(12);
@@ -447,40 +481,35 @@ function renderCoverPage(
     while (pdf.getTextWidth(displayValue) > maxBadgeValueWidth && displayValue.length > 0) {
       displayValue = displayValue.slice(0, -1);
     }
-    if (displayValue.length < badge.value.length) {
-      displayValue = displayValue.trim() + '...';
-    }
+    if (displayValue.length < badge.value.length) displayValue = displayValue.trim() + '...';
     pdf.text(displayValue, x + (badgeWidth - 5) / 2, badgeY + 17, { align: "center" });
   });
   
-  // QR Code for web version
+  // QR Code
   if (webQR) {
     try {
       const qrSize = 28;
       const qrY = PAGE_HEIGHT - MARGIN - qrSize - 18;
-      pdf.addImage(
-        webQR,
-        "PNG",
-        PAGE_WIDTH / 2 - qrSize / 2,
-        qrY,
-        qrSize,
-        qrSize
-      );
+      pdf.addImage(webQR, "PNG", PAGE_WIDTH / 2 - qrSize / 2, qrY, qrSize, qrSize);
       pdf.setFontSize(8);
       pdf.setTextColor(COLORS.accentLight);
-      pdf.text("Escaneie para ver online", PAGE_WIDTH / 2, qrY + qrSize + 6, {
-        align: "center",
-      });
-    } catch (e) {
-      console.error("Failed to add QR code:", e);
-    }
+      pdf.text("Escaneie para ver online", PAGE_WIDTH / 2, qrY + qrSize + 6, { align: "center" });
+    } catch {}
   }
   
-  // Footer branding
+  // Photo credit
+  if (imageCache.cover?.credit) {
+    pdf.setFontSize(6);
+    pdf.setTextColor("#999999");
+    pdf.text(normalizeTextForPDF(imageCache.cover.credit), PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 5, { align: "right" });
+  }
+  
+  // Footer - agency or default branding
   pdf.setFontSize(10);
-  pdf.setTextColor(COLORS.primaryLight);
+  pdf.setTextColor(COLORS.white);
   pdf.setFont("helvetica", "bold");
-  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
+  const footerText = agency?.agency_name || "Viaje com Sofia";
+  pdf.text(normalizeTextForPDF(footerText), PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
 }
 
 // Render Map Page with schematic design
