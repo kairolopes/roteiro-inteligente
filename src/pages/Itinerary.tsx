@@ -36,6 +36,7 @@ const Itinerary = () => {
   const { user } = useAuth();
   const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits, hasActiveSubscription, isAdmin, isLoading: creditsLoading } = useUserCredits();
   const { settings: agencySettings } = useAgencySettings();
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
