@@ -95,8 +95,8 @@ const Quiz = () => {
       title: "Roteiro em criação!",
       description: "Nossa IA está montando seu roteiro personalizado...",
     });
-    // Navigate to chat page
-    navigate("/chat");
+    // Navigate directly to itinerary generation
+    navigate("/itinerary");
   };
 
   const CurrentStepComponent = stepComponents[currentStep];
