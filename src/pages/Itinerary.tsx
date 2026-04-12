@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2, Lock, CreditCard, ClipboardList, MessageCircle, Info } from "lucide-react";
+import { motion } from "framer-motion";
+import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, CheckCircle2, ClipboardList, MessageCircle, Info } from "lucide-react";
 import ItineraryLoadingScreen from "@/components/itinerary/ItineraryLoadingScreen";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
