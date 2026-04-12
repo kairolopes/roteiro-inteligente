@@ -874,17 +874,33 @@ export function usePDFExport() {
   );
 
   const exportToPDF = useCallback(
-    async (itinerary: ItineraryData) => {
+    async (itinerary: ItineraryData, agency?: AgencySettings | null) => {
       setState({ isExporting: true, currentStep: "fetching-images", progress: 0 });
 
       try {
-        // Step 1: Generate QR codes (no more external image fetching)
-        updateProgress("fetching-images", 10);
-        
-        const activityQRs = await generateItineraryQRCodes(itinerary.days, (p) => {
-          updateProgress("fetching-images", 10 + p * 0.3);
+        // Step 1: Fetch destination images + QR codes in parallel
+        updateProgress("fetching-images", 5);
+
+        const imagePromise = fetchItineraryImages(
+          {
+            title: itinerary.title,
+            destinations: itinerary.destinations,
+            days: itinerary.days.map(d => ({
+              day: d.day,
+              city: d.city,
+              country: d.country,
+              activities: d.activities.map(a => ({ id: a.id, title: a.title, category: a.category, location: a.location })),
+            })),
+          },
+          (p) => updateProgress("fetching-images", 5 + p * 0.3)
+        );
+
+        const qrPromise = generateItineraryQRCodes(itinerary.days, (p) => {
+          updateProgress("fetching-images", 35 + p * 0.05);
         });
-        
+
+        const [imageCache, activityQRs] = await Promise.all([imagePromise, qrPromise]);
+
         updateProgress("generating-map", 40);
         
         // Generate web QR
@@ -892,6 +908,12 @@ export function usePDFExport() {
           `${window.location.origin}/itinerary`,
           { width: 150 }
         );
+
+        // Fetch agency logo as base64
+        let agencyLogoBase64: string | null = null;
+        if (agency?.logo_url) {
+          agencyLogoBase64 = await imageUrlToBase64(agency.logo_url);
+        }
         
         updateProgress("creating-pdf", 50);
         
@@ -902,15 +924,15 @@ export function usePDFExport() {
           format: "a4",
         });
         
-        // Cover page (minimalist design, no external images)
-        renderCoverPage(pdf, itinerary, webQR);
+        // Cover page with agency branding and destination photo
+        await renderCoverPage(pdf, itinerary, webQR, imageCache, agency, agencyLogoBase64);
         updateProgress("creating-pdf", 55);
         
-        // Map page (schematic design)
+        // Map page
         await renderMapPage(pdf, itinerary);
         updateProgress("creating-pdf", 60);
         
-        // Day pages (no external images for headers)
+        // Day pages
         const totalDays = itinerary.days.length;
         for (let i = 0; i < totalDays; i++) {
           const day = itinerary.days[i];
@@ -918,8 +940,8 @@ export function usePDFExport() {
           updateProgress("creating-pdf", 60 + ((i + 1) / totalDays) * 30);
         }
         
-        // Final page
-        renderFinalPage(pdf, itinerary);
+        // Final page with agency branding
+        renderFinalPage(pdf, itinerary, agency);
         updateProgress("creating-pdf", 95);
         
         // Save
