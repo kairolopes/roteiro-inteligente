@@ -109,9 +109,9 @@ serve(async (req) => {
           credits: plan.credits,
         }),
         back_urls: {
-          success: `${req.headers.get("origin") || "https://eurekaplanner-ai.lovable.app"}/pricing?status=success`,
-          failure: `${req.headers.get("origin") || "https://eurekaplanner-ai.lovable.app"}/pricing?status=failure`,
-          pending: `${req.headers.get("origin") || "https://eurekaplanner-ai.lovable.app"}/pricing?status=pending`,
+          success: `${req.headers.get("origin") || "https://viagecomsofia.com.br"}/pricing?status=success`,
+          failure: `${req.headers.get("origin") || "https://viagecomsofia.com.br"}/pricing?status=failure`,
+          pending: `${req.headers.get("origin") || "https://viagecomsofia.com.br"}/pricing?status=pending`,
         },
         auto_return: "approved",
         notification_url: `${supabaseUrl}/functions/v1/mp-webhook`,
