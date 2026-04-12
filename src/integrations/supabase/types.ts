@@ -116,6 +116,48 @@ export type Database = {
         }
         Relationships: []
       }
+      agency_settings: {
+        Row: {
+          agency_email: string | null
+          agency_name: string | null
+          agency_phone: string | null
+          agency_website: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_email?: string | null
+          agency_name?: string | null
+          agency_phone?: string | null
+          agency_website?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_email?: string | null
+          agency_name?: string | null
+          agency_phone?: string | null
+          agency_website?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       customer_notes: {
         Row: {
           created_at: string
