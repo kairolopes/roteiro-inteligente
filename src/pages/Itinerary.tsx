@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, AlertCircle, RefreshCw, ArrowLeft, Sparkles, MapPin, CheckCircle2, Lock, CreditCard, ClipboardList, MessageCircle, Info } from "lucide-react";
+import ItineraryLoadingScreen from "@/components/itinerary/ItineraryLoadingScreen";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Itinerary as ItineraryType } from "@/types/itinerary";
@@ -259,55 +260,7 @@ const Itinerary = () => {
 
   // Loading state with detailed progress
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center max-w-md px-4"
-        >
-          <div className="w-20 h-20 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6">
-            <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
-          </div>
-          <h2 className="text-2xl font-bold mb-4">Criando seu roteiro...</h2>
-          
-          {/* Progress Steps */}
-          <div className="bg-card border border-border rounded-xl p-4 mb-4">
-            <AnimatePresence mode="wait">
-              {progress && (
-                <motion.div
-                  key={progress.step}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="flex items-center gap-3"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    {getProgressIcon()}
-                  </div>
-                  <div className="text-left flex-1">
-                    <p className="font-medium text-sm">{progress.message}</p>
-                    {progress.model && (
-                      <p className="text-xs text-muted-foreground">
-                        Modelo: {progress.model}
-                        {progress.attempt && progress.totalModels && progress.totalModels > 1 && (
-                          <span> ({progress.attempt}/{progress.totalModels})</span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <p className="text-muted-foreground text-sm">
-            A IA está gerando um roteiro personalizado baseado nas suas preferências. 
-            Isso pode levar alguns segundos.
-          </p>
-        </motion.div>
-      </div>
-    );
+    return <ItineraryLoadingScreen progress={progress} />;
   }
 
 
