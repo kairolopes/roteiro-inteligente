@@ -4,6 +4,8 @@ import {
   generateItineraryQRCodes,
   generateQRCode,
 } from "@/services/qrCodeService";
+import { fetchItineraryImages, type ImageCache, imageUrlToBase64 } from "@/services/pdfImageService";
+import type { AgencySettings } from "@/hooks/useAgencySettings";
 
 // Progress step type matching PDFProgressModal
 export type PDFProgressStep =
@@ -374,20 +376,58 @@ function drawSchematicMap(pdf: jsPDF, itinerary: ItineraryData) {
   pdf.text("Rota do roteiro", MARGIN + 28, legendY + 2);
 }
 
-// Render Cover Page - Minimalist design without external images
-function renderCoverPage(
+// Render Cover Page with agency branding and destination photo
+async function renderCoverPage(
   pdf: jsPDF,
   itinerary: ItineraryData,
-  webQR: string | null
+  webQR: string | null,
+  imageCache: ImageCache,
+  agency?: AgencySettings | null,
+  agencyLogoBase64?: string | null
 ) {
-  // Solid dark background
-  pdf.setFillColor(COLORS.primaryDark);
-  pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+  const primaryColor = agency?.primary_color || COLORS.primaryDark;
+  const _secondaryColor = agency?.secondary_color || COLORS.primary;
+
+  // Background - try cover image first
+  if (imageCache.cover?.base64) {
+    try {
+      pdf.addImage(imageCache.cover.base64, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+      // Dark overlay for text readability
+      pdf.setGState(new (pdf as any).GState({ opacity: 0.55 }));
+      pdf.setFillColor("#000000");
+      pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+      pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+    } catch {
+      pdf.setFillColor(primaryColor);
+      pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+      drawCoverDecoration(pdf);
+    }
+  } else {
+    pdf.setFillColor(primaryColor);
+    pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, "F");
+    drawCoverDecoration(pdf);
+  }
+
+  // Agency logo (top center)
+  let _logoBottomY = 30;
+  if (agencyLogoBase64) {
+    try {
+      const logoH = 25;
+      const logoW = 50;
+      pdf.addImage(agencyLogoBase64, "PNG", PAGE_WIDTH / 2 - logoW / 2, 15, logoW, logoH);
+      _logoBottomY = 15 + logoH + 8;
+    } catch {
+      // logo failed
+    }
+  } else if (agency?.agency_name) {
+    pdf.setTextColor(COLORS.white);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.text(normalizeTextForPDF(agency.agency_name), PAGE_WIDTH / 2, 25, { align: "center" });
+    _logoBottomY = 35;
+  }
   
-  // Geometric decoration
-  drawCoverDecoration(pdf);
-  
-  // Title section (centered, below decoration)
+  // Title section
   const titleY = PAGE_HEIGHT * 0.40;
   
   pdf.setTextColor(COLORS.white);
@@ -413,7 +453,7 @@ function renderCoverPage(
     });
   }
   
-  // Info badges (3 columns)
+  // Info badges
   const badgeY = PAGE_HEIGHT * 0.68;
   const badgeHeight = 22;
   const badgeWidth = (CONTENT_WIDTH - 10) / 3;
@@ -426,17 +466,13 @@ function renderCoverPage(
   
   badges.forEach((badge, i) => {
     const x = MARGIN + i * (badgeWidth + 5);
+    drawRoundedRect(pdf, x, badgeY, badgeWidth - 5, badgeHeight, 4, "rgba(30,27,75,0.7)");
     
-    // Badge background
-    drawRoundedRect(pdf, x, badgeY, badgeWidth - 5, badgeHeight, 4, "#3d3a6b");
-    
-    // Label
     pdf.setTextColor(COLORS.accentLight);
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
     pdf.text(badge.label, x + (badgeWidth - 5) / 2, badgeY + 8, { align: "center" });
     
-    // Value
     pdf.setTextColor(COLORS.white);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(12);
@@ -445,40 +481,35 @@ function renderCoverPage(
     while (pdf.getTextWidth(displayValue) > maxBadgeValueWidth && displayValue.length > 0) {
       displayValue = displayValue.slice(0, -1);
     }
-    if (displayValue.length < badge.value.length) {
-      displayValue = displayValue.trim() + '...';
-    }
+    if (displayValue.length < badge.value.length) displayValue = displayValue.trim() + '...';
     pdf.text(displayValue, x + (badgeWidth - 5) / 2, badgeY + 17, { align: "center" });
   });
   
-  // QR Code for web version
+  // QR Code
   if (webQR) {
     try {
       const qrSize = 28;
       const qrY = PAGE_HEIGHT - MARGIN - qrSize - 18;
-      pdf.addImage(
-        webQR,
-        "PNG",
-        PAGE_WIDTH / 2 - qrSize / 2,
-        qrY,
-        qrSize,
-        qrSize
-      );
+      pdf.addImage(webQR, "PNG", PAGE_WIDTH / 2 - qrSize / 2, qrY, qrSize, qrSize);
       pdf.setFontSize(8);
       pdf.setTextColor(COLORS.accentLight);
-      pdf.text("Escaneie para ver online", PAGE_WIDTH / 2, qrY + qrSize + 6, {
-        align: "center",
-      });
-    } catch (e) {
-      console.error("Failed to add QR code:", e);
-    }
+      pdf.text("Escaneie para ver online", PAGE_WIDTH / 2, qrY + qrSize + 6, { align: "center" });
+    } catch {}
   }
   
-  // Footer branding
+  // Photo credit
+  if (imageCache.cover?.credit) {
+    pdf.setFontSize(6);
+    pdf.setTextColor("#999999");
+    pdf.text(normalizeTextForPDF(imageCache.cover.credit), PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 5, { align: "right" });
+  }
+  
+  // Footer - agency or default branding
   pdf.setFontSize(10);
-  pdf.setTextColor(COLORS.primaryLight);
+  pdf.setTextColor(COLORS.white);
   pdf.setFont("helvetica", "bold");
-  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
+  const footerText = agency?.agency_name || "Viaje com Sofia";
+  pdf.text(normalizeTextForPDF(footerText), PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
 }
 
 // Render Map Page with schematic design
@@ -737,7 +768,7 @@ function renderDayPage(
 }
 
 // Render Final Page
-function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
+function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData, agency?: AgencySettings | null) {
   pdf.addPage();
   
   // Header
@@ -813,19 +844,30 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData) {
     pdf.text(`${label}: ${count}`, MARGIN + barWidth + 5, barY + 6);
   });
   
-  // Footer
+  // Footer - agency branding
   pdf.setFillColor(COLORS.bgCard);
-  pdf.rect(0, PAGE_HEIGHT - 35, PAGE_WIDTH, 35, "F");
+  pdf.rect(0, PAGE_HEIGHT - 40, PAGE_WIDTH, 40, "F");
+  
+  const footerName = agency?.agency_name || "Viaje com Sofia";
+  const footerContact = agency?.agency_phone || agency?.agency_email || "";
+  const footerWeb = agency?.agency_website || "viagecomsofia.com";
   
   pdf.setTextColor(COLORS.primary);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(14);
-  pdf.text("Viaje com Sofia", PAGE_WIDTH / 2, PAGE_HEIGHT - 20, { align: "center" });
+  pdf.text(normalizeTextForPDF(footerName), PAGE_WIDTH / 2, PAGE_HEIGHT - 25, { align: "center" });
+  
+  if (footerContact) {
+    pdf.setTextColor(COLORS.textLight);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.text(normalizeTextForPDF(footerContact), PAGE_WIDTH / 2, PAGE_HEIGHT - 17, { align: "center" });
+  }
   
   pdf.setTextColor(COLORS.textLight);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8);
-  pdf.text("viagecomsofia.com", PAGE_WIDTH / 2, PAGE_HEIGHT - 12, { align: "center" });
+  pdf.text(normalizeTextForPDF(footerWeb), PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
 }
 
 export function usePDFExport() {
@@ -843,17 +885,33 @@ export function usePDFExport() {
   );
 
   const exportToPDF = useCallback(
-    async (itinerary: ItineraryData) => {
+    async (itinerary: ItineraryData, agency?: AgencySettings | null) => {
       setState({ isExporting: true, currentStep: "fetching-images", progress: 0 });
 
       try {
-        // Step 1: Generate QR codes (no more external image fetching)
-        updateProgress("fetching-images", 10);
-        
-        const activityQRs = await generateItineraryQRCodes(itinerary.days, (p) => {
-          updateProgress("fetching-images", 10 + p * 0.3);
+        // Step 1: Fetch destination images + QR codes in parallel
+        updateProgress("fetching-images", 5);
+
+        const imagePromise = fetchItineraryImages(
+          {
+            title: itinerary.title,
+            destinations: itinerary.destinations,
+            days: itinerary.days.map(d => ({
+              day: d.day,
+              city: d.city,
+              country: d.country,
+              activities: d.activities.map(a => ({ id: a.id, title: a.title, category: a.category, location: a.location })),
+            })),
+          },
+          (p) => updateProgress("fetching-images", 5 + p * 0.3)
+        );
+
+        const qrPromise = generateItineraryQRCodes(itinerary.days, (p) => {
+          updateProgress("fetching-images", 35 + p * 0.05);
         });
-        
+
+        const [imageCache, activityQRs] = await Promise.all([imagePromise, qrPromise]);
+
         updateProgress("generating-map", 40);
         
         // Generate web QR
@@ -861,6 +919,12 @@ export function usePDFExport() {
           `${window.location.origin}/itinerary`,
           { width: 150 }
         );
+
+        // Fetch agency logo as base64
+        let agencyLogoBase64: string | null = null;
+        if (agency?.logo_url) {
+          agencyLogoBase64 = await imageUrlToBase64(agency.logo_url);
+        }
         
         updateProgress("creating-pdf", 50);
         
@@ -871,15 +935,15 @@ export function usePDFExport() {
           format: "a4",
         });
         
-        // Cover page (minimalist design, no external images)
-        renderCoverPage(pdf, itinerary, webQR);
+        // Cover page with agency branding and destination photo
+        await renderCoverPage(pdf, itinerary, webQR, imageCache, agency, agencyLogoBase64);
         updateProgress("creating-pdf", 55);
         
-        // Map page (schematic design)
+        // Map page
         await renderMapPage(pdf, itinerary);
         updateProgress("creating-pdf", 60);
         
-        // Day pages (no external images for headers)
+        // Day pages
         const totalDays = itinerary.days.length;
         for (let i = 0; i < totalDays; i++) {
           const day = itinerary.days[i];
@@ -887,8 +951,8 @@ export function usePDFExport() {
           updateProgress("creating-pdf", 60 + ((i + 1) / totalDays) * 30);
         }
         
-        // Final page
-        renderFinalPage(pdf, itinerary);
+        // Final page with agency branding
+        renderFinalPage(pdf, itinerary, agency);
         updateProgress("creating-pdf", 95);
         
         // Save

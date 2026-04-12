@@ -10,9 +10,11 @@ import ItineraryHeader from "@/components/itinerary/ItineraryHeader";
 import DaySelector from "@/components/itinerary/DaySelector";
 import DayTimeline from "@/components/itinerary/DayTimeline";
 import ItineraryMap from "@/components/itinerary/ItineraryMap";
+import ItineraryAdjustChat from "@/components/itinerary/ItineraryAdjustChat";
 import { QuizAnswers } from "@/types/quiz";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserCredits } from "@/hooks/useUserCredits";
+import { useAgencySettings } from "@/hooks/useAgencySettings";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
 import { getGenerateItineraryUrl, getLovableCloudAuthHeaders } from "@/lib/apiRouting";
@@ -33,6 +35,7 @@ const Itinerary = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { canGenerateItinerary, consumeItineraryCredit, refetch: refetchCredits, hasActiveSubscription, isAdmin, isLoading: creditsLoading } = useUserCredits();
+  const { settings: agencySettings } = useAgencySettings();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [itinerary, setItinerary] = useState<ItineraryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -209,18 +212,23 @@ const Itinerary = () => {
   const handleExportPDF = async () => {
     if (!itinerary) return;
     try {
-      await exportToPDF(itinerary);
+      await exportToPDF(itinerary, agencySettings);
       toast({
         title: "PDF exportado! 📄",
         description: "Seu roteiro foi baixado com sucesso.",
       });
-    } catch (error) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Erro ao exportar",
         description: "Não foi possível gerar o PDF. Tente novamente.",
       });
     }
+  };
+
+  const handleItineraryUpdated = (updated: ItineraryType) => {
+    setItinerary(updated);
+    sessionStorage.setItem("generatedItinerary", JSON.stringify(updated));
   };
 
   const handleRegenerate = () => {
@@ -450,6 +458,14 @@ const Itinerary = () => {
               />
             </div>
           </motion.div>
+        </div>
+
+        {/* Adjustment Chat */}
+        <div className="mt-6">
+          <ItineraryAdjustChat
+            itinerary={itinerary}
+            onItineraryUpdated={handleItineraryUpdated}
+          />
         </div>
       </main>
 

@@ -11,6 +11,7 @@ import { ArrowLeft, Camera, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import AgencySettingsForm from "@/components/agency/AgencySettingsForm";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -232,6 +233,17 @@ const Profile = () => {
                   "Salvar alterações"
                 )}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Agency Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Marca da Agência</CardTitle>
+              <CardDescription>Configure sua marca para aparecer nos PDFs gerados</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AgencySettingsForm />
             </CardContent>
           </Card>
         </div>
