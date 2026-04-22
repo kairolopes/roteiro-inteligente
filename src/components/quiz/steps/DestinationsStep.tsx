@@ -4,7 +4,7 @@ import { Check, Globe, MapPin, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuizAnswers } from "@/types/quiz";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
+import { CityAutocomplete } from "@/components/quiz/CityAutocomplete";
 
 const regions = [
   { id: "all", label: "Todos", icon: "🌍" },
