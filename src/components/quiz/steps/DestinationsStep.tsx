@@ -358,16 +358,15 @@ export function DestinationsStep({ answers, onUpdate }: DestinationsStepProps) {
         >
           <div className="flex items-center gap-2 text-primary">
             <MapPin className="w-5 h-5" />
-            <h3 className="font-semibold text-base">📍 Tem uma cidade ou região específica em mente?</h3>
+            <h3 className="font-semibold text-base">📍 Quer escolher cidades específicas?</h3>
           </div>
           <p className="text-sm text-muted-foreground -mt-2">
-            Digite abaixo para personalizar ainda mais o seu roteiro
+            Busque e adicione as cidades que você quer visitar para personalizar ainda mais o roteiro
           </p>
-          <Input
-            placeholder="Ex: Roma, Toscana, Costa Amalfitana, Nordeste brasileiro..."
+          <CityAutocomplete
             value={answers.destinationDetails || ""}
-            onChange={(e) => onUpdate("destinationDetails", e.target.value)}
-            className="bg-background border-primary/20 focus:border-primary text-base h-12"
+            onChange={(v) => onUpdate("destinationDetails", v)}
+            placeholder="Digite uma cidade (ex: Roma, Paris, Tóquio...)"
           />
         </motion.div>
       )}
