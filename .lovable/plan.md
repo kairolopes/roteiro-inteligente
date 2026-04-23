@@ -1,69 +1,95 @@
+## Plano para eu tocar a finalização do app sem te cansar com contexto repetido
 
+Vou mudar a forma de trabalhar neste projeto: em vez de esperar pedidos soltos e ir reagindo, eu assumo uma reta final estruturada para fechar o produto em blocos.
 
-## Reformular o quiz de destinos com preenchimento inteligente e versátil
+### Objetivo
+Reduzir ao mínimo sua necessidade de pensar em detalhes, corrigir direção no meio do caminho ou reexplicar contexto.
 
-O usuário não está encontrando o campo de cidade. O problema atual: o `CityAutocomplete` foi adicionado dentro do `DestinationsStep`, mas só aparece **depois** de selecionar um país, escondido como "detalhes". Vou inverter a lógica: a cidade vira o campo principal e único, podendo ser preenchida livremente desde o início.
+### O que vou fazer
 
-### Nova UX do passo "Destinos"
+1. **Criar uma base única de contexto do projeto**
+   - Consolidar as regras do produto, fluxos principais, limitações e decisões já tomadas.
+   - Registrar o que já existe e o que ainda está incompleto para eu não “me perder” entre quiz, chat, roteiro, pagamento e admin.
+   - Usar isso como referência fixa nas próximas entregas.
 
-Um campo único, grande e visível no topo onde a pessoa pode digitar **qualquer coisa**:
-- Uma cidade ("Paris")
-- Um país ("Japão")
-- Uma região ("Toscana")
-- Múltiplos lugares ("Roma, Florença, Veneza")
-- Ou até descrição livre ("praias do nordeste brasileiro")
+2. **Fazer uma auditoria completa do produto**
+   Vou revisar os fluxos principais de ponta a ponta:
+   - Landing page e entrada no funil
+   - Quiz
+   - Chat com a Sofia
+   - Geração de roteiro
+   - Bloqueios freemium/paywall
+   - Login/perfil
+   - Painel admin
+   - Pagamentos e integrações principais
 
-O autocomplete sugere conforme digita (cidades + países + regiões), mas **nunca obriga** a escolher da lista — o que for digitado vale.
+3. **Montar um backlog enxuto de finalização**
+   Vou transformar a auditoria em uma lista objetiva com 3 grupos:
+   - **Crítico para funcionar**
+   - **Importante para vender bem**
+   - **Melhoria opcional**
 
-```text
-┌─────────────────────────────────────────────┐
-│  Para onde você quer ir? ✈️                 │
-│                                              │
-│  ┌────────────────────────────────────────┐ │
-│  │ 🔍 Digite cidade, país ou região...    │ │
-│  └────────────────────────────────────────┘ │
-│                                              │
-│  [chips das seleções com X para remover]    │
-│                                              │
-│  ✨ Populares: Paris  Tóquio  Roma  NY      │
-│                                              │
-│  💭 Ainda na dúvida? Conte como imagina    │
-│  ┌────────────────────────────────────────┐ │
-│  │ Ex: lugar tranquilo com praia e cult.. │ │
-│  └────────────────────────────────────────┘ │
-└─────────────────────────────────────────────┘
-```
+   Cada item terá:
+   - problema
+   - impacto
+   - correção proposta
+   - prioridade
 
-### Mudanças técnicas
+4. **Executar em lotes fechados, não em ajustes soltos**
+   Em vez de mudanças pequenas uma por vez, vou trabalhar por blocos:
+   - **Lote 1: estabilidade e bugs visíveis**
+   - **Lote 2: UX e conversão**
+   - **Lote 3: acabamento e consistência final**
 
-1. **`src/components/quiz/CityAutocomplete.tsx`** — generalizar:
-   - Renomear conceitualmente para "DestinationAutocomplete" (mantém arquivo, só ajusta comportamento)
-   - Aceitar **texto livre** sem precisar bater com a lista (já tem parcialmente, reforçar)
-   - Indexar busca também por país inteiro (digitar "Japão" sugere Tóquio, Kyoto, Osaka)
-   - Adicionar entradas só de país para quem quer um país inteiro sem cidade específica
-   - Mostrar 6-8 sugestões "Populares" como chips clicáveis abaixo do input quando vazio
-   - Visual mais destacado: input maior (h-14), ícone de busca, placeholder claro
+5. **Reduzir dependência de memória frágil do chat**
+   Vou priorizar correções que deixam o sistema mais previsível:
+   - menos duplicação de lógica entre front e backend
+   - menos dependência de estado temporário espalhado
+   - regras mais centralizadas para quiz/chat/roteiro
+   - pontos críticos documentados dentro do projeto
 
-2. **`src/components/quiz/steps/DestinationsStep.tsx`** — simplificar drasticamente:
-   - **Remover** a grade de bandeiras de países como passo obrigatório
-   - **Remover** o campo separado "destinationDetails"
-   - Colocar o `CityAutocomplete` como elemento principal, no topo, grande
-   - Manter apenas **um campo opcional** abaixo: "Conte como você imagina a viagem" (textarea curto) — alimenta `customRequests`
-   - Sincronizar tanto `answers.destinations` (array) quanto `answers.destination` (string concatenada) para retrocompatibilidade com a IA
+6. **Te mostrar progresso do jeito mais simples possível**
+   Em cada etapa, você recebe só:
+   - o que foi fechado
+   - o que ainda falta
+   - o que precisa da sua decisão, se realmente precisar
 
-3. **`src/pages/Quiz.tsx`** — ajustar validação:
-   - `canProceed()` para o passo 4 valida apenas que existe pelo menos uma entrada em `destinations` OU texto livre preenchido
-   - Sem necessidade de selecionar país antes
+### Primeira entrega que eu faria após sua aprovação
 
-4. **`src/types/quiz.ts`** — manter compatível:
-   - `destinations: string[]` continua sendo a fonte de verdade
-   - Pode conter cidades, países ou regiões misturadas
+#### Fase 1 — Diagnóstico e plano de fechamento
+Vou te devolver uma auditoria objetiva com:
+- top problemas atuais do app
+- inconsistências de fluxo
+- itens que fazem parecer “inacabado”
+- ordem ideal de implementação para terminar rápido
 
-### Resultado para o usuário
+#### Fase 2 — Execução do pacote mais importante
+Começo pelos pontos de maior impacto no seu app atual, com foco em:
+- fluxo quiz → chat → roteiro
+- estabilidade das chamadas de IA
+- consistência dos estados salvos
+- redução de bugs de navegação e recuperação de sessão
 
-- O campo de cidade fica **imediatamente visível** ao chegar no passo de destinos
-- Funciona para qualquer nível: cidade, país, região ou descrição
-- Aceita texto livre — não trava se não estiver na lista
-- Busca inteligente: "japão" sugere Tóquio/Kyoto/Osaka; "praia" não bloqueia, deixa adicionar
-- Menos cliques, fluxo mais natural
+#### Fase 3 — Fechamento comercial
+Depois disso, entro no que mais ajuda a vender e operar:
+- landing/vendas
+- paywall e pricing
+- painel admin
+- integrações essenciais
 
+## Sinais que já identifiquei e que entram nessa auditoria
+- Há lógica importante espalhada entre páginas e funções, o que aumenta perda de contexto e manutenção.
+- O fluxo principal depende bastante de `sessionStorage`, o que pode deixar a experiência frágil.
+- Existem duplicações e diferenças entre implementações de chat/itinerário em mais de um lugar.
+- Há pontos de configuração sensíveis hoje embutidos no código e que merecem centralização.
+
+## Resultado esperado
+Ao final, você deixa de precisar “inventar o próximo passo”.
+Eu passo a conduzir a finalização com base numa lista clara, priorizada e contínua.
+
+## Detalhes técnicos
+- Revisar e consolidar os fluxos em `Quiz`, `Chat`, `Itinerary`, `Admin` e helpers de roteamento.
+- Mapear dependências entre armazenamento em sessão, auth, créditos e geração de roteiro.
+- Eliminar duplicações críticas entre funções e chamadas do frontend.
+- Criar documentação curta de produto/arquitetura dentro do projeto para manter consistência nas próximas entregas.
+- Implementar correções em batches, com validação por fluxo e não por arquivo isolado.
