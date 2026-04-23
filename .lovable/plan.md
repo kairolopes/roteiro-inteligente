@@ -1,80 +1,80 @@
-## Sprint de Fechamento — Lotes 2 e 3 executados de ponta a ponta
 
-Aprove uma vez. Eu executo tudo em sequência, sem novas perguntas. No final, o app está pronto pra vender.
 
----
+# Plano final: Time de agentes + canal BR de fechamento
 
-### Lote 2 — UX e conversão
+Junta as duas conversas numa coisa só. Sem inventar feature impossível, sem abandonar a ideia dos agentes.
 
-1. **Migrar todo `sessionStorage` solto para `sessionState`**
-   - Substituir leituras/escritas em `Itinerary.tsx`, `Quiz.tsx`, `Chat.tsx`, `MyItineraries.tsx` pelo helper único.
-   - Tratar JSON corrompido sem quebrar tela (fallback para quiz).
+## O que fica do plano de agentes (viável)
 
-2. **Tela de loading do roteiro com etapas reais**
-   - `ItineraryLoadingScreen` mostra progresso por etapa (analisando preferências → consultando lugares → montando dias → finalizando), com tempo estimado e barra.
-   - Liga aos eventos SSE que `generate-itinerary` já emite.
+4 agentes, não 5. Tirei a Clara (vídeo) porque ffmpeg não roda em edge function do Supabase.
 
-3. **Paywall contextual**
-   - `PaywallModal` mostra exatamente o que desbloqueia (X dias a mais, PDF, regenerar) e o preço do plano mais barato vindo de `/pricing`.
-   - CTA direto pro plano recomendado.
+| Agente | Função | Onde aparece | Tecnologia |
+|---|---|---|---|
+| **Sofia** | Orquestradora — decide quem chamar | Chat de ajuste do roteiro | Gemini 2.5 Flash + tool calling |
+| **Pietra** | Curadora cultural — eventos reais nas datas (festival, exposição, show local) | Aba "Acontecendo na cidade" em cada dia | Gemini + Google Places (você já tem a key) |
+| **Lia** | Local — reescreve descrições no tom de quem mora lá ("vai cedo, fila vira monstro 11h") | Substitui descrições genéricas das atividades | Gemini, prompt especializado |
+| **Bruno** | Logística — calcula deslocamento real, reorganiza dia se houver gargalo | Botão "Bruno otimizar" no topo do dia | Gemini + Google Distance Matrix |
 
-4. **Persistir roteiro no banco para usuário logado**
-   - Ao gerar/ajustar roteiro, salvar em `itineraries` automaticamente se logado.
-   - `MyItineraries.tsx` já lista — garantir que aparece sem precisar clicar "Salvar".
+Cada agente tem avatar, cor e voz própria no chat de ajuste. Não é "uma IA" — é um time visível que a agência mostra pro cliente.
 
-5. **Onboarding da agência no 1º login**
-   - Modal único pedindo nome da agência, logo, cor primária e WhatsApp.
-   - Pula se já preenchido. Salva via `useAgencySettings`.
+## O que fica do pivot BR (canal de fechamento)
 
-6. **Remover rota `/chat` legada de vez**
-   - Apagar `src/pages/Chat.tsx` e `supabase/functions/chat-travel` (não é mais usado pelo fluxo principal).
-   - Manter `adjust-itinerary` que é o chat real do produto.
+Os agentes **não vendem** hotel/voo gringo no roteiro entregue ao cliente da agência. Em vez disso:
 
----
+- Botão **"Falar com meu consultor"** em cada dia/atividade — abre WhatsApp da agência (`agency_settings.whatsapp_number`) com mensagem pré-pronta contextual:
+  > "Oi! Vi o roteiro de Paris - Dia 3 (Louvre + jantar no Marais). Quero cotação de hotel e ingressos pra essas datas."
+- Selo **"Cotação personalizada com [nome agência]"** no lugar de cards de afiliado gringo
+- Cada clique grava em `quote_requests` → vira lead quente no admin
+- Afiliados internacionais ficam **só** na landing pública `/`, `/passagens`, `/voos` — onde pegam visitante anônimo (renda pra você, dono da plataforma, não compete com agência)
 
-### Lote 3 — Acabamento e prontidão pra vender
+## Painel "Bloomberg" no admin (do plano original)
 
-7. **SEO por rota**
-   - Componente `<SEO>` com title, description, canonical e Open Graph para `/`, `/vendas`, `/quiz`, `/pricing`, `/passagens`.
-   - `public/robots.txt` e `sitemap.xml` gerados.
+Feed em tempo real (Supabase Realtime, você já tem):
+- "João da Silva gerou roteiro Paris 7d — orçamento R$15k — clicou cotação Hotel"
+- "Pietra encontrou festival em Lisboa nas datas do cliente Maria"
+- "Bruno otimizou roteiro de Carlos: economia de 2h/dia"
 
-8. **Dashboard admin com métricas reais**
-   - `DashboardTab` puxa do banco: roteiros gerados (7/30 dias), assinaturas ativas, leads novos, conversão quiz→roteiro.
-   - 4 cards + 1 gráfico de linha (recharts já instalado).
+Agência clica no item → abre conversa WhatsApp pré-escrita com link do roteiro.
 
-9. **Botão flutuante de WhatsApp**
-   - Em `/`, `/vendas`, `/pricing`. Número vem de `agencySettings` ou fallback.
+## Ordem de execução (3 turnos, não 5)
 
-10. **Tela de pós-pagamento**
-    - `/pricing?status=success` mostra confirmação visual + CTA "Criar meu primeiro roteiro" em vez de só toast.
+**Turno 1 — Backend dos agentes**
+- Tabela `agent_messages(itinerary_id, agent_name, role, content, created_at)`
+- Tabela `quote_requests(id, user_id, agency_id, itinerary_id, day_number, type, message_sent, status, closed_value, created_at)` + RLS
+- Edge function `agents/orchestrator` (Sofia decide qual chamar via tool calling)
+- Edge functions `agents/pietra`, `agents/lia`, `agents/bruno` — cada uma com prompt especializado
+- Reuso do `LOVABLE_API_KEY` e `GOOGLE_PLACES_API_KEY` que já existem
 
-11. **Polimento da landing e vendas**
-    - Revisar tipografia (consistência H1/H2/body), espaçamentos e CTAs.
-    - Garantir que mobile (407px que você está vendo agora) renderiza sem overflow.
+**Turno 2 — UI dos agentes no roteiro**
+- Refatorar `ItineraryAdjustChat.tsx` pra mostrar mensagens com avatar/cor por agente
+- Aba "Acontecendo aqui" no `DayTimeline` → chama Pietra
+- Botão "Reorganizar dia" → chama Bruno
+- Trocar `AffiliateButtons.tsx`: se `agencySettings.whatsapp_number` existe → botão "Falar com consultor" com mensagem contextual; senão → fallback afiliado
+- Manter afiliado intacto em `Passagens.tsx`, `FlightDetails.tsx`, `landing/*`
 
-12. **Limpeza final**
-    - Apagar arquivos mortos: `src/pages/Chat.tsx`, `netlify/functions/chat-travel.ts` (já feito), `migration_completa.sql` se obsoleto.
-    - Rodar `tsc --noEmit` e corrigir erros que aparecerem.
+**Turno 3 — Painel Bloomberg + métricas**
+- Aba "Cotações" no admin com fila realtime de `quote_requests`
+- Botão "marcar como fechado" com input de valor
+- Card no `DashboardTab`: "Vendas fechadas via app: R$ X esse mês"
+- Notificação no admin quando Pietra encontra evento relevante
 
----
+## Detalhes técnicos
 
-### Como vou trabalhar
+- Sofia chama agentes via `tools` do Gemini, não em paralelo (economiza token)
+- Pietra usa Google Places `text_search` com query "events [cidade] [data]" + Gemini pra filtrar
+- Bruno usa Distance Matrix pra calcular tempo real entre atividades; reordena se gap > 90min
+- `agent_messages` persiste pra mostrar "replay" da decisão dos agentes no admin (argumento de venda: "vejam como a IA pensou no roteiro do seu cliente")
+- WhatsApp link via `wa.me` no client (zero custo Z-API); Z-API fica só pro envio ativo do admin
+- Sem connector novo, sem secret novo
 
-- Executo Lote 2 inteiro, depois Lote 3 inteiro, sem pausas.
-- Atualizo `PROJECT_CONTEXT.md` ao final marcando o que foi feito.
-- Se eu encontrar um bug bloqueante no caminho, conserto na hora e sigo.
-- Não pergunto nada no meio. No final eu te entrego um resumo do que mudou e o que testar.
+## Pitch novo pra agência vender
 
-### O que você faz depois
+Antes: *"app que faz roteiro com IA"*
+Depois: *"4 agentes IA especializados criam o roteiro, sua agência fecha a venda no WhatsApp — você nunca mais perde lead frio"*
 
-- Abre o preview, testa o fluxo: landing → quiz → roteiro → paywall → checkout.
-- Se algo estiver errado, me fala em 1 mensagem só ("isso, isso e isso") que eu corrijo em lote.
+Cobra 3x mais, diferencia de qualquer concorrente nacional.
 
----
+## Aprovação
 
-**Detalhes técnicos (pode pular se não for técnico):**
-- Migração de estado usa o helper `sessionState` já criado no Lote 1.
-- Persistência de roteiro: insert em `itineraries` com `user_id` no evento `complete` do SSE.
-- SEO: componente leve com `react-helmet-async` (instalo se não tiver) ou tags via `useEffect` no document.
-- Dashboard: `supabase.rpc` ou queries diretas com RLS já existente.
-- Onboarding: estado vem de `useAgencySettings` — se `agency_name` vazio, abre modal.
+1 aprovação só. Eu toco os 3 turnos em sequência. Se em qualquer ponto algo travar, eu paro e te aviso em 1 frase qual é o bloqueio — não invento solução mágica.
+
