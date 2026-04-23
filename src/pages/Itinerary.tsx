@@ -182,8 +182,11 @@ const Itinerary = () => {
     }
   }, [user, itinerary, hasActiveSubscription, isAdmin]);
 
+  // Boot do roteiro: roda UMA vez ao montar.
+  // Não depende de generateItineraryWithStreaming (que muda quando user/créditos mudam),
+  // evitando loop de re-geração.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    // Load startDate from quiz answers
     const quizData = sessionStorage.getItem("quizAnswers");
     if (quizData) {
       try {
@@ -208,7 +211,7 @@ const Itinerary = () => {
     }
 
     generateItineraryWithStreaming();
-  }, [generateItineraryWithStreaming]);
+  }, []);
 
   const handleExportPDF = async () => {
     if (!itinerary) return;

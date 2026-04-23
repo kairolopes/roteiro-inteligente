@@ -48,7 +48,7 @@ export const getAuthHeaders = (): Record<string, string> => {
 // Get auth headers specifically for Lovable Cloud Edge Functions
 export const getLovableCloudAuthHeaders = (): Record<string, string> => {
   return {
-    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bXZvb2d5cmFmaW9neGRiaXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNjQ4MjksImV4cCI6MjA4Mzk0MDgyOX0.3ZXQhOP7NJ4JfSr3AFuuIOJKN7SLd-tZ5XpeU6SWagY',
+    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     'Content-Type': 'application/json',
   };
 };
