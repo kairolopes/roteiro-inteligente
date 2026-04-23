@@ -19,6 +19,8 @@ import { useUserCredits } from "@/hooks/useUserCredits";
 import { supabase } from "@/integrations/supabase/client";
 import { getNetlifyFunctionsUrl } from "@/lib/supabaseClient";
 import AuthModal from "@/components/auth/AuthModal";
+import SEO from "@/components/SEO";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import { cn } from "@/lib/utils";
 
 // Use Netlify Functions if available
@@ -109,17 +111,14 @@ const Pricing = () => {
   const { credits, refetch, hasActiveSubscription } = useUserCredits();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   // Handle payment status from redirect
   useEffect(() => {
     const status = searchParams.get("status");
     if (status === "success") {
-      toast({
-        title: "Pagamento realizado! 🎉",
-        description: "Seus créditos foram adicionados com sucesso.",
-      });
+      setPaymentSuccess(true);
       refetch();
-      // Clear URL params
       window.history.replaceState({}, "", "/pricing");
     } else if (status === "failure") {
       toast({
@@ -198,6 +197,46 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Planos e Preços — Viaje com Sofia"
+        description="Escolha o plano ideal: créditos avulsos a partir de R$ 9,90 ou assinatura mensal/anual com roteiros ilimitados."
+      />
+      {paymentSuccess && (
+        <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md w-full text-center bg-card border border-border rounded-2xl p-8 shadow-2xl"
+          >
+            <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-6">
+              <Check className="w-10 h-10 text-green-500" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Pagamento confirmado! 🎉</h2>
+            <p className="text-muted-foreground mb-6">
+              Seus créditos já estão na sua conta. Bora criar o próximo roteiro?
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => {
+                  setPaymentSuccess(false);
+                  navigate("/quiz");
+                }}
+                className="flex-1 gradient-primary text-primary-foreground"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Criar meu roteiro
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPaymentSuccess(false)}
+                className="flex-1"
+              >
+                Ver planos
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border">
         <div className="container mx-auto px-4 lg:px-8">
