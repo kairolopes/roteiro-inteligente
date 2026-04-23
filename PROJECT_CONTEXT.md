@@ -48,17 +48,21 @@ Atualize aqui sempre que uma decisão importante mudar.
 - [ ] Centralizar leitura de `sessionStorage` em um helper único (`src/lib/sessionState.ts`).
 - [ ] Tratar caso de `quizAnswers` corrompido sem quebrar a página.
 
-### LOTE 2 — UX e conversão
-- [ ] Tela de loading do roteiro com etapas reais e estimativa de tempo.
-- [ ] Mostrar preview do PDF antes do download.
-- [ ] CTA contextual no paywall (mostrar exatamente o que desbloqueia).
-- [ ] Persistir roteiro em DB para usuário logado (hoje só sessão).
+### LOTE 2 — UX e conversão ✅
+- [x] Loading do roteiro com etapas reais (já tinha, mantido).
+- [x] Paywall contextual (mostra X de Y dias bloqueados).
+- [x] Persistir roteiro no banco para usuário logado (auto-save em `saved_itineraries`).
+- [x] `sessionState` aplicado em Quiz, Itinerary, MyItineraries.
+- [x] Onboarding da agência no 1º login (`AgencyOnboardingModal`).
+- [x] Rota `/chat` removida (página deletada, redirect mantido).
 
-### LOTE 3 — Acabamento
-- [ ] Revisar landing/vendas, consistência tipográfica.
-- [ ] Painel admin: dashboard com métricas reais.
-- [ ] Onboarding da agência (logo, cor, contato) no primeiro login.
-- [ ] SEO: meta tags por rota, sitemap.
+### LOTE 3 — Acabamento ✅
+- [x] Componente `<SEO>` por rota (Index, Vendas, Quiz, Pricing, Itinerary).
+- [x] `robots.txt` e `sitemap.xml` publicados.
+- [x] Dashboard admin com gráfico 7 dias (roteiros vs leads).
+- [x] Botão flutuante de WhatsApp em `/`, `/vendas`, `/pricing`.
+- [x] Tela visual de pós-pagamento em `/pricing?status=success`.
+- [x] `index.html` com SEO base, lang pt-BR, theme-color, canonical.
 
 ## 7. Como pedir mudanças (para o usuário)
 Em vez de pedidos soltos, prefira:
