@@ -405,6 +405,8 @@ const Itinerary = () => {
                   onUnlock={() => setShowAuthModal(true)}
                   onSubscribe={() => setShowPaywall(true)}
                   isLoggedIn={!!user}
+                  itineraryId={itinerary.id}
+                  itineraryTitle={itinerary.title}
                 />
               ))}
             </div>
