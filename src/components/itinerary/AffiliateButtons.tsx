@@ -104,9 +104,18 @@ function parseDateToISO(dateStr: string): string | undefined {
   return undefined;
 }
 
-const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsProps) => {
+const AffiliateButtons = ({ activity, dayContext, tripDates, agency, agencyUserId, itineraryId, itineraryTitle }: AffiliateButtonsProps & {
+  agency?: { agencyName?: string | null; agencyPhone?: string | null } | null;
+  agencyUserId?: string | null;
+  itineraryId?: string;
+  itineraryTitle?: string;
+}) => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  
+
+  // Se a agência configurou WhatsApp, esse botão substitui afiliados gringos
+  // (público B2B brasileiro não compra em site internacional).
+  const hasAgencyChannel = !!(agency?.agencyPhone);
+
   // Build booking context from activity and day
   const buildContext = (): BookingContext => {
     const dateISO = parseDateToISO(dayContext.date);
