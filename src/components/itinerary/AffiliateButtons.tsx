@@ -20,6 +20,7 @@ import {
 } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { cn } from "@/lib/utils";
+import AgencyQuoteButton from "./AgencyQuoteButton";
 
 interface AffiliateButtonsProps {
   activity: Activity;
@@ -104,9 +105,18 @@ function parseDateToISO(dateStr: string): string | undefined {
   return undefined;
 }
 
-const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsProps) => {
+const AffiliateButtons = ({ activity, dayContext, tripDates, agency, agencyUserId, itineraryId, itineraryTitle }: AffiliateButtonsProps & {
+  agency?: { agencyName?: string | null; agencyPhone?: string | null } | null;
+  agencyUserId?: string | null;
+  itineraryId?: string;
+  itineraryTitle?: string;
+}) => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  
+
+  // Se a agência configurou WhatsApp, esse botão substitui afiliados gringos
+  // (público B2B brasileiro não compra em site internacional).
+  const hasAgencyChannel = !!(agency?.agencyPhone);
+
   // Build booking context from activity and day
   const buildContext = (): BookingContext => {
     const dateISO = parseDateToISO(dayContext.date);
@@ -246,9 +256,34 @@ const AffiliateButtons = ({ activity, dayContext, tripDates }: AffiliateButtonsP
     );
   };
 
+  // Determina o tipo de cotação a partir da categoria
+  const quoteType: "hotel" | "flight" | "tour" | "activity" =
+    activity.category === "accommodation" ? "hotel" :
+    activity.category === "transport" ? "flight" :
+    activity.category === "attraction" ? "tour" : "activity";
+
   return (
     <div className="mt-3 space-y-2">
-      {relevantCategories.map(renderCategory)}
+      {hasAgencyChannel ? (
+        <AgencyQuoteButton
+          variant="compact"
+          context={{
+            type: quoteType,
+            itineraryId,
+            itineraryTitle,
+            dayNumber: (dayContext as any).dayNumber,
+            destination: dayContext.city,
+            city: dayContext.city,
+            country: dayContext.country,
+            date: dayContext.date,
+            activityTitle: activity.title,
+          }}
+          agency={agency!}
+          agencyUserId={agencyUserId}
+        />
+      ) : (
+        relevantCategories.map(renderCategory)
+      )}
     </div>
   );
 };

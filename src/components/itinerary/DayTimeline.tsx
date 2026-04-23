@@ -3,6 +3,9 @@ import { Calendar, MapPin, Star, Lock } from "lucide-react";
 import { ItineraryDay } from "@/types/itinerary";
 import ActivityCard from "./ActivityCard";
 import LockedDayOverlay from "./LockedDayOverlay";
+import PietraEventsPanel from "./PietraEventsPanel";
+import AgencyQuoteButton from "./AgencyQuoteButton";
+import { useAgencySettings } from "@/hooks/useAgencySettings";
 import { cn } from "@/lib/utils";
 
 interface DayTimelineProps {
@@ -14,6 +17,8 @@ interface DayTimelineProps {
   onUnlock?: () => void;
   onSubscribe?: () => void;
   isLoggedIn?: boolean;
+  itineraryId?: string;
+  itineraryTitle?: string;
 }
 
 const DayTimeline = ({ 
@@ -24,8 +29,12 @@ const DayTimeline = ({
   totalDays = 1,
   onUnlock,
   onSubscribe,
-  isLoggedIn = false
+  isLoggedIn = false,
+  itineraryId,
+  itineraryTitle,
 }: DayTimelineProps) => {
+  const { settings: agency } = useAgencySettings();
+  const hasAgency = !!(agency?.agency_phone);
 
   // Handle click on locked day
   const handleClick = () => {
@@ -115,6 +124,32 @@ const DayTimeline = ({
               index={idx}
             />
           ))}
+
+          {/* Pietra — eventos culturais reais nas datas */}
+          <PietraEventsPanel city={day.city} country={day.country} date={day.date} />
+
+          {/* Botão de cotação com a agência (só aparece se a agência configurou WhatsApp) */}
+          {hasAgency && (
+            <AgencyQuoteButton
+              variant="primary"
+              context={{
+                type: "full_package",
+                itineraryId,
+                itineraryTitle,
+                dayNumber: day.day,
+                destination: day.city,
+                city: day.city,
+                country: day.country,
+                date: day.date,
+              }}
+              agency={{
+                agencyName: agency!.agency_name,
+                agencyPhone: agency!.agency_phone,
+              }}
+              agencyUserId={agency!.user_id}
+              label={`Falar com consultor sobre o Dia ${day.day}`}
+            />
+          )}
         </motion.div>
       )}
     </motion.div>
