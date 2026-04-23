@@ -55,7 +55,8 @@ const App = () => {
                 <Route path="/passagens" element={<Passagens />} />
                 <Route path="/passagens/:origem/:destino/:data" element={<FlightDetails />} />
                 <Route path="/quiz" element={<Quiz />} />
-                <Route path="/chat" element={<Chat />} />
+                {/* /chat foi descontinuado: o usuário vai direto do quiz para o roteiro */}
+                <Route path="/chat" element={<Navigate to="/itinerary" replace />} />
                 <Route path="/itinerary" element={<Itinerary />} />
                 <Route path="/my-itineraries" element={<MyItineraries />} />
                 <Route path="/profile" element={<Profile />} />
