@@ -296,9 +296,9 @@ const Itinerary = () => {
               <ClipboardList className="w-4 h-4 mr-2" />
               Fazer o Quiz
             </Button>
-            <Button variant="outline" onClick={() => navigate("/chat")}>
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Conversar com Sofia
+            <Button variant="outline" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao início
             </Button>
           </div>
         </motion.div>
@@ -341,6 +341,11 @@ const Itinerary = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={itinerary.title || "Seu roteiro personalizado"}
+        description={itinerary.summary || "Roteiro de viagem personalizado gerado com IA pela Sofia."}
+        noIndex
+      />
       <ItineraryHeader
         itinerary={itinerary}
         onExportPDF={handleExportPDF}
@@ -438,6 +443,8 @@ const Itinerary = () => {
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
         type="itinerary"
+        totalDays={itinerary?.days?.length}
+        freeDays={Number.isFinite(freeDaysCount) ? (freeDaysCount as number) : undefined}
       />
 
       {/* Auth Modal */}
