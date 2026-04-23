@@ -17,6 +17,8 @@ import { LeadCapture } from "@/components/vendas/LeadCapture";
 import { ExitIntent } from "@/components/vendas/ExitIntent";
 import { VendasFooter } from "@/components/vendas/VendasFooter";
 import AuthModal from "@/components/auth/AuthModal";
+import SEO from "@/components/SEO";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import { useToast } from "@/components/ui/use-toast";
 import { useUserCredits } from "@/hooks/useUserCredits";
 
@@ -50,6 +52,10 @@ export default function Vendas() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Para Agências de Viagem — Crie roteiros em segundos"
+        description="A Sofia entrega roteiros personalizados com a sua marca. Aumente conversão, economize horas e ofereça PDFs white-label aos seus clientes."
+      />
       <VendasNavbar onCTAClick={scrollToPricing} />
       <VendasHero onCTAClick={scrollToPricing} />
       <PainPoints />
@@ -69,6 +75,7 @@ export default function Vendas() {
       <LeadCapture isOpen={showLeadCapture} onClose={() => setShowLeadCapture(false)} />
       <ExitIntent />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <WhatsAppButton message="Olá! Quero saber mais sobre o Viaje com Sofia para minha agência." />
     </div>
   );
 }
