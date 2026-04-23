@@ -8,9 +8,9 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { useVersionCheck } from "@/hooks/useVersionCheck";
 import { useToast } from "@/hooks/use-toast";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import AgencyOnboardingModal from "@/components/agency/AgencyOnboardingModal";
 import Index from "./pages/Index";
 import Quiz from "./pages/Quiz";
-import Chat from "./pages/Chat";
 import Itinerary from "./pages/Itinerary";
 import MyItineraries from "./pages/MyItineraries";
 import Profile from "./pages/Profile";
@@ -49,6 +49,7 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <ToastCleaner />
+              <AgencyOnboardingModal />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/index" element={<Navigate to="/" replace />} />

@@ -9,6 +9,10 @@ interface PaywallModalProps {
   type: "itinerary" | "chat";
   title?: string;
   description?: string;
+  /** Total days in the user's itinerary, for contextual messaging */
+  totalDays?: number;
+  /** Days currently unlocked for free, for contextual messaging */
+  freeDays?: number;
 }
 
 export function PaywallModal({
@@ -17,17 +21,25 @@ export function PaywallModal({
   type,
   title,
   description,
+  totalDays,
+  freeDays,
 }: PaywallModalProps) {
   const navigate = useNavigate();
 
+  const lockedDays = totalDays && freeDays ? Math.max(totalDays - freeDays, 0) : null;
+
   const defaultTitle =
     type === "itinerary"
-      ? "Desbloqueie Roteiros Completos"
+      ? lockedDays
+        ? `Desbloqueie +${lockedDays} dias do seu roteiro`
+        : "Desbloqueie Roteiros Completos"
       : "Continue Conversando com a Sofia";
 
   const defaultDescription =
     type === "itinerary"
-      ? "Você usou seu roteiro gratuito. Adquira créditos para gerar roteiros personalizados ilimitados!"
+      ? lockedDays
+        ? `Você está vendo ${freeDays} de ${totalDays} dias. Assine para liberar tudo + PDF white-label + regenerações ilimitadas.`
+        : "Você usou seu roteiro gratuito. Adquira créditos para gerar roteiros personalizados ilimitados!"
       : "Você atingiu o limite de mensagens gratuitas. Faça upgrade para continuar planejando sua viagem!";
 
   const handleGoToPricing = () => {
