@@ -1,95 +1,80 @@
-## Plano para eu tocar a finalização do app sem te cansar com contexto repetido
+## Sprint de Fechamento — Lotes 2 e 3 executados de ponta a ponta
 
-Vou mudar a forma de trabalhar neste projeto: em vez de esperar pedidos soltos e ir reagindo, eu assumo uma reta final estruturada para fechar o produto em blocos.
+Aprove uma vez. Eu executo tudo em sequência, sem novas perguntas. No final, o app está pronto pra vender.
 
-### Objetivo
-Reduzir ao mínimo sua necessidade de pensar em detalhes, corrigir direção no meio do caminho ou reexplicar contexto.
+---
 
-### O que vou fazer
+### Lote 2 — UX e conversão
 
-1. **Criar uma base única de contexto do projeto**
-   - Consolidar as regras do produto, fluxos principais, limitações e decisões já tomadas.
-   - Registrar o que já existe e o que ainda está incompleto para eu não “me perder” entre quiz, chat, roteiro, pagamento e admin.
-   - Usar isso como referência fixa nas próximas entregas.
+1. **Migrar todo `sessionStorage` solto para `sessionState`**
+   - Substituir leituras/escritas em `Itinerary.tsx`, `Quiz.tsx`, `Chat.tsx`, `MyItineraries.tsx` pelo helper único.
+   - Tratar JSON corrompido sem quebrar tela (fallback para quiz).
 
-2. **Fazer uma auditoria completa do produto**
-   Vou revisar os fluxos principais de ponta a ponta:
-   - Landing page e entrada no funil
-   - Quiz
-   - Chat com a Sofia
-   - Geração de roteiro
-   - Bloqueios freemium/paywall
-   - Login/perfil
-   - Painel admin
-   - Pagamentos e integrações principais
+2. **Tela de loading do roteiro com etapas reais**
+   - `ItineraryLoadingScreen` mostra progresso por etapa (analisando preferências → consultando lugares → montando dias → finalizando), com tempo estimado e barra.
+   - Liga aos eventos SSE que `generate-itinerary` já emite.
 
-3. **Montar um backlog enxuto de finalização**
-   Vou transformar a auditoria em uma lista objetiva com 3 grupos:
-   - **Crítico para funcionar**
-   - **Importante para vender bem**
-   - **Melhoria opcional**
+3. **Paywall contextual**
+   - `PaywallModal` mostra exatamente o que desbloqueia (X dias a mais, PDF, regenerar) e o preço do plano mais barato vindo de `/pricing`.
+   - CTA direto pro plano recomendado.
 
-   Cada item terá:
-   - problema
-   - impacto
-   - correção proposta
-   - prioridade
+4. **Persistir roteiro no banco para usuário logado**
+   - Ao gerar/ajustar roteiro, salvar em `itineraries` automaticamente se logado.
+   - `MyItineraries.tsx` já lista — garantir que aparece sem precisar clicar "Salvar".
 
-4. **Executar em lotes fechados, não em ajustes soltos**
-   Em vez de mudanças pequenas uma por vez, vou trabalhar por blocos:
-   - **Lote 1: estabilidade e bugs visíveis**
-   - **Lote 2: UX e conversão**
-   - **Lote 3: acabamento e consistência final**
+5. **Onboarding da agência no 1º login**
+   - Modal único pedindo nome da agência, logo, cor primária e WhatsApp.
+   - Pula se já preenchido. Salva via `useAgencySettings`.
 
-5. **Reduzir dependência de memória frágil do chat**
-   Vou priorizar correções que deixam o sistema mais previsível:
-   - menos duplicação de lógica entre front e backend
-   - menos dependência de estado temporário espalhado
-   - regras mais centralizadas para quiz/chat/roteiro
-   - pontos críticos documentados dentro do projeto
+6. **Remover rota `/chat` legada de vez**
+   - Apagar `src/pages/Chat.tsx` e `supabase/functions/chat-travel` (não é mais usado pelo fluxo principal).
+   - Manter `adjust-itinerary` que é o chat real do produto.
 
-6. **Te mostrar progresso do jeito mais simples possível**
-   Em cada etapa, você recebe só:
-   - o que foi fechado
-   - o que ainda falta
-   - o que precisa da sua decisão, se realmente precisar
+---
 
-### Primeira entrega que eu faria após sua aprovação
+### Lote 3 — Acabamento e prontidão pra vender
 
-#### Fase 1 — Diagnóstico e plano de fechamento
-Vou te devolver uma auditoria objetiva com:
-- top problemas atuais do app
-- inconsistências de fluxo
-- itens que fazem parecer “inacabado”
-- ordem ideal de implementação para terminar rápido
+7. **SEO por rota**
+   - Componente `<SEO>` com title, description, canonical e Open Graph para `/`, `/vendas`, `/quiz`, `/pricing`, `/passagens`.
+   - `public/robots.txt` e `sitemap.xml` gerados.
 
-#### Fase 2 — Execução do pacote mais importante
-Começo pelos pontos de maior impacto no seu app atual, com foco em:
-- fluxo quiz → chat → roteiro
-- estabilidade das chamadas de IA
-- consistência dos estados salvos
-- redução de bugs de navegação e recuperação de sessão
+8. **Dashboard admin com métricas reais**
+   - `DashboardTab` puxa do banco: roteiros gerados (7/30 dias), assinaturas ativas, leads novos, conversão quiz→roteiro.
+   - 4 cards + 1 gráfico de linha (recharts já instalado).
 
-#### Fase 3 — Fechamento comercial
-Depois disso, entro no que mais ajuda a vender e operar:
-- landing/vendas
-- paywall e pricing
-- painel admin
-- integrações essenciais
+9. **Botão flutuante de WhatsApp**
+   - Em `/`, `/vendas`, `/pricing`. Número vem de `agencySettings` ou fallback.
 
-## Sinais que já identifiquei e que entram nessa auditoria
-- Há lógica importante espalhada entre páginas e funções, o que aumenta perda de contexto e manutenção.
-- O fluxo principal depende bastante de `sessionStorage`, o que pode deixar a experiência frágil.
-- Existem duplicações e diferenças entre implementações de chat/itinerário em mais de um lugar.
-- Há pontos de configuração sensíveis hoje embutidos no código e que merecem centralização.
+10. **Tela de pós-pagamento**
+    - `/pricing?status=success` mostra confirmação visual + CTA "Criar meu primeiro roteiro" em vez de só toast.
 
-## Resultado esperado
-Ao final, você deixa de precisar “inventar o próximo passo”.
-Eu passo a conduzir a finalização com base numa lista clara, priorizada e contínua.
+11. **Polimento da landing e vendas**
+    - Revisar tipografia (consistência H1/H2/body), espaçamentos e CTAs.
+    - Garantir que mobile (407px que você está vendo agora) renderiza sem overflow.
 
-## Detalhes técnicos
-- Revisar e consolidar os fluxos em `Quiz`, `Chat`, `Itinerary`, `Admin` e helpers de roteamento.
-- Mapear dependências entre armazenamento em sessão, auth, créditos e geração de roteiro.
-- Eliminar duplicações críticas entre funções e chamadas do frontend.
-- Criar documentação curta de produto/arquitetura dentro do projeto para manter consistência nas próximas entregas.
-- Implementar correções em batches, com validação por fluxo e não por arquivo isolado.
+12. **Limpeza final**
+    - Apagar arquivos mortos: `src/pages/Chat.tsx`, `netlify/functions/chat-travel.ts` (já feito), `migration_completa.sql` se obsoleto.
+    - Rodar `tsc --noEmit` e corrigir erros que aparecerem.
+
+---
+
+### Como vou trabalhar
+
+- Executo Lote 2 inteiro, depois Lote 3 inteiro, sem pausas.
+- Atualizo `PROJECT_CONTEXT.md` ao final marcando o que foi feito.
+- Se eu encontrar um bug bloqueante no caminho, conserto na hora e sigo.
+- Não pergunto nada no meio. No final eu te entrego um resumo do que mudou e o que testar.
+
+### O que você faz depois
+
+- Abre o preview, testa o fluxo: landing → quiz → roteiro → paywall → checkout.
+- Se algo estiver errado, me fala em 1 mensagem só ("isso, isso e isso") que eu corrijo em lote.
+
+---
+
+**Detalhes técnicos (pode pular se não for técnico):**
+- Migração de estado usa o helper `sessionState` já criado no Lote 1.
+- Persistência de roteiro: insert em `itineraries` com `user_id` no evento `complete` do SSE.
+- SEO: componente leve com `react-helmet-async` (instalo se não tiver) ou tags via `useEffect` no document.
+- Dashboard: `supabase.rpc` ou queries diretas com RLS já existente.
+- Onboarding: estado vem de `useAgencySettings` — se `agency_name` vazio, abre modal.

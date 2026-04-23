@@ -3,12 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { MetricCard } from './MetricCard';
 import { ActivityFeed } from './ActivityFeed';
 import { Users, CreditCard, UserPlus, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface DashboardMetrics {
   totalCustomers: number;
   activeSubscriptions: number;
   totalRevenue: number;
   leadsThisWeek: number;
+}
+
+interface DailyPoint {
+  date: string;
+  itinerarios: number;
+  leads: number;
 }
 
 export const DashboardTab = () => {
@@ -18,23 +25,21 @@ export const DashboardTab = () => {
     totalRevenue: 0,
     leadsThisWeek: 0,
   });
+  const [trend, setTrend] = useState<DailyPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        // Fetch total customers (users with profiles)
         const { count: customersCount } = await supabase
           .from('profiles')
           .select('*', { count: 'exact', head: true });
 
-        // Fetch active subscriptions
         const { count: subscriptionsCount } = await supabase
           .from('user_credits')
           .select('*', { count: 'exact', head: true })
           .not('subscription_type', 'is', null);
 
-        // Fetch total revenue from completed transactions
         const { data: transactions } = await supabase
           .from('transactions')
           .select('amount')
@@ -42,7 +47,6 @@ export const DashboardTab = () => {
 
         const totalRevenue = transactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
 
-        // Fetch leads from this week
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
         
@@ -51,6 +55,43 @@ export const DashboardTab = () => {
           .select('*', { count: 'exact', head: true })
           .gte('created_at', weekAgo.toISOString());
 
+        // 7-day trend: itineraries vs leads per day
+        const since = new Date();
+        since.setDate(since.getDate() - 6);
+        since.setHours(0, 0, 0, 0);
+
+        const [{ data: recentItineraries }, { data: recentLeads }] = await Promise.all([
+          supabase
+            .from('saved_itineraries')
+            .select('created_at')
+            .gte('created_at', since.toISOString()),
+          supabase
+            .from('landing_leads')
+            .select('created_at')
+            .gte('created_at', since.toISOString()),
+        ]);
+
+        const buckets: Record<string, DailyPoint> = {};
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(since);
+          d.setDate(since.getDate() + i);
+          const key = d.toISOString().slice(0, 10);
+          buckets[key] = {
+            date: d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
+            itinerarios: 0,
+            leads: 0,
+          };
+        }
+        recentItineraries?.forEach((row) => {
+          const k = (row.created_at as string).slice(0, 10);
+          if (buckets[k]) buckets[k].itinerarios += 1;
+        });
+        recentLeads?.forEach((row) => {
+          const k = (row.created_at as string).slice(0, 10);
+          if (buckets[k]) buckets[k].leads += 1;
+        });
+
+        setTrend(Object.values(buckets));
         setMetrics({
           totalCustomers: customersCount || 0,
           activeSubscriptions: subscriptionsCount || 0,
@@ -74,7 +115,6 @@ export const DashboardTab = () => {
         <p className="text-muted-foreground">Visão geral do seu negócio</p>
       </div>
 
-      {/* Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Clientes"
@@ -109,7 +149,31 @@ export const DashboardTab = () => {
         />
       </div>
 
-      {/* Activity Feed */}
+      {/* 7-day trend chart */}
+      <div className="bg-card border border-border rounded-xl p-4 lg:p-6">
+        <h3 className="text-base font-semibold mb-1">Últimos 7 dias</h3>
+        <p className="text-xs text-muted-foreground mb-4">Roteiros gerados e novos leads por dia</p>
+        <div className="w-full h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '0.5rem',
+                  fontSize: '12px',
+                }}
+              />
+              <Line type="monotone" dataKey="itinerarios" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Roteiros" />
+              <Line type="monotone" dataKey="leads" stroke="hsl(var(--muted-foreground))" strokeWidth={2} dot={{ r: 3 }} name="Leads" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       <ActivityFeed />
     </div>
   );

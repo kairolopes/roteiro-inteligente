@@ -19,6 +19,9 @@ import { useAgencySettings } from "@/hooks/useAgencySettings";
 import { PaywallModal } from "@/components/PaywallModal";
 import AuthModal from "@/components/auth/AuthModal";
 import { getGenerateItineraryUrl, getLovableCloudAuthHeaders } from "@/lib/apiRouting";
+import { sessionState } from "@/lib/sessionState";
+import { supabase } from "@/integrations/supabase/client";
+import SEO from "@/components/SEO";
 
 interface ProgressState {
   step: string;
@@ -77,8 +80,7 @@ const Itinerary = () => {
     setProgress({ step: "starting", message: "Iniciando geração do roteiro..." });
 
     try {
-      const quizData = sessionStorage.getItem("quizAnswers");
-      const quizAnswers: QuizAnswers | null = quizData ? JSON.parse(quizData) : null;
+      const quizAnswers: QuizAnswers | null = sessionState.getQuiz();
 
       if (!quizAnswers) {
         setError("__MISSING_QUIZ__");
@@ -91,7 +93,7 @@ const Itinerary = () => {
         setStartDate(new Date(quizAnswers.startDate));
       }
 
-      const conversationSummary = sessionStorage.getItem("chatSummary") || "";
+      const conversationSummary = sessionState.getChatSummary();
 
       const response = await fetch(getGenerateItineraryUrl(), {
         method: "POST",
@@ -143,14 +145,31 @@ const Itinerary = () => {
                 await consumeItineraryCredit();
                 await refetchCredits();
               }
-              sessionStorage.setItem("generatedItinerary", JSON.stringify(event.data.itinerary));
+              sessionState.setItinerary(event.data.itinerary);
               setItinerary(event.data.itinerary);
               setIsPartialItinerary(!user || !hasActiveSubscription);
               setProgress({ step: "done", message: "Roteiro pronto!" });
+
+              // Auto-save no banco para usuários logados (fire-and-forget)
+              if (user) {
+                const it = event.data.itinerary;
+                supabase.from("saved_itineraries").insert({
+                  user_id: user.id,
+                  title: it.title || "Roteiro Personalizado",
+                  summary: it.summary || null,
+                  duration: it.duration || null,
+                  total_budget: it.totalBudget || null,
+                  destinations: it.destinations || null,
+                  itinerary_data: it,
+                }).then(({ error: saveErr }) => {
+                  if (saveErr) console.warn("[Itinerary] Auto-save failed:", saveErr.message);
+                });
+              }
+
               toast({
                 title: "Roteiro criado! 🎉",
                 description: user 
-                  ? "Seu roteiro personalizado está pronto."
+                  ? "Seu roteiro personalizado está pronto e foi salvo."
                   : `Mostrando ${FREE_DAYS_GUEST} dias grátis. Faça login para ver mais!`,
               });
             } else if (event.type === "error") {
@@ -187,27 +206,16 @@ const Itinerary = () => {
   // evitando loop de re-geração.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const quizData = sessionStorage.getItem("quizAnswers");
-    if (quizData) {
-      try {
-        const quizAnswers = JSON.parse(quizData);
-        if (quizAnswers.startDate) {
-          setStartDate(new Date(quizAnswers.startDate));
-        }
-      } catch (e) {
-        console.error("Error parsing quiz answers for startDate:", e);
-      }
+    const quizAnswers = sessionState.getQuiz();
+    if (quizAnswers?.startDate) {
+      setStartDate(new Date(quizAnswers.startDate));
     }
 
-    const cached = sessionStorage.getItem("generatedItinerary");
+    const cached = sessionState.getItinerary();
     if (cached) {
-      try {
-        setItinerary(JSON.parse(cached));
-        setIsLoading(false);
-        return;
-      } catch (e) {
-        console.error("Error parsing cached itinerary:", e);
-      }
+      setItinerary(cached);
+      setIsLoading(false);
+      return;
     }
 
     generateItineraryWithStreaming();
@@ -232,7 +240,7 @@ const Itinerary = () => {
 
   const handleItineraryUpdated = (updated: ItineraryType) => {
     setItinerary(updated);
-    sessionStorage.setItem("generatedItinerary", JSON.stringify(updated));
+    sessionState.setItinerary(updated);
   };
 
   const handleRegenerate = () => {
@@ -240,7 +248,7 @@ const Itinerary = () => {
       setShowPaywall(true);
       return;
     }
-    sessionStorage.removeItem("generatedItinerary");
+    sessionState.clearItinerary();
     generateItineraryWithStreaming(false);
   };
 
@@ -288,9 +296,9 @@ const Itinerary = () => {
               <ClipboardList className="w-4 h-4 mr-2" />
               Fazer o Quiz
             </Button>
-            <Button variant="outline" onClick={() => navigate("/chat")}>
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Conversar com Sofia
+            <Button variant="outline" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao início
             </Button>
           </div>
         </motion.div>
@@ -333,6 +341,11 @@ const Itinerary = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={itinerary.title || "Seu roteiro personalizado"}
+        description={itinerary.summary || "Roteiro de viagem personalizado gerado com IA pela Sofia."}
+        noIndex
+      />
       <ItineraryHeader
         itinerary={itinerary}
         onExportPDF={handleExportPDF}
@@ -430,6 +443,8 @@ const Itinerary = () => {
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
         type="itinerary"
+        totalDays={itinerary?.days?.length}
+        freeDays={Number.isFinite(freeDaysCount) ? (freeDaysCount as number) : undefined}
       />
 
       {/* Auth Modal */}
