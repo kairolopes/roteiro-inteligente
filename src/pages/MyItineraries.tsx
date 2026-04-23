@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AuthModal from "@/components/auth/AuthModal";
+import { sessionState } from "@/lib/sessionState";
 
 interface SavedItinerary {
   id: string;
@@ -106,7 +107,7 @@ const MyItineraries = () => {
       if (error) throw error;
 
       // Store in session and navigate
-      sessionStorage.setItem("generatedItinerary", JSON.stringify(data.itinerary_data));
+      sessionState.setItinerary(data.itinerary_data as any);
       navigate("/itinerary");
     } catch (error) {
       console.error("Error loading itinerary:", error);

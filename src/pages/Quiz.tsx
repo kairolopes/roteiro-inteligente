@@ -14,6 +14,8 @@ import { TravelWithStep } from "@/components/quiz/steps/TravelWithStep";
 import { QuizSummary } from "@/components/quiz/QuizSummary";
 import { QuizAnswers, defaultQuizAnswers } from "@/types/quiz";
 import { useToast } from "@/hooks/use-toast";
+import { sessionState } from "@/lib/sessionState";
+import SEO from "@/components/SEO";
 
 const steps = [
   { id: "style", title: "Estilo" },
@@ -93,8 +95,9 @@ const Quiz = () => {
   };
 
   const handleCreateItinerary = () => {
-    // Store answers in sessionStorage
-    sessionStorage.setItem("quizAnswers", JSON.stringify(answers));
+    // Store answers via central helper
+    sessionState.setQuiz(answers);
+    sessionState.clearItinerary();
     toast({
       title: "Roteiro em criação!",
       description: "Nossa IA está montando seu roteiro personalizado...",
@@ -108,6 +111,11 @@ const Quiz = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Quiz de Preferências de Viagem"
+        description="Responda 7 perguntas rápidas e a Sofia monta um roteiro de viagem sob medida pra você."
+        noIndex
+      />
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 glass safe-area-top">
         <div className="container mx-auto px-4 lg:px-8">

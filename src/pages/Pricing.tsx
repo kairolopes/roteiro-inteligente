@@ -425,6 +425,7 @@ const Pricing = () => {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
+      <WhatsAppButton message="Olá! Tenho dúvida sobre os planos do Viaje com Sofia." />
     </div>
   );
 };
