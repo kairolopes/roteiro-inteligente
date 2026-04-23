@@ -158,6 +158,39 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_messages: {
+        Row: {
+          agent_name: string
+          content: string
+          created_at: string
+          id: string
+          itinerary_id: string | null
+          metadata: Json | null
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_name: string
+          content: string
+          created_at?: string
+          id?: string
+          itinerary_id?: string | null
+          metadata?: Json | null
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          itinerary_id?: string | null
+          metadata?: Json | null
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       customer_notes: {
         Row: {
           created_at: string
@@ -583,6 +616,69 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      quote_requests: {
+        Row: {
+          agency_id: string | null
+          closed_at: string | null
+          closed_value: number | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          day_number: number | null
+          destination: string | null
+          id: string
+          itinerary_id: string | null
+          itinerary_title: string | null
+          message_sent: string | null
+          notes: string | null
+          status: string
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          agency_id?: string | null
+          closed_at?: string | null
+          closed_value?: number | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          day_number?: number | null
+          destination?: string | null
+          id?: string
+          itinerary_id?: string | null
+          itinerary_title?: string | null
+          message_sent?: string | null
+          notes?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          agency_id?: string | null
+          closed_at?: string | null
+          closed_value?: number | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          day_number?: number | null
+          destination?: string | null
+          id?: string
+          itinerary_id?: string | null
+          itinerary_title?: string | null
+          message_sent?: string | null
+          notes?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
