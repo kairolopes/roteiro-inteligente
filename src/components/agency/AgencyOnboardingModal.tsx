@@ -22,17 +22,27 @@ export default function AgencyOnboardingModal() {
     primary_color: "#4f46e5",
   });
 
+  // Bloqueia se a agência ainda não preencheu o telefone (campo crítico do produto B2B)
+  const needsPhone = !!user && !isLoading && !settings?.agency_phone;
+
   useEffect(() => {
     if (!user || isLoading) return;
     const skipped = localStorage.getItem(SKIP_KEY) === "true";
     if (!settings?.agency_name && !skipped) {
       setOpen(true);
     }
-  }, [user, isLoading, settings]);
+    if (needsPhone) {
+      setOpen(true); // força — não respeita skip
+    }
+  }, [user, isLoading, settings, needsPhone]);
 
   const handleSave = async () => {
     if (!form.agency_name.trim()) {
       toast({ title: "Informe o nome da agência", variant: "destructive" });
+      return;
+    }
+    if (needsPhone && !form.agency_phone.trim()) {
+      toast({ title: "WhatsApp é obrigatório", description: "Sem ele, seus clientes não conseguem solicitar cotações.", variant: "destructive" });
       return;
     }
     setSaving(true);
@@ -47,13 +57,14 @@ export default function AgencyOnboardingModal() {
   };
 
   const handleSkip = () => {
+    if (needsPhone) return; // não permite pular
     localStorage.setItem(SKIP_KEY, "true");
     setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleSkip()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => needsPhone && e.preventDefault()} onEscapeKeyDown={(e) => needsPhone && e.preventDefault()}>
         <DialogHeader>
           <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-2">
             <Building2 className="w-6 h-6 text-primary-foreground" />
@@ -105,9 +116,11 @@ export default function AgencyOnboardingModal() {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button variant="ghost" onClick={handleSkip} className="flex-1">
-            Pular por agora
-          </Button>
+          {!needsPhone && (
+            <Button variant="ghost" onClick={handleSkip} className="flex-1">
+              Pular por agora
+            </Button>
+          )}
           <Button
             onClick={handleSave}
             disabled={saving}
@@ -116,6 +129,11 @@ export default function AgencyOnboardingModal() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
           </Button>
         </div>
+        {needsPhone && (
+          <p className="text-xs text-muted-foreground text-center pt-1">
+            ⚠️ O WhatsApp é obrigatório — é como seus clientes vão te encontrar.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );
