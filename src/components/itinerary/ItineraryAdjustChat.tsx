@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Itinerary as ItineraryType } from "@/types/itinerary";
 import { AGENTS, AgentName } from "@/lib/agents";
 
@@ -40,6 +41,8 @@ export default function ItineraryAdjustChat({ itinerary, onItineraryUpdated }: I
   const [activeAgent, setActiveAgent] = useState<AgentName>("sofia");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const itineraryId = (itinerary as any).id;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -58,7 +61,7 @@ export default function ItineraryAdjustChat({ itinerary, onItineraryUpdated }: I
 
     try {
       if (agent === "pietra") {
-        const { data, error } = await supabase.functions.invoke("agent-pietra", { body: args });
+        const { data, error } = await supabase.functions.invoke("agent-pietra", { body: { ...args, itineraryId, userId: user?.id } });
         if (error) throw error;
         const list = (data?.suggestions || []) as any[];
         if (!list.length) {
@@ -71,7 +74,7 @@ export default function ItineraryAdjustChat({ itinerary, onItineraryUpdated }: I
         const dayNum: number | undefined = args.day_number;
         const day = itinerary.days.find(d => d.day === dayNum) || itinerary.days[0];
         const { data, error } = await supabase.functions.invoke("agent-lia", {
-          body: { activities: day.activities, city: day.city },
+          body: { activities: day.activities, city: day.city, itineraryId, userId: user?.id },
         });
         if (error) throw error;
         const rewritten = (data?.rewritten || []) as any[];
@@ -98,7 +101,7 @@ export default function ItineraryAdjustChat({ itinerary, onItineraryUpdated }: I
         const dayNum: number | undefined = args.day_number;
         const day = itinerary.days.find(d => d.day === dayNum) || itinerary.days[0];
         const { data, error } = await supabase.functions.invoke("agent-bruno", {
-          body: { activities: day.activities },
+          body: { activities: day.activities, itineraryId, userId: user?.id, dayNumber: day.day },
         });
         if (error) throw error;
         const order: string[] = data?.optimized_order || [];
@@ -146,6 +149,8 @@ export default function ItineraryAdjustChat({ itinerary, onItineraryUpdated }: I
           userMessage: userMsg,
           itinerarySummary: summarizeItinerary(itinerary),
           history,
+          itineraryId,
+          userId: user?.id,
         },
       });
 

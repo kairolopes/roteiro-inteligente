@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import AgentReplayPanel from './AgentReplayPanel';
 
 interface QuoteRequest {
   id: string;
@@ -73,6 +74,20 @@ export const QuotesTab = () => {
   const [dialogQuote, setDialogQuote] = useState<QuoteRequest | null>(null);
   const [closeValue, setCloseValue] = useState('');
   const [closeNotes, setCloseNotes] = useState('');
+  const [replayItineraryId, setReplayItineraryId] = useState<string | null>(null);
+
+  // Realtime: Pietra encontrou evento → toast pro admin
+  useEffect(() => {
+    const ch = supabase
+      .channel('agent_messages_admin')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'agent_messages' }, (p: any) => {
+        if (p.new?.notify_admin && p.new?.agent_name === 'pietra') {
+          toast({ title: '🎭 Pietra encontrou algo', description: p.new.content });
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [toast]);
 
   useEffect(() => {
     let mounted = true;

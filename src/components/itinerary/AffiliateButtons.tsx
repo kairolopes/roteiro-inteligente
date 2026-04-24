@@ -1,26 +1,29 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Bed, 
-  Plane, 
-  Ticket, 
+import {
+  Bed,
+  Plane,
+  Ticket,
   ChevronDown,
   MapPin,
   ExternalLink,
   Sparkles,
   Search,
-  Compass
+  Compass,
+  MessageCircle,
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
-import { 
-  AFFILIATE_CONFIG, 
-  BookingContext, 
+import {
+  AFFILIATE_CONFIG,
+  BookingContext,
   DayContext,
-  AffiliateCompany 
+  AffiliateCompany
 } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { cn } from "@/lib/utils";
 import AgencyQuoteButton from "./AgencyQuoteButton";
+import AgencyContactRequestModal from "./AgencyContactRequestModal";
+import { Button } from "@/components/ui/button";
 
 interface AffiliateButtonsProps {
   activity: Activity;
@@ -112,9 +115,10 @@ const AffiliateButtons = ({ activity, dayContext, tripDates, agency, agencyUserI
   itineraryTitle?: string;
 }) => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
 
-  // Se a agência configurou WhatsApp, esse botão substitui afiliados gringos
-  // (público B2B brasileiro não compra em site internacional).
+  // Contexto B2B: existe agência associada ao roteiro
+  const hasAgencyContext = !!(agency?.agencyName);
   const hasAgencyChannel = !!(agency?.agencyPhone);
 
   // Build booking context from activity and day
@@ -262,26 +266,49 @@ const AffiliateButtons = ({ activity, dayContext, tripDates, agency, agencyUserI
     activity.category === "transport" ? "flight" :
     activity.category === "attraction" ? "tour" : "activity";
 
+  const quoteCtx = {
+    type: quoteType,
+    itineraryId,
+    itineraryTitle,
+    dayNumber: (dayContext as any).dayNumber,
+    destination: dayContext.city,
+    city: dayContext.city,
+    country: dayContext.country,
+    date: dayContext.date,
+    activityTitle: activity.title,
+  };
+
   return (
     <div className="mt-3 space-y-2">
       {hasAgencyChannel ? (
         <AgencyQuoteButton
           variant="compact"
-          context={{
-            type: quoteType,
-            itineraryId,
-            itineraryTitle,
-            dayNumber: (dayContext as any).dayNumber,
-            destination: dayContext.city,
-            city: dayContext.city,
-            country: dayContext.country,
-            date: dayContext.date,
-            activityTitle: activity.title,
-          }}
+          context={quoteCtx}
           agency={agency!}
           agencyUserId={agencyUserId}
         />
+      ) : hasAgencyContext ? (
+        // B2B sem WhatsApp: mostra form, NÃO afiliado gringo
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setContactModalOpen(true)}
+            className="w-full gap-2 text-xs lg:text-sm"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Solicitar contato com {agency?.agencyName || "a agência"}
+          </Button>
+          <AgencyContactRequestModal
+            open={contactModalOpen}
+            onOpenChange={setContactModalOpen}
+            context={quoteCtx}
+            agencyId={agencyUserId}
+            agencyName={agency?.agencyName}
+          />
+        </>
       ) : (
+        // Rota pública (sem agência): afiliado gringo continua
         relevantCategories.map(renderCategory)
       )}
     </div>

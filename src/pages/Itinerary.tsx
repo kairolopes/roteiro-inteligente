@@ -407,6 +407,8 @@ const Itinerary = () => {
                   isLoggedIn={!!user}
                   itineraryId={itinerary.id}
                   itineraryTitle={itinerary.title}
+                  itinerary={itinerary}
+                  onItineraryUpdated={handleItineraryUpdated}
                 />
               ))}
             </div>
