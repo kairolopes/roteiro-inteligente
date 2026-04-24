@@ -26,10 +26,12 @@ import {
   Sparkles,
   Package,
   Eye,
+  FileDown,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import AgentReplayPanel from './AgentReplayPanel';
+import { generateQuotePdf } from '@/lib/quotePdf';
 
 interface QuoteRequest {
   id: string;
