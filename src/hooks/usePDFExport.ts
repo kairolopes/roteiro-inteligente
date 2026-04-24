@@ -883,10 +883,12 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData, agency?: AgencySe
     pdf.text(normalizeTextForPDF(footerContact), PAGE_WIDTH / 2, PAGE_HEIGHT - 17, { align: "center" });
   }
   
-  pdf.setTextColor(COLORS.textLight);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  pdf.text(normalizeTextForPDF(footerWeb), PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
+  if (footerWeb) {
+    pdf.setTextColor(COLORS.textLight);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.text(normalizeTextForPDF(footerWeb), PAGE_WIDTH / 2, PAGE_HEIGHT - 10, { align: "center" });
+  }
 }
 
 export function usePDFExport() {
