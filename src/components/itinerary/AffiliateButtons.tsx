@@ -1,26 +1,29 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Bed, 
-  Plane, 
-  Ticket, 
+import {
+  Bed,
+  Plane,
+  Ticket,
   ChevronDown,
   MapPin,
   ExternalLink,
   Sparkles,
   Search,
-  Compass
+  Compass,
+  MessageCircle,
 } from "lucide-react";
 import { Activity } from "@/types/itinerary";
-import { 
-  AFFILIATE_CONFIG, 
-  BookingContext, 
+import {
+  AFFILIATE_CONFIG,
+  BookingContext,
   DayContext,
-  AffiliateCompany 
+  AffiliateCompany
 } from "@/lib/affiliateLinks";
 import { trackAffiliateClick } from "@/hooks/useAffiliateTracking";
 import { cn } from "@/lib/utils";
 import AgencyQuoteButton from "./AgencyQuoteButton";
+import AgencyContactRequestModal from "./AgencyContactRequestModal";
+import { Button } from "@/components/ui/button";
 
 interface AffiliateButtonsProps {
   activity: Activity;
@@ -112,9 +115,10 @@ const AffiliateButtons = ({ activity, dayContext, tripDates, agency, agencyUserI
   itineraryTitle?: string;
 }) => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
 
-  // Se a agência configurou WhatsApp, esse botão substitui afiliados gringos
-  // (público B2B brasileiro não compra em site internacional).
+  // Contexto B2B: existe agência associada ao roteiro
+  const hasAgencyContext = !!(agency?.agencyName);
   const hasAgencyChannel = !!(agency?.agencyPhone);
 
   // Build booking context from activity and day
