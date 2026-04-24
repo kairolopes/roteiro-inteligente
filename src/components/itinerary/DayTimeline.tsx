@@ -26,6 +26,7 @@ interface DayTimelineProps {
   itineraryTitle?: string;
   itinerary?: ItineraryType;
   onItineraryUpdated?: (it: ItineraryType) => void;
+  isFirstLocked?: boolean;
 }
 
 const DayTimeline = ({
