@@ -25,6 +25,7 @@ import {
   Map,
   Sparkles,
   Package,
+  Eye,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -341,6 +342,17 @@ export const QuotesTab = () => {
                             })}
                           </span>
 
+                          {q.itinerary_id && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setReplayItineraryId(q.itinerary_id)}
+                            >
+                              <Eye className="h-3 w-3 mr-1" /> Ver replay
+                            </Button>
+                          )}
+
                           {q.status !== 'closed_won' && q.status !== 'closed_lost' && (
                             <>
                               {q.contact_phone && (
@@ -426,6 +438,13 @@ export const QuotesTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Painel lateral: replay dos agentes */}
+      <AgentReplayPanel
+        itineraryId={replayItineraryId}
+        open={!!replayItineraryId}
+        onOpenChange={(open) => !open && setReplayItineraryId(null)}
+      />
     </div>
   );
 };
