@@ -225,8 +225,8 @@ export const QuotesTab = () => {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+            <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+              <CheckCircle2 className="h-5 w-5 text-success" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Vendas fechadas</p>
@@ -238,8 +238,8 @@ export const QuotesTab = () => {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
+            <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-success" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Receita fechada</p>
@@ -313,7 +313,7 @@ export const QuotesTab = () => {
                         )}
 
                         {q.closed_value && (
-                          <p className="text-xs text-emerald-500 font-semibold mb-2">
+                          <p className="text-xs text-success font-semibold mb-2">
                             Fechado: R$ {Number(q.closed_value).toFixed(2)}
                           </p>
                         )}
