@@ -133,6 +133,7 @@ const DayTimeline = ({
           onLogin={onUnlock}
           onSubscribe={onSubscribe}
           isLoggedIn={isLoggedIn}
+          variant={isFirstLocked ? "full" : "compact"}
         />
       )}
 
