@@ -26,10 +26,12 @@ import {
   Sparkles,
   Package,
   Eye,
+  FileDown,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import AgentReplayPanel from './AgentReplayPanel';
+import { generateQuotePdf } from '@/lib/quotePdf';
 
 interface QuoteRequest {
   id: string;
@@ -352,6 +354,24 @@ export const QuotesTab = () => {
                               <Eye className="h-3 w-3 mr-1" /> Ver replay
                             </Button>
                           )}
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            onClick={async () => {
+                              try {
+                                await generateQuotePdf(q);
+                                toast({ title: 'PDF gerado', description: 'Download iniciado' });
+                              } catch (e) {
+                                console.error(e);
+                                toast({ title: 'Erro ao gerar PDF', variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <FileDown className="h-3 w-3 mr-1" /> Baixar PDF
+                          </Button>
+
 
                           {q.status !== 'closed_won' && q.status !== 'closed_lost' && (
                             <>
