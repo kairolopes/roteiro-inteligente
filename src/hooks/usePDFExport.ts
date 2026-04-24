@@ -848,9 +848,28 @@ function renderFinalPage(pdf: jsPDF, itinerary: ItineraryData, agency?: AgencySe
   pdf.setFillColor(COLORS.bgCard);
   pdf.rect(0, PAGE_HEIGHT - 40, PAGE_WIDTH, 40, "F");
   
+  // B2B mode: NEVER expose Sofia/Lovable branding when an agency is configured
+  const isB2B = !!agency?.agency_name;
   const footerName = agency?.agency_name || "Viaje com Sofia";
   const footerContact = agency?.agency_phone || agency?.agency_email || "";
-  const footerWeb = agency?.agency_website || "viagecomsofia.com";
+  const footerWeb = isB2B ? (agency?.agency_website || "") : "viagecomsofia.com";
+
+  // B2B: add explicit "Para reservar, fale conosco" block above footer
+  if (isB2B && agency?.agency_phone) {
+    pdf.setTextColor(COLORS.text);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.text("Para reservar esta viagem:", PAGE_WIDTH / 2, PAGE_HEIGHT - 55, { align: "center" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(COLORS.primary);
+    pdf.text(
+      normalizeTextForPDF(`WhatsApp: ${agency.agency_phone}`),
+      PAGE_WIDTH / 2,
+      PAGE_HEIGHT - 47,
+      { align: "center" }
+    );
+  }
   
   pdf.setTextColor(COLORS.primary);
   pdf.setFont("helvetica", "bold");
