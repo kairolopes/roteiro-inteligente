@@ -266,26 +266,49 @@ const AffiliateButtons = ({ activity, dayContext, tripDates, agency, agencyUserI
     activity.category === "transport" ? "flight" :
     activity.category === "attraction" ? "tour" : "activity";
 
+  const quoteCtx = {
+    type: quoteType,
+    itineraryId,
+    itineraryTitle,
+    dayNumber: (dayContext as any).dayNumber,
+    destination: dayContext.city,
+    city: dayContext.city,
+    country: dayContext.country,
+    date: dayContext.date,
+    activityTitle: activity.title,
+  };
+
   return (
     <div className="mt-3 space-y-2">
       {hasAgencyChannel ? (
         <AgencyQuoteButton
           variant="compact"
-          context={{
-            type: quoteType,
-            itineraryId,
-            itineraryTitle,
-            dayNumber: (dayContext as any).dayNumber,
-            destination: dayContext.city,
-            city: dayContext.city,
-            country: dayContext.country,
-            date: dayContext.date,
-            activityTitle: activity.title,
-          }}
+          context={quoteCtx}
           agency={agency!}
           agencyUserId={agencyUserId}
         />
+      ) : hasAgencyContext ? (
+        // B2B sem WhatsApp: mostra form, NÃO afiliado gringo
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setContactModalOpen(true)}
+            className="w-full gap-2 text-xs lg:text-sm"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Solicitar contato com {agency?.agencyName || "a agência"}
+          </Button>
+          <AgencyContactRequestModal
+            open={contactModalOpen}
+            onOpenChange={setContactModalOpen}
+            context={quoteCtx}
+            agencyId={agencyUserId}
+            agencyName={agency?.agencyName}
+          />
+        </>
       ) : (
+        // Rota pública (sem agência): afiliado gringo continua
         relevantCategories.map(renderCategory)
       )}
     </div>
