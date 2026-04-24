@@ -7,7 +7,6 @@ import {
   Settings,
   Sparkles,
   Flame,
-  Flame as FlameIcon,
   TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
