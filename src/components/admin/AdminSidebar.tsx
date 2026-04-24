@@ -6,7 +6,9 @@ import {
   Plug, 
   Settings,
   Sparkles,
-  Flame
+  Flame,
+  Flame as FlameIcon,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +19,7 @@ interface AdminSidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'quotes', label: 'Cotações', icon: TrendingUp },
   { id: 'customers', label: 'Clientes', icon: Users },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { id: 'hotmart', label: 'Hotmart', icon: Flame },
