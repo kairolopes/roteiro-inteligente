@@ -355,6 +355,24 @@ export const QuotesTab = () => {
                             </Button>
                           )}
 
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            onClick={async () => {
+                              try {
+                                await generateQuotePdf(q);
+                                toast({ title: 'PDF gerado', description: 'Download iniciado' });
+                              } catch (e) {
+                                console.error(e);
+                                toast({ title: 'Erro ao gerar PDF', variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <FileDown className="h-3 w-3 mr-1" /> Baixar PDF
+                          </Button>
+
+
                           {q.status !== 'closed_won' && q.status !== 'closed_lost' && (
                             <>
                               {q.contact_phone && (
