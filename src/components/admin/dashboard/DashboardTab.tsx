@@ -10,6 +10,8 @@ interface DashboardMetrics {
   activeSubscriptions: number;
   totalRevenue: number;
   leadsThisWeek: number;
+  closedQuotesRevenue: number;
+  closedQuotesCount: number;
 }
 
 interface DailyPoint {
@@ -24,6 +26,8 @@ export const DashboardTab = () => {
     activeSubscriptions: 0,
     totalRevenue: 0,
     leadsThisWeek: 0,
+    closedQuotesRevenue: 0,
+    closedQuotesCount: 0,
   });
   const [trend, setTrend] = useState<DailyPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +58,14 @@ export const DashboardTab = () => {
           .from('landing_leads')
           .select('*', { count: 'exact', head: true })
           .gte('created_at', weekAgo.toISOString());
+
+        // Receita fechada via cotações de agência (canal BR)
+        const { data: closedQuotes } = await (supabase as any)
+          .from('quote_requests')
+          .select('closed_value')
+          .eq('status', 'closed_won');
+        const closedQuotesRevenue =
+          closedQuotes?.reduce((sum: number, q: any) => sum + Number(q.closed_value || 0), 0) || 0;
 
         // 7-day trend: itineraries vs leads per day
         const since = new Date();
@@ -97,6 +109,8 @@ export const DashboardTab = () => {
           activeSubscriptions: subscriptionsCount || 0,
           totalRevenue,
           leadsThisWeek: leadsCount || 0,
+          closedQuotesRevenue,
+          closedQuotesCount: closedQuotes?.length || 0,
         });
       } catch (error) {
         console.error('Error fetching dashboard metrics:', error);
@@ -147,6 +161,24 @@ export const DashboardTab = () => {
           isLoading={isLoading}
           variant="warning"
         />
+      </div>
+
+      {/* Receita do canal BR (cotações fechadas) */}
+      <div className="bg-gradient-to-br from-success/10 to-success/5 border border-success/20 rounded-xl p-4 lg:p-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-success font-semibold mb-1">
+              Canal BR — Vendas via consultor
+            </p>
+            <h3 className="text-3xl font-bold text-foreground">
+              R$ {metrics.closedQuotesRevenue.toFixed(2)}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {metrics.closedQuotesCount} {metrics.closedQuotesCount === 1 ? 'venda fechada' : 'vendas fechadas'} via WhatsApp
+            </p>
+          </div>
+          <TrendingUp className="h-8 w-8 text-success" />
+        </div>
       </div>
 
       {/* 7-day trend chart */}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DashboardTab } from '@/components/admin/dashboard/DashboardTab';
+import { QuotesTab } from '@/components/admin/quotes/QuotesTab';
 import { CustomersTab } from '@/components/admin/customers/CustomersTab';
 import { WhatsAppTab } from '@/components/admin/whatsapp/WhatsAppTab';
 import { HotmartTab } from '@/components/admin/hotmart/HotmartTab';
@@ -16,6 +17,8 @@ const Admin = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardTab />;
+      case 'quotes':
+        return <QuotesTab />;
       case 'customers':
         return <CustomersTab />;
       case 'whatsapp':
