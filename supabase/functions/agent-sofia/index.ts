@@ -1,6 +1,7 @@
 // Sofia — Orquestradora. Decide qual agente chamar (Pietra, Lia, Bruno) ou
 // edita o roteiro diretamente, via tool calling do Gemini.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,76 +22,33 @@ Regras:
 - Se o pedido for ambíguo, pergunte antes de chamar agente.`;
 
 const tools = [
-  {
-    type: "function",
-    function: {
-      name: "call_pietra",
-      description: "Chama Pietra para sugerir eventos culturais reais na cidade nas datas",
-      parameters: {
-        type: "object",
-        properties: {
-          city: { type: "string" },
-          country: { type: "string" },
-          date: { type: "string", description: "YYYY-MM-DD" },
-          intro: { type: "string", description: "Frase de Sofia anunciando" },
-        },
-        required: ["city", "intro"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "call_lia",
-      description: "Chama Lia para reescrever descrições de atividades com tom local",
-      parameters: {
-        type: "object",
-        properties: {
-          activity_ids: { type: "array", items: { type: "string" } },
-          city: { type: "string" },
-          intro: { type: "string" },
-        },
-        required: ["activity_ids", "city", "intro"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "call_bruno",
-      description: "Chama Bruno para otimizar a logística de um dia",
-      parameters: {
-        type: "object",
-        properties: {
-          day_number: { type: "integer" },
-          intro: { type: "string" },
-        },
-        required: ["day_number", "intro"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "edit_itinerary",
-      description: "Aplica edição direta no roteiro (adicionar, remover, trocar atividade, mudar horário)",
-      parameters: {
-        type: "object",
-        properties: {
-          instruction: { type: "string", description: "Descrição clara do que mudar" },
-          intro: { type: "string" },
-        },
-        required: ["instruction", "intro"],
-      },
-    },
-  },
+  { type: "function", function: { name: "call_pietra", description: "Chama Pietra para sugerir eventos culturais reais na cidade nas datas",
+      parameters: { type: "object", properties: { city: { type: "string" }, country: { type: "string" }, date: { type: "string" }, intro: { type: "string" } }, required: ["city", "intro"] } } },
+  { type: "function", function: { name: "call_lia", description: "Chama Lia para reescrever descrições de atividades com tom local",
+      parameters: { type: "object", properties: { activity_ids: { type: "array", items: { type: "string" } }, city: { type: "string" }, intro: { type: "string" } }, required: ["activity_ids", "city", "intro"] } } },
+  { type: "function", function: { name: "call_bruno", description: "Chama Bruno para otimizar a logística de um dia",
+      parameters: { type: "object", properties: { day_number: { type: "integer" }, intro: { type: "string" } }, required: ["day_number", "intro"] } } },
+  { type: "function", function: { name: "edit_itinerary", description: "Aplica edição direta no roteiro",
+      parameters: { type: "object", properties: { instruction: { type: "string" }, intro: { type: "string" } }, required: ["instruction", "intro"] } } },
 ];
+
+async function logAgentMessage(itineraryId: string | null, userId: string | null, agent: string, role: string, content: string, metadata: any = {}, notifyAdmin = false) {
+  if (!itineraryId && !userId) return;
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sb = createClient(supabaseUrl, serviceKey);
+    await sb.from("agent_messages").insert({
+      itinerary_id: itineraryId, user_id: userId, agent_name: agent, role, content, metadata, notify_admin: notifyAdmin,
+    });
+  } catch (e) { console.warn("logAgentMessage failed:", e); }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { userMessage, itinerarySummary, history } = await req.json();
+    const { userMessage, itinerarySummary, history, itineraryId, userId } = await req.json();
     if (!userMessage) {
       return new Response(JSON.stringify({ error: "userMessage required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -102,10 +60,7 @@ serve(async (req) => {
 
     const messages = [
       { role: "system", content: SYSTEM },
-      {
-        role: "system",
-        content: `Resumo do roteiro atual:\n${JSON.stringify(itinerarySummary || {}, null, 2)}`,
-      },
+      { role: "system", content: `Resumo do roteiro atual:\n${JSON.stringify(itinerarySummary || {}, null, 2)}` },
       ...(Array.isArray(history) ? history : []),
       { role: "user", content: userMessage },
     ];
@@ -113,26 +68,12 @@ serve(async (req) => {
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        tools,
-        tool_choice: "auto",
-        temperature: 0.6,
-      }),
+      body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, tools, tool_choice: "auto", temperature: 0.6 }),
     });
 
     if (!aiRes.ok) {
-      if (aiRes.status === 429) {
-        return new Response(JSON.stringify({ error: "Muitas requisições, tente em alguns segundos." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiRes.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos no workspace." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (aiRes.status === 429) return new Response(JSON.stringify({ error: "Muitas requisições" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (aiRes.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA esgotados" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       throw new Error(`AI error: ${aiRes.status}`);
     }
 
@@ -141,17 +82,16 @@ serve(async (req) => {
     const toolCalls = choice?.tool_calls || [];
     const text = choice?.content || "";
 
-    const action = toolCalls[0]
-      ? {
-          name: toolCalls[0].function?.name,
-          args: JSON.parse(toolCalls[0].function?.arguments || "{}"),
-        }
-      : null;
+    const action = toolCalls[0] ? { name: toolCalls[0].function?.name, args: JSON.parse(toolCalls[0].function?.arguments || "{}") } : null;
 
-    return new Response(
-      JSON.stringify({ agent: "sofia", text, action }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    // Persist (fire-and-forget)
+    logAgentMessage(itineraryId || null, userId || null, "sofia", "user", userMessage);
+    if (text || action) {
+      logAgentMessage(itineraryId || null, userId || null, "sofia", "assistant", text || `[delegou para ${action?.name}]`, { action });
+    }
+
+    return new Response(JSON.stringify({ agent: "sofia", text, action }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("sofia error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
