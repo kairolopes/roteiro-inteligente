@@ -166,6 +166,7 @@ export type Database = {
           id: string
           itinerary_id: string | null
           metadata: Json | null
+          notify_admin: boolean
           role: string
           user_id: string | null
         }
@@ -176,6 +177,7 @@ export type Database = {
           id?: string
           itinerary_id?: string | null
           metadata?: Json | null
+          notify_admin?: boolean
           role: string
           user_id?: string | null
         }
@@ -186,6 +188,7 @@ export type Database = {
           id?: string
           itinerary_id?: string | null
           metadata?: Json | null
+          notify_admin?: boolean
           role?: string
           user_id?: string | null
         }
