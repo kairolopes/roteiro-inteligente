@@ -42,6 +42,7 @@ const DayTimeline = ({
   itineraryTitle,
   itinerary,
   onItineraryUpdated,
+  isFirstLocked = true,
 }: DayTimelineProps) => {
   const { settings: agency } = useAgencySettings();
   const { user } = useAuth();
