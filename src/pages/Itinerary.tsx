@@ -394,23 +394,27 @@ const Itinerary = () => {
               </Button>
             </div>
             <div className="space-y-3 lg:space-y-4">
-              {filteredDays.map((day) => (
-                <DayTimeline
-                  key={day.day}
-                  day={day}
-                  isSelected={selectedDay === day.day || selectedDay === null}
-                  onSelect={() => setSelectedDay(selectedDay === day.day ? null : day.day)}
-                  isLocked={day.day > freeDaysCount}
-                  totalDays={itinerary.days.length}
-                  onUnlock={() => setShowAuthModal(true)}
-                  onSubscribe={() => setShowPaywall(true)}
-                  isLoggedIn={!!user}
-                  itineraryId={itinerary.id}
-                  itineraryTitle={itinerary.title}
-                  itinerary={itinerary}
-                  onItineraryUpdated={handleItineraryUpdated}
-                />
-              ))}
+              {(() => {
+                const firstLockedDay = itinerary.days.find(d => d.day > freeDaysCount)?.day;
+                return filteredDays.map((day) => (
+                  <DayTimeline
+                    key={day.day}
+                    day={day}
+                    isSelected={selectedDay === day.day || selectedDay === null}
+                    onSelect={() => setSelectedDay(selectedDay === day.day ? null : day.day)}
+                    isLocked={day.day > freeDaysCount}
+                    totalDays={itinerary.days.length}
+                    onUnlock={() => setShowAuthModal(true)}
+                    onSubscribe={() => setShowPaywall(true)}
+                    isLoggedIn={!!user}
+                    itineraryId={itinerary.id}
+                    itineraryTitle={itinerary.title}
+                    itinerary={itinerary}
+                    onItineraryUpdated={handleItineraryUpdated}
+                    isFirstLocked={day.day === firstLockedDay}
+                  />
+                ));
+              })()}
             </div>
           </motion.div>
 

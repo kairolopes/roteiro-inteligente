@@ -26,6 +26,7 @@ interface DayTimelineProps {
   itineraryTitle?: string;
   itinerary?: ItineraryType;
   onItineraryUpdated?: (it: ItineraryType) => void;
+  isFirstLocked?: boolean;
 }
 
 const DayTimeline = ({
@@ -41,6 +42,7 @@ const DayTimeline = ({
   itineraryTitle,
   itinerary,
   onItineraryUpdated,
+  isFirstLocked = true,
 }: DayTimelineProps) => {
   const { settings: agency } = useAgencySettings();
   const { user } = useAuth();
@@ -131,6 +133,7 @@ const DayTimeline = ({
           onLogin={onUnlock}
           onSubscribe={onSubscribe}
           isLoggedIn={isLoggedIn}
+          variant={isFirstLocked ? "full" : "compact"}
         />
       )}
 

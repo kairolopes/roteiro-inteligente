@@ -8,6 +8,7 @@ interface LockedDayOverlayProps {
   onLogin: () => void;
   onSubscribe: () => void;
   isLoggedIn?: boolean;
+  variant?: "full" | "compact";
 }
 
 const LockedDayOverlay = ({ 
@@ -15,10 +16,30 @@ const LockedDayOverlay = ({
   totalDays, 
   onLogin, 
   onSubscribe,
-  isLoggedIn = false 
+  isLoggedIn = false,
+  variant = "full",
 }: LockedDayOverlayProps) => {
   const remainingDays = totalDays - dayNumber + 1;
-  
+  const handlePrimary = isLoggedIn ? onSubscribe : onLogin;
+
+  if (variant === "compact") {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="absolute inset-0 bg-background/85 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl"
+      >
+        <button
+          onClick={handlePrimary}
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary text-sm font-medium transition-colors touch-active"
+        >
+          <Lock className="w-3.5 h-3.5" />
+          <span>Dia {dayNumber} bloqueado — desbloquear</span>
+        </button>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
